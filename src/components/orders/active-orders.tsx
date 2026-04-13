@@ -138,13 +138,18 @@ export function ActiveOrders() {
                           <p className="text-[10px] text-muted-foreground truncate max-w-[200px]">{order.direccion_entrega}</p>
                         </div>
                         <div className="flex items-center gap-2">
-                          <div className="flex items-center gap-2 mr-1">
-                            {isExterno && (
-                              <Badge className="h-5 px-1.5 text-[8px] font-bold bg-red-500 text-white border-none uppercase">
-                                Externo
-                              </Badge>
-                            )}
-                            <span className="text-[10px] font-mono font-bold text-muted-foreground">#{order.order_id}</span>
+                          <div className="flex flex-col items-end mr-1">
+                            <div className="flex items-center gap-2">
+                              {isExterno && (
+                                <Badge className="h-5 px-1.5 text-[8px] font-bold bg-red-500 text-white border-none uppercase">
+                                  Externo
+                                </Badge>
+                              )}
+                              <span className="text-[10px] font-mono font-bold text-muted-foreground">#{order.order_id}</span>
+                            </div>
+                            <span className="text-[8px] text-muted-foreground/70 font-bold uppercase mt-0.5 tracking-tight">
+                              {order.estado_detallado_actual}
+                            </span>
                           </div>
                           <Button
                             variant="ghost"
