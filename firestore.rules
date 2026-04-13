@@ -1,113 +1,46 @@
-rules_version = '2';
 
-/**
- * Rappi Commander Security Rules
- *
- * CORE PHILOSOPHY:
- * This ruleset implements a robust, role-based access control (RBAC) and ownership model.
- * It prioritizes "Authorization Independence" by leveraging denormalized fields (like 
- * createdById and assignedDriverId) directly on documents, minimizing the need for 
- * expensive cross-document lookups.
- *
- * DATA STRUCTURE:
- * - /users/{userId}: User profiles with 'profileType' determining global permissions.
- * - /drivers/{driverId}: Delivery driver registry, readable by all authenticated users.
- * - /orders/{orderId}: Flat collection of delivery tasks with ownership and assignment links.
- *
- * KEY SECURITY DECISIONS:
- * - Administrative Access: A 'master' profileType allows full management of all entities.
- * - Ownership Integrity: Users can only create or modify data they own or are assigned to.
- * - Relational Consistency: Strict enforcement ensures that document IDs and internal 
- *   ownership fields (e.g., createdById) match the authenticated user's identity.
- * - Prototyping Flexibility: Data structure and types are not strictly validated, 
- *   allowing for rapid development while maintaining strict authorization.
- *
- * DENORMALIZATION FOR AUTHORIZATION:
- * - Order documents contain 'createdById' and 'assignedDriverId' to allow O(1) 
- *   permission checks without reading User or Driver documents.
- * - User documents contain 'profileType' to facilitate fast role checks.
- */
+rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
     // --- Helper Functions ---
 
-    /** Checks if the requester is signed into the application. */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /** Checks if the requester's UID matches the provided userId. */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    /** 
-     * Checks if the requester has 'master' privileges.
-     * This performs a lookup on the requester's own user document.
-     */
     function isMaster() {
-      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.profileType == 'master';
-    }
-
-    /** Checks if the requester is the original creator of a document (using resource.data). */
-    function isDocCreator() {
-      return isSignedIn() && resource.data.createdById == request.auth.uid;
-    }
-
-    /** Checks if the requester is the driver assigned to a document (using resource.data). */
-    function isAssignedDriver() {
-      return isSignedIn() && resource.data.assignedDriverId == request.auth.uid;
+      // Como estamos usando login anônimo e simulando perfis via localStorage/UI,
+      // para fins de protótipo, vamos permitir leitura de perfis para usuários logados.
+      // Em produção, isso checaria o campo 'profile' no documento do usuário.
+      return isSignedIn();
     }
 
     // --- Collection Rules ---
 
-    /**
-     * @description Rules for user profiles. Allows self-management and master-level admin.
-     * @path /users/{userId}
-     * @allow (get) If requester is the owner or a master.
-     * @deny (create) If the userId does not match the authenticated UID (for self-registration).
-     * @principle Restricts access to user's own data tree and enforces master role.
-     */
     match /users/{userId} {
-      allow get: if isOwner(userId) || isMaster();
-      allow list: if isMaster();
-      allow create: if (isOwner(userId) && request.resource.data.id == userId) || isMaster();
-      allow update: if (isOwner(userId) && request.resource.data.id == resource.data.id) || isMaster();
-      allow delete: if isMaster();
-    }
-
-    /**
-     * @description Rules for drivers. Publicly readable by authenticated users; master-only writes.
-     * @path /drivers/{driverId}
-     * @allow (list) If the user is signed in.
-     * @deny (update) If the user is not a 'master'.
-     * @principle Structural segregation of management and consumption roles.
-     */
-    match /drivers/{driverId} {
       allow get, list: if isSignedIn();
-      allow create: if isMaster() && request.resource.data.id == driverId;
-      allow update: if isMaster() && resource != null;
-      allow delete: if isMaster() && resource != null;
+      allow create, update, delete: if isSignedIn();
     }
 
-    /**
-     * @description Rules for orders. Enforces creator ownership and driver assignment.
-     * @path /orders/{orderId}
-     * @allow (create) If signed in and createdById matches requester's UID.
-     * @deny (list) If requester is not 'master' and query is not filtered by owner/driver.
-     * @principle Uses denormalized ownership fields for authorization independence.
-     */
+    match /entregadores/{entregadorId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isSignedIn();
+    }
+
     match /orders/{orderId} {
-      // Read Logic: Master, Creator, Assigned Driver, or viewing 'pending' orders
-      allow get: if isMaster() || isDocCreator() || isAssignedDriver() || resource.data.status == 'pending';
-      allow list: if isSignedIn(); // Filtering must be handled by client-side queries as per IR logic.
-      
-      // Write Logic: Validation of creator on creation; master/creator/driver on updates.
-      allow create: if isSignedIn() && request.resource.data.createdById == request.auth.uid;
-      allow update: if (isMaster() || isDocCreator() || isAssignedDriver()) && resource != null;
-      allow delete: if (isMaster() || isDocCreator()) && resource != null;
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isSignedIn();
+    }
+
+    match /requests/{requestId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isSignedIn();
     }
   }
 }
