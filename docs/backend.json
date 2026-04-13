@@ -1,0 +1,59 @@
+
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Informações de perfil do usuário operacional",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "profile": { "type": "string", "enum": ["normal", "master"] }
+      },
+      "required": ["name", "email", "profile"]
+    },
+    "Courier": {
+      "title": "Courier",
+      "description": "Cadastro de entregador parceiro",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "externalId": { "type": "string" }
+      },
+      "required": ["name", "externalId"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Pedido de entrega",
+      "type": "object",
+      "properties": {
+        "items": { "type": "array", "items": { "type": "string" } },
+        "status": { "type": "string", "enum": ["pending", "accepted", "delivering", "completed"] },
+        "deliveryAddress": { "type": "string" },
+        "pickupAddress": { "type": "string" },
+        "specialInstructions": { "type": "string" },
+        "courierId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "categories": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["items", "status", "deliveryAddress", "pickupAddress", "createdAt"]
+    }
+  },
+  "auth": {
+    "providers": ["password"]
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "#/entities/UserProfile",
+      "description": "Perfis de usuários operacionais"
+    },
+    "/couriers/{courierId}": {
+      "schema": "#/entities/Courier",
+      "description": "Lista de entregadores cadastrados"
+    },
+    "/orders/{orderId}": {
+      "schema": "#/entities/Order",
+      "description": "Histórico e monitoramento de pedidos"
+    }
+  }
+}
