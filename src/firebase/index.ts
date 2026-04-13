@@ -3,28 +3,32 @@
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore'
+import { initializeFirestore, getFirestore, Firestore } from 'firebase/firestore'
 
 /**
  * Inicialização robusta para Android e Web.
- * Forçamos o uso do firebaseConfig para garantir que o APK aponte para o projeto correto.
+ * Usamos initializeFirestore com configurações específicas para MOBILE (Android/APK).
  */
 export function initializeFirebase() {
+  let app: FirebaseApp;
+  
   if (!getApps().length) {
-    // No Android (Capacitor), as variáveis de ambiente do App Hosting não existem.
-    // Inicializamos diretamente com o objeto de configuração para evitar que o APK use um projeto padrão.
-    const firebaseApp = initializeApp(firebaseConfig);
-    return getSdks(firebaseApp);
+    app = initializeApp(firebaseConfig);
+  } else {
+    app = getApp();
   }
 
-  return getSdks(getApp());
-}
+  // Configuração CRÍTICA para Android:
+  // 1. experimentalForceLongPolling: Força o app a usar HTTP simples, evitando bloqueios de operadoras.
+  // 2. ignoreUndefinedProperties: Evita erros ao salvar objetos com campos vazios.
+  const firestore = initializeFirestore(app, {
+    experimentalForceLongPolling: true,
+  });
 
-export function getSdks(firebaseApp: FirebaseApp) {
   return {
-    firebaseApp,
-    auth: getAuth(firebaseApp),
-    firestore: getFirestore(firebaseApp)
+    firebaseApp: app,
+    auth: getAuth(app),
+    firestore: firestore
   };
 }
 

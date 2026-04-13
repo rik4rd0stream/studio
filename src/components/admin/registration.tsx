@@ -18,7 +18,8 @@ import {
   Bell,
   PackageSearch,
   AlertTriangle,
-  RefreshCw
+  RefreshCw,
+  Database
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { UserRole } from "@/lib/types";
@@ -27,6 +28,7 @@ import { doc, setDoc, deleteDoc, updateDoc, collection, getDocs } from "firebase
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
 import { cn } from "@/lib/utils";
+import { firebaseConfig } from "@/firebase/config";
 
 interface RegistrationProps {
   type: 'users' | 'couriers';
@@ -73,11 +75,17 @@ export function Registration({ type }: RegistrationProps) {
     setForceLoading(true);
     try {
       const querySnapshot = await getDocs(collection(db, collectionName));
-      const docs = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const docs = querySnapshot.docs.map(doc => ({ 
+        id: doc.id, 
+        ...doc.data(),
+        // Normalização de campos para o Android aceitar qualquer versão do banco
+        nome: doc.data().nome || doc.data().name || "Sem Nome",
+        id_motoboy: doc.data().id_motoboy || doc.data().id || doc.id
+      }));
       setManualItems(docs);
-      toast({ title: "Sincronizado", description: `${docs.length} registros encontrados via Busca Direta.` });
+      toast({ title: "Sincronizado", description: `${docs.length} registros encontrados.` });
     } catch (err) {
-      toast({ variant: "destructive", title: "Erro de Busca", description: "Falha ao forçar carregamento." });
+      toast({ variant: "destructive", title: "Erro de Busca", description: "Falha ao conectar com o banco de dados." });
     } finally {
       setForceLoading(false);
     }
@@ -106,7 +114,7 @@ export function Registration({ type }: RegistrationProps) {
     deleteDoc(docRef)
       .then(() => {
         toast({ title: "Removido", description: "Registro excluído com sucesso." });
-        if (manualItems) handleForceLoad(); // Atualiza manual se estiver em uso
+        handleForceLoad();
       })
       .catch(async () => {
         errorEmitter.emit('permission-error', new FirestorePermissionError({ path: docRef.path, operation: 'delete' }));
@@ -143,13 +151,13 @@ export function Registration({ type }: RegistrationProps) {
 
     action
       .then(() => {
-        toast({ title: "Salvo", description: "Dados gravados com sucesso." });
+        toast({ title: "Salvo", description: "Dados gravados na nuvem." });
         resetForm();
         setLoading(false);
-        if (manualItems) handleForceLoad(); // Atualiza manual se estiver em uso
+        handleForceLoad();
       })
       .catch(async () => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: docRef.path, operation: 'write', requestResourceData: data }));
+        toast({ variant: "destructive", title: "Erro ao Salvar", description: "Verifique sua internet." });
         setLoading(false);
       });
   };
@@ -165,7 +173,7 @@ export function Registration({ type }: RegistrationProps) {
             {editingId ? 'Editar' : (type === 'users' ? 'Novo Usuário' : 'Novo Entregador')}
           </CardTitle>
           <CardDescription>
-            {type === 'users' ? 'Gestão de operadores do sistema.' : 'Banco de dados de entregadores ativo.'}
+            Ambiente: <span className="font-bold text-primary">{firebaseConfig.projectId}</span>
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -231,8 +239,8 @@ export function Registration({ type }: RegistrationProps) {
             )}
 
             <div className="flex gap-2">
-              <Button type="submit" className="flex-1 h-12 text-lg" disabled={loading}>
-                {loading ? <Loader2 className="animate-spin" /> : editingId ? 'Salvar Alterações' : 'Cadastrar'}
+              <Button type="submit" className="flex-1 h-12 text-lg font-bold" disabled={loading}>
+                {loading ? <Loader2 className="animate-spin" /> : editingId ? 'Salvar' : 'Cadastrar'}
               </Button>
               {editingId && (
                 <Button type="button" variant="outline" onClick={resetForm} className="h-12">Cancelar</Button>
@@ -245,10 +253,7 @@ export function Registration({ type }: RegistrationProps) {
       <Card className="border-none shadow-sm overflow-hidden">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-xl">Registros Atuais</CardTitle>
-              {type === 'couriers' && <p className="text-[10px] text-muted-foreground mt-1">Sincronizado com o Banco Antigo</p>}
-            </div>
+            <CardTitle className="text-xl">Lista de Registros</CardTitle>
             <div className="flex gap-2">
               <Button 
                 variant="outline" 
@@ -258,9 +263,8 @@ export function Registration({ type }: RegistrationProps) {
                 className="h-8 gap-2 text-[10px] uppercase font-bold text-primary border-primary/20"
               >
                 <RefreshCw className={cn("h-3 w-3", forceLoading && "animate-spin")} />
-                Forçar Busca
+                Sincronizar
               </Button>
-              {items && <span className="text-[10px] font-bold bg-primary/10 text-primary px-2 py-1 rounded-full flex items-center">{items.length} itens</span>}
             </div>
           </div>
         </CardHeader>
@@ -268,45 +272,38 @@ export function Registration({ type }: RegistrationProps) {
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
-                <TableHead>Identificação</TableHead>
-                <TableHead>Acesso / ID</TableHead>
+                <TableHead>Nome</TableHead>
+                <TableHead>Cargo/ID</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {(loadingList && !manualItems) ? (
                 <TableRow><TableCell colSpan={3} className="text-center py-8"><Loader2 className="animate-spin mx-auto" /></TableCell></TableRow>
-              ) : listError && !manualItems ? (
-                <TableRow>
-                  <TableCell colSpan={3} className="text-center py-8 text-destructive">
-                    <AlertTriangle className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p className="text-[10px] font-bold uppercase">Erro Android</p>
-                    <p className="text-[9px] opacity-70 mb-4">A conexão em tempo real falhou.</p>
-                    <Button size="sm" onClick={handleForceLoad} variant="destructive" className="h-7 text-[9px] font-bold">TENTAR BUSCA DIRETA</Button>
-                  </TableCell>
-                </TableRow>
               ) : items?.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={3} className="text-center py-12 text-muted-foreground flex flex-col items-center">
-                    <Bike className="h-10 w-10 opacity-10 mb-2" />
-                    <p className="italic text-xs">Nenhum registro encontrado na coleção '{collectionName}'.</p>
-                    <Button variant="link" onClick={handleForceLoad} className="text-[10px] uppercase mt-2">Clique para buscar novamente</Button>
+                  <TableCell colSpan={3} className="text-center py-12 text-muted-foreground">
+                    <Database className="h-10 w-10 mx-auto mb-2 opacity-10" />
+                    <p className="text-xs">Nenhum dado encontrado na coleção '{collectionName}'.</p>
+                    <Button variant="link" onClick={handleForceLoad} className="text-[10px] uppercase">Clique para tentar de novo</Button>
                   </TableCell>
                 </TableRow>
               ) : items?.map((item) => (
                 <TableRow key={item.id}>
                   <TableCell>
-                    <div className="font-medium">{type === 'users' ? (item.name || item.nome) : (item.nome || item.name || "Sem Nome")}</div>
-                    <div className="text-[10px] opacity-60">{type === 'users' ? item.email : ""}</div>
+                    <div className="font-medium text-xs">{item.nome || item.name}</div>
+                    <div className="text-[9px] opacity-60 truncate max-w-[150px]">{item.email || ""}</div>
                   </TableCell>
                   <TableCell>
                     <div className="text-[10px] font-bold text-primary uppercase">
-                      {type === 'users' ? item.role : `RT: ${item.id_motoboy || item.id || 'N/A'}`}
+                      {type === 'users' ? item.role : (item.id_motoboy || item.id)}
                     </div>
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" onClick={() => handleEdit(item)}><Pencil className="h-4 w-4" /></Button>
-                    <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDelete(item.id)}><Trash2 className="h-4 w-4" /></Button>
+                    <div className="flex justify-end gap-1">
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(item)}><Pencil className="h-3 w-3" /></Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDelete(item.id)}><Trash2 className="h-3 w-3" /></Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -314,6 +311,15 @@ export function Registration({ type }: RegistrationProps) {
           </Table>
         </CardContent>
       </Card>
+      
+      {/* Rodapé de Debug para o Android */}
+      <div className="p-4 bg-muted/50 rounded-xl border border-dashed flex items-center justify-between">
+         <div className="flex items-center gap-2">
+            <Database className="h-3 w-3 text-muted-foreground" />
+            <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-tight">Status da Conexão:</span>
+         </div>
+         <span className="text-[8px] font-mono text-green-600 font-bold">PROJETO: {firebaseConfig.projectId}</span>
+      </div>
     </div>
   );
 }
