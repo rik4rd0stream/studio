@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -8,7 +9,6 @@ import {
   SendHorizontal, 
   MapPin, 
   RefreshCw, 
-  Bike,
   Search,
   Package,
   ClipboardPaste,
@@ -21,8 +21,7 @@ import {
   Dialog, 
   DialogContent, 
   DialogHeader, 
-  DialogTitle, 
-  DialogDescription 
+  DialogTitle 
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
@@ -49,7 +48,8 @@ export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
   const [searchCourier, setSearchCourier] = useState("");
   const [manualOrderId, setManualOrderId] = useState("");
 
-  const couriersQuery = useMemoFirebase(() => query(collection(db, 'deliveryDrivers')), [db]);
+  // Usando a coleção antiga 'entregadores'
+  const couriersQuery = useMemoFirebase(() => query(collection(db, 'entregadores')), [db]);
   const { data: couriers, isLoading: loadingCouriers } = useCollection<any>(couriersQuery);
 
   const redashOrders = useMemo(() => {
@@ -246,6 +246,9 @@ export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
                 <SendHorizontal className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-primary" />
               </Button>
             ))}
+            {filteredCouriers.length === 0 && !loadingCouriers && (
+              <p className="text-center py-4 text-muted-foreground text-[10px] italic">Nenhum motoboy encontrado na coleção 'entregadores'.</p>
+            )}
           </div>
         </DialogContent>
       </Dialog>

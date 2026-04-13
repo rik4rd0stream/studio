@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -49,7 +50,8 @@ export function RequestOrder({ sender }: { sender: User }) {
   const [searchUser, setSearchUser] = useState("");
   const [manualOrderId, setManualOrderId] = useState("");
 
-  const couriersQuery = useMemoFirebase(() => query(collection(db, 'deliveryDrivers')), [db]);
+  // Usando a coleção antiga 'entregadores'
+  const couriersQuery = useMemoFirebase(() => query(collection(db, 'entregadores')), [db]);
   const { data: couriers, isLoading: loadingCouriers } = useCollection<any>(couriersQuery);
 
   const usersQuery = useMemoFirebase(() => query(
@@ -260,6 +262,9 @@ export function RequestOrder({ sender }: { sender: User }) {
                 <ArrowRight className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100" />
               </Button>
             ))}
+            {filteredCouriers.length === 0 && !loadingCouriers && (
+              <p className="text-center py-4 text-muted-foreground text-[10px] italic">Nenhum motoboy na coleção 'entregadores'.</p>
+            )}
           </div>
         </DialogContent>
       </Dialog>

@@ -12,16 +12,12 @@ import { Switch } from "@/components/ui/switch";
 import { 
   Users, 
   Bike, 
-  UserPlus, 
-  Fingerprint, 
   Loader2, 
   Pencil, 
   Trash2, 
-  X, 
-  Check,
+  KeyRound,
   Bell,
-  PackageSearch,
-  KeyRound
+  PackageSearch
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { UserRole } from "@/lib/types";
@@ -48,7 +44,9 @@ export function Registration({ type }: RegistrationProps) {
   const [hasRequestAccess, setHasRequestAccess] = useState(false);
   const [idMotoboy, setIdMotoboy] = useState("");
 
-  const collectionName = type === 'users' ? 'userProfiles' : 'deliveryDrivers';
+  // 'userProfiles' para novo banco de usuários, 'entregadores' para o banco antigo de motoboys
+  const collectionName = type === 'users' ? 'userProfiles' : 'entregadores';
+  
   const listQuery = useMemoFirebase(() => query(collection(db, collectionName)), [db, collectionName]);
   const { data: items, isLoading: loadingList } = useCollection<any>(listQuery);
 
@@ -83,9 +81,9 @@ export function Registration({ type }: RegistrationProps) {
     const docRef = doc(db, collectionName, id);
     deleteDoc(docRef)
       .then(() => {
-        toast({ title: "Removido", description: "Registro excluído do novo banco." });
+        toast({ title: "Removido", description: "Registro excluído com sucesso." });
       })
-      .catch(async (error) => {
+      .catch(async () => {
         errorEmitter.emit('permission-error', new FirestorePermissionError({ path: docRef.path, operation: 'delete' }));
       });
   };
@@ -94,21 +92,20 @@ export function Registration({ type }: RegistrationProps) {
     e.preventDefault();
     setLoading(true);
     
-    // Gerar um ID que poderá ser futuramente substituído pelo UID do Authentication
-    const id = editingId || 'usr_' + Math.random().toString(36).substr(2, 9);
+    const id = editingId || (type === 'users' ? 'usr_' : 'rt_') + Math.random().toString(36).substr(2, 9);
     const docRef = doc(db, collectionName, id);
 
     const data: any = type === 'users' ? {
-      name,
+      name: name.trim(),
       email: email.toLowerCase().trim(),
-      password,
+      password: password.trim(),
       role,
       notificationsEnabled,
       hasRequestAccess,
       updatedAt: new Date().toISOString()
     } : {
-      nome: name,
-      id_motoboy: idMotoboy,
+      nome: name.trim(),
+      id_motoboy: idMotoboy.trim(),
       updatedAt: new Date().toISOString()
     };
 
@@ -121,11 +118,11 @@ export function Registration({ type }: RegistrationProps) {
 
     action
       .then(() => {
-        toast({ title: "Salvo", description: "Dados gravados na nova estrutura." });
+        toast({ title: "Salvo", description: "Dados gravados com sucesso." });
         resetForm();
         setLoading(false);
       })
-      .catch(async (error) => {
+      .catch(async () => {
         errorEmitter.emit('permission-error', new FirestorePermissionError({ path: docRef.path, operation: 'write', requestResourceData: data }));
         setLoading(false);
       });
@@ -141,7 +138,9 @@ export function Registration({ type }: RegistrationProps) {
           <CardTitle className="text-2xl font-bold">
             {editingId ? 'Editar' : (type === 'users' ? 'Novo Usuário' : 'Novo Entregador')}
           </CardTitle>
-          <CardDescription>Gerenciando novo banco de dados profissional.</CardDescription>
+          <CardDescription>
+            {type === 'users' ? 'Novo banco de dados profissional.' : 'Banco de dados de entregadores ativo.'}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -206,7 +205,7 @@ export function Registration({ type }: RegistrationProps) {
             )}
 
             <Button type="submit" className="w-full h-12 text-lg" disabled={loading}>
-              {loading ? <Loader2 className="animate-spin" /> : editingId ? 'Salvar Alterações' : 'Cadastrar no Novo Banco'}
+              {loading ? <Loader2 className="animate-spin" /> : editingId ? 'Salvar Alterações' : 'Cadastrar'}
             </Button>
           </form>
         </CardContent>
@@ -226,6 +225,8 @@ export function Registration({ type }: RegistrationProps) {
             <TableBody>
               {loadingList ? (
                 <TableRow><TableCell colSpan={3} className="text-center py-8"><Loader2 className="animate-spin mx-auto" /></TableCell></TableRow>
+              ) : items?.length === 0 ? (
+                <TableRow><TableCell colSpan={3} className="text-center py-8 text-muted-foreground italic text-xs">Nenhum registro encontrado.</TableCell></TableRow>
               ) : items?.map((item) => (
                 <TableRow key={item.id}>
                   <TableCell>

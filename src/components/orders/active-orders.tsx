@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -17,7 +18,8 @@ export function ActiveOrders() {
   const [loading, setLoading] = useState(false);
   const [allOrders, setAllOrders] = useState<RedashOrder[]>([]);
   
-  const couriersQuery = useMemoFirebase(() => query(collection(db, 'deliveryDrivers')), [db]);
+  // Usando a coleção antiga 'entregadores'
+  const couriersQuery = useMemoFirebase(() => query(collection(db, 'entregadores')), [db]);
   const { data: couriers } = useCollection<any>(couriersQuery);
 
   const loadData = async (silent = false) => {
