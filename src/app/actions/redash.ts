@@ -6,11 +6,10 @@
 
 export interface RedashOrder {
   order_id: string;
-  point: string;
-  es_trusted: string;
-  items: string;
-  address: string;
-  pickup: string;
+  store_name?: string;
+  direccion_entrega?: string;
+  point?: string;
+  es_trusted?: string;
   [key: string]: any;
 }
 

@@ -1,16 +1,13 @@
-
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { 
   Loader2, 
   SendHorizontal, 
   MapPin, 
   RefreshCw, 
-  Clock,
   Bike,
   Search,
   Package
@@ -153,7 +150,7 @@ export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
         </div>
       </div>
 
-      {/* Lista de Pedidos Estilo Referência */}
+      {/* Lista de Pedidos conforme referência */}
       <div className="space-y-3 max-w-2xl mx-auto">
         {redashOrders.length === 0 && !loading ? (
           <div className="text-center py-20 bg-muted/30 rounded-xl border-2 border-dashed flex flex-col items-center">
@@ -169,13 +166,13 @@ export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
             >
               <CardContent className="p-4 space-y-1.5">
                 <h3 className="text-base font-bold text-foreground leading-tight group-hover:text-primary transition-colors">
-                  {order.items || "Pedido sem nome"}
+                  {order.store_name || "Loja não identificada"}
                 </h3>
                 
                 <div className="flex items-start gap-2 text-muted-foreground">
                   <MapPin className="h-3.5 w-3.5 text-rose-500 shrink-0 mt-0.5" />
                   <p className="text-xs font-medium leading-tight">
-                    {order.address || "Endereço não informado"}
+                    {order.direccion_entrega || "Endereço não informado"}
                   </p>
                 </div>
 
