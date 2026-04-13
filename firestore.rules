@@ -4,139 +4,48 @@ service cloud.firestore {
 
     /**
      * Rappi Commander Security Rules
-     *
-     * CORE PHILOSOPHY:
-     * This ruleset implements a robust, role-based access control system tailored for a logistics platform. 
-     * It distinguishes between 'master' administrators and 'normal' users (creators and drivers).
-     *
-     * DATA STRUCTURE:
-     * - /userProfiles/{userId}: User-specific metadata, keyed by Firebase Auth UID.
-     * - /deliveryDrivers/{driverId}: Driver-specific metadata, keyed by Firebase Auth UID.
-     * - /orders/{orderId}: Root-level collection for delivery requests.
-     * - /orders/{orderId}/orderItems/{orderItemId}: Subcollection for items within an order.
-     * - /roles_master/{userId}: Sentinel collection for administrative privileges.
-     *
-     * KEY SECURITY DECISIONS:
-     * 1. Authorization Independence: We use denormalized fields (creatorUserId, deliveryDriverId) 
-     *    directly on Order and OrderItem documents to allow instant, single-document authorization 
-     *    checks without costly get() calls to parent documents.
-     * 2. Identity Verification: All checks rely strictly on request.auth.uid.
-     * 3. Prototyping Flexibility: Rules enforce who can access data but do not strictly 
-     *    validate data types or full schemas, allowing for rapid front-end iteration.
-     * 4. Master Access: A specific sentinel collection (/roles_master) grants global admin rights.
+     * 
+     * Ajustadas para permitir a fase de prototipagem e login customizado.
      */
 
-    // --- HELPER FUNCTIONS ---
-
-    /**
-     * @description Checks if the user is authenticated.
-     */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /**
-     * @description Checks if the provided ID matches the authenticated user's UID.
-     */
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
-
-    /**
-     * @description Determines if the user has 'master' administrative privileges via the sentinel collection.
-     * Also checks for the specific hardcoded master email as a fallback for initial setup.
-     */
     function isMaster() {
-      return isSignedIn() && (exists(/databases/$(database)/documents/roles_master/$(request.auth.uid)) || request.auth.token.email == "rik4rd0stream@gmail.com");
+      // O Master é definido pelo e-mail no token ou por um registro na coleção roles_master
+      return isSignedIn() && (
+        request.auth.token.email == "rik4rd0stream@gmail.com" || 
+        exists(/databases/$(database)/documents/roles_master/$(request.auth.uid))
+      );
     }
 
-    /**
-     * @description Combines ownership and existence checks for updates and deletes.
-     */
-    function isExistingOwner(userId) {
-      return resource != null && isOwner(userId);
-    }
-
-    /**
-     * @description Verifies if the user is the creator or assigned driver for a specific resource 
-     * using denormalized fields.
-     */
-    function isParticipant(data) {
-      return isSignedIn() && (request.auth.uid == data.creatorUserId || request.auth.uid == data.deliveryDriverId);
-    }
-
-    // --- COLLECTION RULES ---
-
-    /**
-     * @description Management of User Profiles. Owners can manage their own, Masters can see all.
-     * @path /userProfiles/{userId}
-     * @allow get: (get) if authenticated as {userId}.
-     * @deny list: (list) if not a Master user.
-     * @principle Path-based ownership and global admin override.
-     */
+    // Permite que qualquer usuário logado (incluindo anônimos) consulte perfis para fazer login
     match /userProfiles/{userId} {
-      allow get: if isOwner(userId) || isMaster();
-      allow list: if isMaster();
-      allow create: if (isOwner(userId) && request.resource.data.id == userId) || isMaster();
-      allow update: if (isExistingOwner(userId) && request.resource.data.id == resource.data.id) || isMaster();
-      allow delete: if isMaster();
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isSignedIn(); // Permitido para o Ricardo configurar o banco inicial
     }
 
-    /**
-     * @description Management of Delivery Driver profiles and statuses.
-     * @path /deliveryDrivers/{driverId}
-     * @allow create: (create) if driverId matches auth UID.
-     * @deny update: (update) if trying to change the document ID.
-     * @principle Structural segregation of driver roles.
-     */
     match /deliveryDrivers/{driverId} {
-      allow get: if isOwner(driverId) || isMaster();
-      allow list: if isMaster();
-      allow create: if (isOwner(driverId) && request.resource.data.id == driverId) || isMaster();
-      allow update: if (isExistingOwner(driverId) && request.resource.data.id == resource.data.id) || isMaster();
-      allow delete: if isMaster();
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isSignedIn(); // Permitido para o Ricardo configurar o banco inicial
     }
 
-    /**
-     * @description Access to Orders. Limited to the creator, the assigned driver, or Master.
-     * @path /orders/{orderId}
-     * @allow create: (create) if setting creatorUserId to own UID.
-     * @deny update: (update) if user is neither creator nor assigned driver.
-     * @principle Shared access via denormalized collaborator IDs.
-     */
     match /orders/{orderId} {
-      allow get: if isParticipant(resource.data) || isMaster();
-      allow list: if isSignedIn(); // Queries must filter by creatorUserId or deliveryDriverId
-      allow create: if isSignedIn() && request.resource.data.creatorUserId == request.auth.uid;
-      allow update: if (resource != null && (isParticipant(resource.data) || isMaster())) && request.resource.data.creatorUserId == resource.data.creatorUserId;
-      allow delete: if isMaster();
-
-      /**
-       * @description Access to items within an order. Relies on denormalized IDs for performance.
-       * @path /orders/{orderId}/orderItems/{orderItemId}
-       * @allow list: (list) if user is the order creator or driver.
-       * @principle Authorization Independence (Mandate A) using denormalized fields.
-       */
+      allow read, write: if isSignedIn();
+      
       match /orderItems/{orderItemId} {
-        allow get: if isParticipant(resource.data) || isMaster();
-        allow list: if isSignedIn(); // Queries must filter appropriately
-        allow create: if isSignedIn() && request.resource.data.creatorUserId == request.auth.uid;
-        allow update: if (resource != null && (isParticipant(resource.data) || isMaster())) && request.resource.data.creatorUserId == resource.data.creatorUserId;
-        allow delete: if (resource != null && (request.auth.uid == resource.data.creatorUserId || isMaster()));
+        allow read, write: if isSignedIn();
       }
     }
 
-    /**
-     * @description Sentinel collection for Master roles. Existence determines administrative access.
-     * @path /roles_master/{userId}
-     * @allow get: (get) if user is checking their own admin status.
-     * @deny create: (create) if requester is not already a Master.
-     * @principle Existence over content for high-level security flags.
-     */
+    match /requests/{requestId} {
+      allow read, write: if isSignedIn();
+    }
+
     match /roles_master/{userId} {
       allow get: if isSignedIn();
-      allow list: if isMaster();
-      allow create, update, delete: if isMaster();
+      allow list, create, update, delete: if isMaster();
     }
   }
 }

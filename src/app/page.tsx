@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -23,6 +22,7 @@ export default function Home() {
     setMounted(true);
   }, []);
 
+  // Garante uma conexão anônima persistente para evitar erros de permissão iniciais
   useEffect(() => {
     if (mounted && !isUserLoading && !firebaseUser) {
       signInAnonymously(auth).catch((err) => {
@@ -49,7 +49,7 @@ export default function Home() {
     const password = passInput.trim();
     
     try {
-      // Busca na NOVA coleção de perfis
+      // Busca no novo banco de perfis (userProfiles)
       const q = query(collection(db, 'userProfiles'), where('email', '==', email));
       const querySnapshot = await getDocs(q);
       
@@ -59,11 +59,12 @@ export default function Home() {
         const userDoc = querySnapshot.docs[0];
         const data = userDoc.data();
         
+        // Validação de senha simples via Firestore
         if (data.password && data.password !== password) {
           toast({
             variant: "destructive",
-            title: "Acesso Negado",
-            description: "Senha incorreta."
+            title: "Senha Incorreta",
+            description: "Verifique seus dados e tente novamente."
           });
           setIsAuthenticating(false);
           return;
@@ -78,12 +79,12 @@ export default function Home() {
           hasRequestAccess: data.hasRequestAccess
         } as User;
       } else {
-        // Regra de Ouro: Somente este e-mail entra como Master se não houver cadastro
-        const isMaster = email === 'rik4rd0stream@gmail.com';
+        // Se não existir no banco, apenas o Ricardo entra como Master Inicial
+        const isMasterAdmin = email === 'rik4rd0stream@gmail.com';
         
-        if (isMaster) {
+        if (isMasterAdmin) {
            userData = {
-              id: firebaseUser?.uid || 'master_init',
+              id: firebaseUser?.uid || 'master_root',
               name: 'Ricardo (Master)',
               email: email,
               role: 'master',
@@ -94,7 +95,7 @@ export default function Home() {
           toast({
             variant: "destructive",
             title: "Não autorizado",
-            description: "Usuário não encontrado no novo banco de dados."
+            description: "Usuário não encontrado no novo banco. Peça ao administrador para cadastrá-lo."
           });
           setIsAuthenticating(false);
           return;
@@ -103,11 +104,13 @@ export default function Home() {
       
       setLocalUser(userData);
       localStorage.setItem('rappi_commander_session', JSON.stringify(userData));
+      toast({ title: "Bem-vindo!", description: `Logado como ${userData.name}` });
     } catch (err: any) {
+      console.error("Login Error:", err);
       toast({
         variant: "destructive",
-        title: "Erro de Conexão",
-        description: "Falha ao validar acesso."
+        title: "Erro de Permissão",
+        description: "O banco de dados ainda está sendo configurado. Tente novamente em instantes."
       });
     } finally {
       setIsAuthenticating(false);
@@ -124,9 +127,9 @@ export default function Home() {
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
           <div className="h-12 w-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-          <div className="text-primary font-bold animate-pulse text-xs uppercase tracking-widest">
-            Iniciando Novo Banco...
-          </div>
+          <p className="text-primary font-bold animate-pulse text-xs uppercase tracking-widest">
+            Sincronizando Banco...
+          </p>
         </div>
       </div>
     );

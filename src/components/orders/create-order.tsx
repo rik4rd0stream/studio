@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -50,7 +49,7 @@ export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
   const [searchCourier, setSearchCourier] = useState("");
   const [manualOrderId, setManualOrderId] = useState("");
 
-  const couriersQuery = useMemoFirebase(() => query(collection(db, 'entregadores')), [db]);
+  const couriersQuery = useMemoFirebase(() => query(collection(db, 'deliveryDrivers')), [db]);
   const { data: couriers, isLoading: loadingCouriers } = useCollection<any>(couriersQuery);
 
   const redashOrders = useMemo(() => {

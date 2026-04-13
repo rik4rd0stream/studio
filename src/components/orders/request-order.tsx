@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -50,11 +49,11 @@ export function RequestOrder({ sender }: { sender: User }) {
   const [searchUser, setSearchUser] = useState("");
   const [manualOrderId, setManualOrderId] = useState("");
 
-  const couriersQuery = useMemoFirebase(() => query(collection(db, 'entregadores')), [db]);
+  const couriersQuery = useMemoFirebase(() => query(collection(db, 'deliveryDrivers')), [db]);
   const { data: couriers, isLoading: loadingCouriers } = useCollection<any>(couriersQuery);
 
   const usersQuery = useMemoFirebase(() => query(
-    collection(db, 'users'), 
+    collection(db, 'userProfiles'), 
     where('notificationsEnabled', '==', true)
   ), [db]);
   const { data: appUsers, isLoading: loadingUsers } = useCollection<any>(usersQuery);
