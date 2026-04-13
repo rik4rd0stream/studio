@@ -3,8 +3,8 @@ import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
   /**
-   * output: 'export' removido para permitir Server Actions (Web/Vercel).
-   * Reativar apenas no momento de gerar o build estático para Android/Capacitor.
+   * Configuração padrão para Web e Live URL.
+   * Suporta Server Actions, Genkit e consulta ao Redash sem erros de CORS.
    */
   images: {
     unoptimized: true, 

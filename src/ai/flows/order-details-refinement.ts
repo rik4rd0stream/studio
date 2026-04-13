@@ -3,7 +3,7 @@
 
 /**
  * @fileOverview Flow para refinar detalhes de pedidos via Genkit.
- * 'use server' reativado para processamento seguro no lado do servidor.
+ * 'use server' essencial para processamento de IA seguro no servidor.
  */
 
 import {ai} from '@/ai/genkit';

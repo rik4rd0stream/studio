@@ -3,7 +3,7 @@
 
 /**
  * @fileOverview Funções para buscar dados do Redash via Server Actions.
- * O uso de 'use server' resolve problemas de CORS no navegador (Web/Vercel).
+ * O uso de 'use server' resolve problemas de CORS no navegador e no Live App.
  */
 
 export interface RedashOrder {
