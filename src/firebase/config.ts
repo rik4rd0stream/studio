@@ -1,9 +1,8 @@
-
 export const firebaseConfig = {
-  apiKey: "AIzaSyB8ojoSzZRfgw6PRPTZ-fF3NfZRCJArt5M",
-  authDomain: "motoboy-13742.firebaseapp.com",
-  projectId: "motoboy-13742",
-  storageBucket: "motoboy-13742.firebasestorage.app",
-  messagingSenderId: "224481701159",
-  appId: "1:224481701159:web:fe86a0fd8404adb876cd02"
+  "projectId": "motoboy-13742",
+  "appId": "1:224481701159:web:14e7ab6355cfc6aa76cd02",
+  "apiKey": "AIzaSyB8ojoSzZRfgw6PRPTZ-fF3NfZRCJArt5M",
+  "authDomain": "motoboy-13742.firebaseapp.com",
+  "measurementId": "",
+  "messagingSenderId": "224481701159"
 };

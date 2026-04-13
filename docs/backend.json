@@ -1,81 +1,181 @@
-
 {
   "entities": {
-    "UserProfile": {
-      "title": "User Profile",
-      "description": "Informações de perfil do usuário operacional",
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
       "type": "object",
+      "description": "Represents a user of the Rappi Commander system, with different access levels and preferences.",
       "properties": {
-        "name": { "type": "string" },
-        "email": { "type": "string", "format": "email" },
-        "profile": { "type": "string", "enum": ["normal", "master"] },
-        "notificationsEnabled": { "type": "boolean", "description": "Se o usuário está autorizado a receber notificações" },
-        "hasRequestAccess": { "type": "boolean", "description": "Se o usuário tem acesso à funcionalidade de solicitação de pedidos" },
-        "fcmToken": { "type": "string", "description": "Token para envio de notificações push via FCM" }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the User entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "Full name of the user."
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address of the user.",
+          "format": "email"
+        },
+        "profileType": {
+          "type": "string",
+          "description": "The access level of the user (e.g., 'normal', 'master')."
+        },
+        "preferredTheme": {
+          "type": "string",
+          "description": "The user's preferred application theme (e.g., 'light', 'dark')."
+        }
       },
-      "required": ["name", "email", "profile"]
+      "required": [
+        "id",
+        "name",
+        "email",
+        "profileType"
+      ]
     },
-    "Courier": {
-      "title": "Courier",
-      "description": "Cadastro de entregador parceiro",
+    "Driver": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Driver",
       "type": "object",
+      "description": "Represents a delivery driver available in the Rappi Commander system.",
       "properties": {
-        "nome": { "type": "string" },
-        "id_motoboy": { "type": "string" }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Driver entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "Full name of the delivery driver."
+        }
       },
-      "required": ["nome", "id_motoboy"]
+      "required": [
+        "id",
+        "name"
+      ]
     },
     "Order": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Order",
-      "description": "Pedido de entrega",
       "type": "object",
+      "description": "Represents a delivery order within the Rappi Commander system, including details for pickup, delivery, items, and status.",
       "properties": {
-        "items": { "type": "array", "items": { "type": "string" } },
-        "status": { "type": "string", "enum": ["pending", "accepted", "delivering", "completed"] },
-        "deliveryAddress": { "type": "string" },
-        "pickupAddress": { "type": "string" },
-        "specialInstructions": { "type": "string" },
-        "courierId": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "categories": { "type": "array", "items": { "type": "string" } }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Order entity."
+        },
+        "pickupDetails": {
+          "type": "string",
+          "description": "Detailed instructions and address for order pickup."
+        },
+        "deliveryDetails": {
+          "type": "string",
+          "description": "Detailed instructions and address for order delivery."
+        },
+        "items": {
+          "type": "array",
+          "description": "List of items included in the order.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "specialInstructions": {
+          "type": "string",
+          "description": "Any special instructions or notes for the order."
+        },
+        "status": {
+          "type": "string",
+          "description": "Current status of the order (e.g., 'pending', 'accepted', 'in_transit', 'delivered', 'cancelled')."
+        },
+        "assignedDriverId": {
+          "type": "string",
+          "description": "Reference to the Driver assigned to this order. (Relationship: Driver 1:N Order)"
+        },
+        "createdById": {
+          "type": "string",
+          "description": "Reference to the User who created this order. (Relationship: User 1:N Order)"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the order was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the order was last updated.",
+          "format": "date-time"
+        }
       },
-      "required": ["items", "status", "deliveryAddress", "pickupAddress", "createdAt"]
-    },
-    "OrderRequest": {
-      "title": "Order Request",
-      "description": "Solicitação de pedido enviada a um usuário interno",
-      "type": "object",
-      "properties": {
-        "orderId": { "type": "string" },
-        "storeName": { "type": "string" },
-        "command": { "type": "string" },
-        "targetUserId": { "type": "string" },
-        "senderName": { "type": "string" },
-        "status": { "type": "string", "enum": ["pending", "accepted"] },
-        "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["orderId", "command", "targetUserId", "status"]
+      "required": [
+        "id",
+        "pickupDetails",
+        "deliveryDetails",
+        "items",
+        "specialInstructions",
+        "status",
+        "createdById",
+        "createdAt"
+      ]
     }
   },
   "auth": {
-    "providers": ["password"]
+    "providers": [
+      "password",
+      "anonymous"
+    ]
   },
   "firestore": {
-    "/users/{userId}": {
-      "schema": "#/entities/UserProfile",
-      "description": "Perfis de usuários operacionais"
-    },
-    "/entregadores/{courierId}": {
-      "schema": "#/entities/Courier",
-      "description": "Lista de entregadores cadastrados"
-    },
-    "/orders/{orderId}": {
-      "schema": "#/entities/Order",
-      "description": "Histórico e monitoramento de pedidos"
-    },
-    "/requests/{requestId}": {
-      "schema": "#/entities/OrderRequest",
-      "description": "Fila de solicitações de pedidos push"
-    }
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores individual user profiles. Includes 'profileType' (e.g., 'normal', 'master') for role-based authorization directly on the document, enabling authorization independence for self-profile access and master-level management. Users can read/write their own profile; master users can manage all user profiles.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user, matching 'request.auth.uid'."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/drivers/{driverId}",
+        "definition": {
+          "entityName": "Driver",
+          "schema": {
+            "$ref": "#/backend/entities/Driver"
+          },
+          "description": "Stores profiles of delivery drivers. Master users can create, update, and delete driver profiles. All authenticated users (including normal users and drivers) can read and list drivers to facilitate order assignment and viewing of available personnel. This collection has a homogeneous security posture.",
+          "params": [
+            {
+              "name": "driverId",
+              "description": "The unique identifier of the driver."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/orders/{orderId}",
+        "definition": {
+          "entityName": "Order",
+          "schema": {
+            "$ref": "#/backend/entities/Order"
+          },
+          "description": "Contains all delivery orders. Includes denormalized 'createdById' and 'assignedDriverId' fields for authorization independence, allowing security rules to check ownership and assignment without cross-document 'get()' calls. The 'status' field facilitates explicit state modeling and query filtering for QAPs (e.g., 'pending' orders for drivers to accept, or orders created by a specific user).",
+          "params": [
+            {
+              "name": "orderId",
+              "description": "The unique identifier of the order."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure for Rappi Commander prioritizes security, scalability, and debuggability by adhering to the core design principles. The primary strategy is **Authorization Independence via Denormalization** for order-related data and **Structural Segregation** for user roles and general data types.\n\n**Authorization Independence:**\n*   For `Order` documents, authorization relies heavily on the denormalized fields `createdById` and `assignedDriverId`. Each `order` document explicitly contains these IDs, eliminating the need for expensive and problematic `get()` calls in security rules to check the creator or assigned driver's identity from a separate `User` or `Driver` document. This ensures that creating, updating, or deleting an order can be an atomic operation without cross-document dependencies for authorization checks, making rules simple, robust, and easy to debug. For instance, a rule can directly check `request.auth.uid == resource.data.createdById` or `request.auth.uid == resource.data.assignedDriverId`.\n*   For `User` documents, the `profileType` field (e.g., 'master', 'normal') is stored directly on the user's own document (`/users/{userId}`). To check if a user has 'master' access, rules can safely perform a `get()` call to the *requesting user's own profile* (`get(/users/$(request.auth.uid))`). This is not considered a problematic hierarchical dependency as it's a self-lookup and performs efficiently.\n\n**QAPs (Rules are not Filters):**\n*   **Structural Segregation** ensures that each collection has a homogeneous security posture, making `list` operations (QAPs) predictable and secure.\n    *   The `/users/{userId}` collection's rules will permit 'list' operations only for 'master' users, preventing normal users from listing all user profiles. Any client-side query from a 'master' user would be permitted without additional filters.\n    *   The `/drivers/{driverId}` collection allows authenticated users to list drivers. Master users have additional write privileges. This supports a simple 'list' rule for all authenticated users.\n    *   The `/orders/{orderId}` collection is designed to support secure QAPs by requiring specific client-side query filters based on the user's role and the denormalized fields:\n        *   **For Order Creators (Normal Users):** Rules will require queries to include `where('createdById', '==', request.auth.uid)` for listing their own orders. This pattern directly leverages the denormalized `createdById` field.\n        *   **For Assigned Drivers:** Rules will require queries to include `where('assignedDriverId', '==', request.auth.uid)` for listing orders assigned to them, or `where('status', '==', 'pending')` for listing available orders. This leverages the denormalized `assignedDriverId` and the explicit `status` field.\n        *   **For Master Users:** Rules will permit listing all orders without specific filters, as their `profileType` grants broader access. This is achieved by checking `request.auth.uid`'s profile type.\n\nThis design leverages direct ownership/assignment fields, explicit state management (`status`), and structural segregation to create a clear, maintainable, and highly secure Firestore schema where security rules are straightforward and efficient, supporting both read and write operations including list queries."
   }
 }
