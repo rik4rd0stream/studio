@@ -14,7 +14,7 @@ import {
 } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
 
-const SESSION_KEY = 'rappi_commander_session_v3';
+const SESSION_KEY = 'rappi_commander_session_v4';
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
 export default function Home() {
@@ -27,10 +27,11 @@ export default function Home() {
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
 
+  // Efeito de inicialização (executa apenas uma vez no mount)
   useEffect(() => {
     setMounted(true);
     
-    // Verifica sessão salva no localStorage para persistência de 7 dias
+    // 1. Verifica sessão salva no localStorage
     const savedSession = localStorage.getItem(SESSION_KEY);
     if (savedSession) {
       try {
@@ -48,17 +49,18 @@ export default function Home() {
       }
     }
 
-    // Monitora o estado real do Firebase Auth
+    // 2. Monitora o estado real do Firebase Auth para garantir sincronia
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      if (!firebaseUser && localUser) {
-        // Se o Firebase deslogou mas temos sessão local, tentamos manter (opcional)
-        // Ou podemos forçar o logout aqui se quisermos sincronia total
+      // Se deslogou do Firebase, limpamos a sessão local por segurança
+      if (!firebaseUser) {
+        // setLocalUser(null); // Opcional: descomente se quiser forçar logout total
       }
     });
 
     setIsInitializing(false);
     return () => unsubscribe();
-  }, [auth, toast, localUser]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auth]); // localUser removido das dependências para evitar loop
 
   const handleLogin = async (emailInput: string, passInput: string) => {
     setIsAuthenticating(true);
@@ -67,12 +69,12 @@ export default function Home() {
     const password = passInput.trim();
     
     try {
-      // 1. Busca o perfil no Firestore (Sua base de controle)
+      // 1. Busca o perfil no Firestore
       const q = query(collection(db, 'userProfiles'), where('email', '==', email));
       const querySnapshot = await getDocs(q);
       
       if (querySnapshot.empty) {
-        // Exceção especial para o Ricardo Master caso não esteja no banco
+        // Exceção especial para o seu e-mail mestre inicial
         if (email === 'rik4rd0stream@gmail.com') {
           await handleMasterFirstAccess(email, password);
           return;
@@ -81,7 +83,7 @@ export default function Home() {
         toast({
           variant: "destructive",
           title: "Acesso Negado",
-          description: "Usuário não encontrado no sistema."
+          description: "Usuário não encontrado no banco de dados."
         });
         setIsAuthenticating(false);
         return;
@@ -90,24 +92,23 @@ export default function Home() {
       const userDoc = querySnapshot.docs[0];
       const firestoreData = userDoc.data();
 
+      // Validar senha do Firestore antes de tentar o Auth (Camada extra de controle Master)
+      if (firestoreData.password && firestoreData.password !== password) {
+         toast({ variant: "destructive", title: "Senha Incorreta", description: "Verifique seus dados cadastrados." });
+         setIsAuthenticating(false);
+         return;
+      }
+
       // 2. Tenta Logar no Firebase Authentication
       try {
         const authResult = await signInWithEmailAndPassword(auth, email, password);
         completeLogin(authResult.user.uid, firestoreData);
       } catch (authErr: any) {
-        // Se o erro for "user-not-found", significa que ele está no Firestore mas não no Auth
-        // Vamos criar a conta dele no Auth agora (Vínculo Automático)
+        // Se o erro for "user-not-found" ou "invalid-credential", e ele existe no Firestore, criamos no Auth
         if (authErr.code === 'auth/user-not-found' || authErr.code === 'auth/invalid-credential') {
-          // Validação extra de senha antes de criar (usando a senha que você cadastrou no Firestore)
-          if (firestoreData.password && firestoreData.password !== password) {
-             toast({ variant: "destructive", title: "Senha Incorreta", description: "Verifique seus dados." });
-             setIsAuthenticating(false);
-             return;
-          }
-
           try {
             const newAuth = await createUserWithEmailAndPassword(auth, email, password);
-            // Atualiza o documento no Firestore com o UID real do Auth
+            // Atualiza o documento no Firestore com o UID real do Auth para vínculo
             await updateDoc(doc(db, 'userProfiles', userDoc.id), {
               authUid: newAuth.user.uid,
               updatedAt: new Date().toISOString()
@@ -115,15 +116,15 @@ export default function Home() {
             completeLogin(newAuth.user.uid, firestoreData);
           } catch (createErr: any) {
             console.error("Erro ao criar vínculo Auth:", createErr);
-            toast({ variant: "destructive", title: "Erro de Segurança", description: "Senha muito fraca ou e-mail já existente." });
+            toast({ variant: "destructive", title: "Erro de Segurança", description: "Verifique a força da senha." });
           }
         } else {
-          toast({ variant: "destructive", title: "Erro de Acesso", description: "Senha incorreta ou erro de conexão." });
+          toast({ variant: "destructive", title: "Erro de Acesso", description: "Falha ao conectar com o servidor." });
         }
       }
     } catch (err: any) {
       console.error("Login Error:", err);
-      toast({ variant: "destructive", title: "Erro de Conexão", description: "Falha ao validar acesso." });
+      toast({ variant: "destructive", title: "Erro de Conexão", description: "Falha na validação." });
     } finally {
       setIsAuthenticating(false);
     }
@@ -131,11 +132,9 @@ export default function Home() {
 
   const handleMasterFirstAccess = async (email: string, pass: string) => {
     try {
-      // Cria o mestre no Auth e no Firestore simultaneamente
       const result = await createUserWithEmailAndPassword(auth, email, pass);
       const masterData = {
-        id: 'master_root',
-        authUid: result.user.uid,
+        id: result.user.uid,
         name: 'Ricardo (Master)',
         email: email,
         role: 'master',
@@ -147,15 +146,14 @@ export default function Home() {
       setLocalUser(masterData as User);
       const expiry = new Date().getTime() + SEVEN_DAYS_MS;
       localStorage.setItem(SESSION_KEY, JSON.stringify({ user: masterData, expiry }));
-      toast({ title: "Mestre Configurado", description: "Seu acesso root foi vinculado ao Firebase." });
+      toast({ title: "Mestre Configurado", description: "Acesso root ativado." });
     } catch (e: any) {
-      // Se já existe no Auth, apenas loga
       try {
         const login = await signInWithEmailAndPassword(auth, email, pass);
-        const masterData = { id: 'master_root', name: 'Ricardo (Master)', email, role: 'master', hasRequestAccess: true, notificationsEnabled: true };
+        const masterData = { id: login.user.uid, name: 'Ricardo (Master)', email, role: 'master', hasRequestAccess: true, notificationsEnabled: true };
         completeLogin(login.user.uid, masterData);
       } catch (loginErr) {
-        toast({ variant: "destructive", title: "Erro Master", description: "Verifique sua senha master." });
+        toast({ variant: "destructive", title: "Acesso Negado", description: "Senha Master incorreta." });
       }
     } finally {
       setIsAuthenticating(false);
@@ -174,7 +172,7 @@ export default function Home() {
     setLocalUser(userData);
     const expiry = new Date().getTime() + SEVEN_DAYS_MS;
     localStorage.setItem(SESSION_KEY, JSON.stringify({ user: userData, expiry }));
-    toast({ title: "Acesso Confirmado", description: `Olá, ${userData.name}` });
+    toast({ title: "Bem-vindo", description: `Olá, ${userData.name}` });
   };
 
   const handleLogout = () => {
@@ -188,8 +186,8 @@ export default function Home() {
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
           <div className="h-10 w-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-          <p className="text-primary font-bold animate-pulse text-[10px] uppercase tracking-widest text-center">
-            {isAuthenticating ? "Autenticando via Firebase..." : "Carregando Rappi..."}
+          <p className="text-primary font-bold animate-pulse text-[10px] uppercase tracking-widest text-center px-4">
+            {isAuthenticating ? "Autenticando..." : "Carregando Rappi Commander..."}
           </p>
         </div>
       </div>
