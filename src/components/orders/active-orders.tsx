@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { RefreshCw, Loader2, Package, User, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useFirestore, useCollection } from "@/firebase";
+import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, query } from "firebase/firestore";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -17,7 +17,7 @@ export function ActiveOrders() {
   const [loading, setLoading] = useState(false);
   const [allOrders, setAllOrders] = useState<RedashOrder[]>([]);
   
-  const couriersQuery = useMemo(() => query(collection(db, 'entregadores')), [db]);
+  const couriersQuery = useMemoFirebase(() => query(collection(db, 'entregadores')), [db]);
   const { data: couriers } = useCollection<any>(couriersQuery);
 
   const loadData = async (silent = false) => {
@@ -31,7 +31,6 @@ export function ActiveOrders() {
 
   useEffect(() => {
     loadData();
-    // Atualização automática a cada 10 segundos
     const interval = setInterval(() => loadData(true), 10000); 
     return () => clearInterval(interval);
   }, []);

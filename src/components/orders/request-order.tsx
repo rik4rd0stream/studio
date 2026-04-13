@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -26,7 +25,7 @@ import {
   DialogDescription 
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { useFirestore, useCollection } from "@/firebase";
+import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, query, where, doc, setDoc } from "firebase/firestore";
 import { cn } from "@/lib/utils";
 import { User } from "@/lib/types";
@@ -50,22 +49,19 @@ export function RequestOrder({ sender }: { sender: User }) {
   const [searchUser, setSearchUser] = useState("");
   const [manualOrderId, setManualOrderId] = useState("");
 
-  // Busca motoboys e usuários que podem receber notificações
-  const couriersQuery = useMemo(() => query(collection(db, 'entregadores')), [db]);
-  const { data: couriers, loading: loadingCouriers } = useCollection<any>(couriersQuery);
+  const couriersQuery = useMemoFirebase(() => query(collection(db, 'entregadores')), [db]);
+  const { data: couriers, isLoading: loadingCouriers } = useCollection<any>(couriersQuery);
 
-  const usersQuery = useMemo(() => query(
+  const usersQuery = useMemoFirebase(() => query(
     collection(db, 'users'), 
     where('notificationsEnabled', '==', true)
   ), [db]);
-  const { data: appUsers, loading: loadingUsers } = useCollection<any>(usersQuery);
+  const { data: appUsers, isLoading: loadingUsers } = useCollection<any>(usersQuery);
 
   const redashOrders = useMemo(() => {
     return allOrders.filter(row => {
       const isPoint9944 = Object.values(row).some(val => String(val).includes('9944'));
-      const isSinRT = Object.entries(row).some(([key, val]) => 
-        key.toLowerCase().includes('trusted') && String(val).includes('Sin RT')
-      );
+      const isSinRT = Object.entries(row).some(([key, val]) => key.toLowerCase().includes('trusted') && String(val).includes('Sin RT'));
       return isPoint9944 && isSinRT;
     });
   }, [allOrders]);
@@ -129,7 +125,6 @@ export function RequestOrder({ sender }: { sender: User }) {
     const requestData = {
       orderId,
       storeName: selectedOrder.store_name || "Pedido",
-      // Comando completo com Order ID e Courier ID
       command: `${selectedCommand} ${orderId} ${selectedCourier.id_motoboy}`,
       targetUserId: targetUser.id,
       senderName: sender.name,
@@ -224,7 +219,6 @@ export function RequestOrder({ sender }: { sender: User }) {
         </Button>
       </form>
 
-      {/* Dialog para Selecionar Motoboy */}
       <Dialog open={isCourierDialogOpen} onOpenChange={setIsCourierDialogOpen}>
         <DialogContent className="max-w-sm p-0 border-none shadow-2xl rounded-2xl overflow-hidden">
           <DialogHeader className="p-5 pb-2">
@@ -270,7 +264,6 @@ export function RequestOrder({ sender }: { sender: User }) {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog para Selecionar Usuário Receptor */}
       <Dialog open={isUserDialogOpen} onOpenChange={setIsUserDialogOpen}>
         <DialogContent className="max-w-sm p-0 border-none shadow-2xl rounded-2xl overflow-hidden">
           <DialogHeader className="p-5 pb-2">

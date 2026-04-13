@@ -24,7 +24,7 @@ import {
   DialogDescription 
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { useFirestore, useCollection } from "@/firebase";
+import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, query } from "firebase/firestore";
 import { cn } from "@/lib/utils";
 
@@ -46,8 +46,8 @@ export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
   const [searchCourier, setSearchCourier] = useState("");
   const [manualOrderId, setManualOrderId] = useState("");
 
-  const couriersQuery = useMemo(() => query(collection(db, 'entregadores')), [db]);
-  const { data: couriers, loading: loadingCouriers } = useCollection<any>(couriersQuery);
+  const couriersQuery = useMemoFirebase(() => query(collection(db, 'entregadores')), [db]);
+  const { data: couriers, isLoading: loadingCouriers } = useCollection<any>(couriersQuery);
 
   const redashOrders = useMemo(() => {
     return allOrders.filter(row => {
@@ -86,7 +86,6 @@ export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
 
   useEffect(() => {
     loadData();
-    // Atualização automática a cada 10 segundos
     const interval = setInterval(() => loadData(true), 10000);
     return () => clearInterval(interval);
   }, []);

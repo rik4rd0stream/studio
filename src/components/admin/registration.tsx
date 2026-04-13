@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo } from "react";
@@ -25,7 +24,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { UserProfile } from "@/lib/types";
-import { useFirestore, useCollection } from "@/firebase";
+import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { doc, setDoc, deleteDoc, updateDoc, collection, query } from "firebase/firestore";
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
@@ -40,7 +39,6 @@ export function Registration({ type }: RegistrationProps) {
   const [loading, setLoading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   
-  // Form States
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [profile, setProfile] = useState<UserProfile>("normal");
@@ -48,10 +46,9 @@ export function Registration({ type }: RegistrationProps) {
   const [hasRequestAccess, setHasRequestAccess] = useState(false);
   const [idMotoboy, setIdMotoboy] = useState("");
 
-  // Fetch List
   const collectionName = type === 'users' ? 'users' : 'entregadores';
-  const listQuery = useMemo(() => query(collection(db, collectionName)), [db, collectionName]);
-  const { data: items, loading: loadingList } = useCollection<any>(listQuery);
+  const listQuery = useMemoFirebase(() => query(collection(db, collectionName)), [db, collectionName]);
+  const { data: items, isLoading: loadingList } = useCollection<any>(listQuery);
 
   const resetForm = () => {
     setName("");
@@ -288,14 +285,14 @@ export function Registration({ type }: RegistrationProps) {
                     <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
                   </TableCell>
                 </TableRow>
-              ) : items.length === 0 ? (
+              ) : items?.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={3} className="text-center py-8 text-muted-foreground italic">
                     Nenhum registro encontrado.
                   </TableCell>
                 </TableRow>
               ) : (
-                items.map((item) => (
+                items?.map((item) => (
                   <TableRow key={item.id} className="group">
                     <TableCell>
                       <div className="font-medium">{type === 'users' ? item.name : item.nome}</div>
