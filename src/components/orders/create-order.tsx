@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -10,7 +11,9 @@ import {
   RefreshCw, 
   Bike,
   Search,
-  Package
+  Package,
+  ClipboardPaste,
+  ArrowRight
 } from "lucide-react";
 import { fetchRedashOrders, RedashOrder } from "@/app/actions/redash";
 import { useToast } from "@/hooks/use-toast";
@@ -43,6 +46,7 @@ export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
   const [selectedOrder, setSelectedOrder] = useState<RedashOrder | null>(null);
   const [isCourierDialogOpen, setIsCourierDialogOpen] = useState(false);
   const [searchCourier, setSearchCourier] = useState("");
+  const [manualOrderId, setManualOrderId] = useState("");
 
   const couriersQuery = useMemo(() => query(collection(db, 'entregadores')), [db]);
   const { data: couriers, loading: loadingCouriers } = useCollection<any>(couriersQuery);
@@ -82,6 +86,32 @@ export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
     setIsCourierDialogOpen(true);
   };
 
+  const handleManualSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manualOrderId.trim()) {
+      toast({ variant: "destructive", title: "Erro", description: "Digite um ID de pedido." });
+      return;
+    }
+    const dummyOrder: RedashOrder = {
+      order_id: manualOrderId.trim(),
+      store_name: "Pedido Manual",
+      direccion_entrega: "Entrada Manual"
+    };
+    handleOpenCourierSelection(dummyOrder);
+  };
+
+  const handlePaste = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text) {
+        setManualOrderId(text.trim());
+        toast({ title: "Colado", description: "ID colado da área de transferência." });
+      }
+    } catch (err) {
+      toast({ variant: "destructive", title: "Erro", description: "Não foi possível ler a área de transferência. Verifique as permissões do navegador." });
+    }
+  };
+
   const handleGenerateCommand = (courierId: string) => {
     if (!selectedOrder) return;
 
@@ -98,11 +128,12 @@ export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
 
     setIsCourierDialogOpen(false);
     setSelectedOrder(null);
+    setManualOrderId(""); // Limpa após envio se for manual
   };
 
   return (
-    <div className="space-y-4 animate-slide-up pb-20">
-      {/* Seleção de Comando Superior - Mais compacta conforme pedido */}
+    <div className="space-y-6 animate-slide-up pb-32 max-w-2xl mx-auto">
+      {/* Seleção de Comando Superior */}
       <div className="bg-card p-3 rounded-xl border shadow-sm space-y-2">
         <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-1">Selecione o Comando</p>
         <div className="flex flex-wrap gap-1.5">
@@ -136,7 +167,7 @@ export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
         <div className="flex items-center gap-3">
           {lastUpdate && (
             <span className="hidden sm:inline text-[8px] text-muted-foreground font-mono">
-              {lastUpdate.toLocaleTimeString()}
+              Atualizado: {lastUpdate.toLocaleTimeString()}
             </span>
           )}
           <Button 
@@ -153,7 +184,7 @@ export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
       </div>
 
       {/* Lista de Pedidos */}
-      <div className="space-y-2 max-w-2xl mx-auto">
+      <div className="space-y-2">
         {redashOrders.length === 0 && !loading ? (
           <div className="text-center py-12 bg-muted/20 rounded-xl border border-dashed flex flex-col items-center">
             <Package className="h-8 w-8 text-muted-foreground/50 mb-3" />
@@ -188,13 +219,53 @@ export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
         )}
       </div>
 
-      {/* Modal de Seleção de Motoboy - Mais compacto */}
+      {/* Seção de Entrada Manual */}
+      <div className="pt-8 border-t space-y-4">
+        <div className="flex items-center gap-2 px-1">
+          <div className="h-px flex-1 bg-border/50" />
+          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Entrada Manual</span>
+          <div className="h-px flex-1 bg-border/50" />
+        </div>
+
+        <form onSubmit={handleManualSubmit} className="space-y-3">
+          <div className="relative group">
+            <Input 
+              placeholder="ID DO PEDIDO" 
+              value={manualOrderId}
+              onChange={(e) => setManualOrderId(e.target.value)}
+              className="h-16 text-center text-2xl font-bold tracking-widest bg-card border-2 border-primary/20 focus-visible:ring-primary focus-visible:border-primary transition-all rounded-xl shadow-sm uppercase"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={handlePaste}
+              className="h-12 gap-2 font-bold text-xs uppercase tracking-tight border-primary/30 text-primary hover:bg-primary/5 rounded-xl"
+            >
+              <ClipboardPaste className="h-4 w-4" />
+              Colar Manual
+            </Button>
+            <Button 
+              type="submit" 
+              disabled={!manualOrderId.trim()}
+              className="h-12 gap-2 font-bold text-xs uppercase tracking-tight rounded-xl shadow-md"
+            >
+              Prosseguir para Envio
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </form>
+      </div>
+
+      {/* Modal de Seleção de Motoboy */}
       <Dialog open={isCourierDialogOpen} onOpenChange={setIsCourierDialogOpen}>
-        <DialogContent className="max-w-sm max-h-[70vh] flex flex-col p-0 border-none shadow-2xl overflow-hidden">
+        <DialogContent className="max-w-sm max-h-[80vh] flex flex-col p-0 border-none shadow-2xl overflow-hidden rounded-2xl">
           <DialogHeader className="p-5 pb-2">
             <DialogTitle className="text-lg">Enviar para:</DialogTitle>
             <DialogDescription className="text-xs">
-              Comando <span className="font-bold text-primary">{selectedCommand}</span>
+              Comando <span className="font-bold text-primary">{selectedCommand}</span> para pedido <span className="font-bold">#{selectedOrder?.order_id}</span>
             </DialogDescription>
           </DialogHeader>
 
@@ -203,7 +274,7 @@ export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input 
                 placeholder="Buscar motoboy..." 
-                className="pl-9 bg-muted/40 border-none h-9 text-sm"
+                className="pl-9 bg-muted/40 border-none h-9 text-sm rounded-lg"
                 value={searchCourier}
                 onChange={(e) => setSearchCourier(e.target.value)}
               />
@@ -216,13 +287,13 @@ export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
                 <Loader2 className="h-5 w-5 animate-spin text-primary" />
               </div>
             ) : filteredCouriers.length === 0 ? (
-              <p className="text-center py-4 text-muted-foreground text-xs italic">Nenhum motoboy.</p>
+              <p className="text-center py-4 text-muted-foreground text-xs italic">Nenhum motoboy encontrado.</p>
             ) : (
               filteredCouriers.map((courier) => (
                 <Button
                   key={courier.id}
                   variant="ghost"
-                  className="w-full h-auto py-2.5 px-3 justify-between hover:bg-primary/5 hover:text-primary transition-colors border border-transparent hover:border-primary/10 group"
+                  className="w-full h-auto py-2.5 px-3 justify-between hover:bg-primary/5 hover:text-primary transition-colors border border-transparent hover:border-primary/10 group rounded-lg"
                   onClick={() => handleGenerateCommand(courier.id_motoboy)}
                 >
                   <div className="flex items-center gap-2.5">
