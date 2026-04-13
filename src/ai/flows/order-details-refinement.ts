@@ -1,10 +1,9 @@
-'use server';
+
 /**
- * @fileOverview A Genkit flow to refine order details from a free-form text description.
- *
- * - refineOrderDetails - A function that refines order details using AI.
- * - OrderDetailsRefinementInput - The input type for the refineOrderDetails function.
- * - OrderDetailsRefinementOutput - The return type for the refineOrderDetails function.
+ * @fileOverview Genkit flow to refine order details.
+ * Removido 'use server' para compatibilidade com build estático.
+ * Nota: Funcionalidades de IA que dependem de servidor Node.js (Genkit) 
+ * não funcionarão nativamente dentro do APK sem uma API intermediária.
  */
 
 import {ai} from '@/ai/genkit';

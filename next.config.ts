@@ -2,8 +2,9 @@
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
+  output: 'export', // Ativa a exportação estática necessária para o Capacitor
   images: {
-    unoptimized: true,
+    unoptimized: true, // Obrigatório para build estático/APK
     remotePatterns: [
       {
         protocol: 'https',

@@ -1,9 +1,8 @@
 
-'use server';
-
 /**
- * @fileOverview Funções de servidor para buscar dados do Redash com segurança.
- * Movido para o lado do servidor para evitar problemas de CORS e proteger a API Key.
+ * @fileOverview Funções para buscar dados do Redash.
+ * Removido 'use server' para permitir o build estático do APK.
+ * Nota: No APK (Capacitor), o fetch direto funciona sem problemas de CORS.
  */
 
 export interface RedashOrder {
@@ -21,8 +20,12 @@ export async function fetchRedashOrders() {
   const url = `https://redash.rappi.com/api/queries/130603/results.json?api_key=VqwlaUY9wOLjhUJTvrfuKdFExSsJG8ktuzUXy4fR`;
 
   try {
+    // Busca direta pelo cliente (compatível com APK)
     const response = await fetch(url, {
-      next: { revalidate: 10 } // Cache opcional de 10 segundos no servidor
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json'
+      }
     }); 
     
     if (!response.ok) {
@@ -37,7 +40,8 @@ export async function fetchRedashOrders() {
 
     return { success: true, data: data.query_result.data.rows as RedashOrder[] };
   } catch (error: any) {
-    console.error('Redash Server Fetch Error:', error.message);
+    // No navegador, isso pode falhar por CORS, mas no APK funcionará.
+    console.error('Redash Fetch Error:', error.message);
     return { success: false, error: 'Erro de conexão com o servidor de dados.' };
   }
 }
