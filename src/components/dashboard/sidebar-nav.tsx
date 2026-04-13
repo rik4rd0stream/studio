@@ -38,6 +38,10 @@ export function SidebarNav({ currentView, setView, user, onLogout }: SidebarNavP
     { id: 'admin-couriers', label: 'Cadastro de Entregadores', icon: Bike, masterOnly: false },
   ];
 
+  // Fallback seguro para o nome do usuário para evitar erro de .split()
+  const userName = user?.name || "Usuário";
+  const firstName = userName.split(' ')[0] || "Usuário";
+
   const renderItem = (item: any) => {
     // Regra: Master vê tudo, outros dependem de permissões específicas
     if (item.masterOnly && user.profile !== 'master') return null;
@@ -66,7 +70,7 @@ export function SidebarNav({ currentView, setView, user, onLogout }: SidebarNavP
     <div className="flex flex-col h-full bg-card border-r">
       <div className="p-6">
         <h2 className="text-xl font-headline font-bold text-primary tracking-tight">Rappi Commander</h2>
-        <p className="text-xs text-muted-foreground mt-1">Olá, {user.name.split(' ')[0]}</p>
+        <p className="text-xs text-muted-foreground mt-1">Olá, {firstName}</p>
       </div>
 
       <div className="flex-1 px-2 space-y-1">
@@ -84,10 +88,10 @@ export function SidebarNav({ currentView, setView, user, onLogout }: SidebarNavP
       <div className="p-4 border-t space-y-2">
         <div className="flex items-center gap-3 px-4 py-2 bg-muted/30 rounded-lg">
           <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white font-bold text-xs">
-            {user.name.charAt(0)}
+            {userName.charAt(0)}
           </div>
           <div className="flex-1 overflow-hidden">
-            <p className="text-sm font-medium truncate">{user.name}</p>
+            <p className="text-sm font-medium truncate">{userName}</p>
             <p className="text-[10px] text-muted-foreground uppercase font-bold">{user.profile}</p>
           </div>
         </div>
