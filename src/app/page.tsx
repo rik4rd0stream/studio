@@ -17,10 +17,10 @@ export default function Home() {
   useEffect(() => {
     setMounted(true);
     
-    // Ouvir mudanças de autenticação
+    // Inicia login anônimo automático se não houver usuário
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
-        // Se temos um usuário Firebase (mesmo anônimo), podemos prosseguir
+        // Se temos um usuário Firebase (anônimo ou logado), recuperamos a sessão local se houver
         const saved = localStorage.getItem('rappi_commander_session');
         if (saved) {
           try {
@@ -31,7 +31,7 @@ export default function Home() {
         }
         setAuthInitialized(true);
       } else {
-        // Se não houver ninguém, fazemos login anônimo para ganhar o "crachá" de acesso ao banco
+        // Se não houver ninguém, fazemos login anônimo para ganhar o "crachá" de acesso ao Firestore
         signInAnonymously(auth).catch(err => {
           console.error("Erro no Auth Silencioso:", err);
           setAuthInitialized(true);
@@ -43,6 +43,7 @@ export default function Home() {
   }, [auth]);
 
   const handleLogin = (email: string, pass: string) => {
+    // Definimos perfil master baseado no email ou se for o seu email de dev
     const isMaster = email.includes('master') || email === 'rik4rd0stream@gmail.com';
     const userData: User = {
       id: auth.currentUser?.uid || 'usr_' + Math.random().toString(36).substr(2, 5),
@@ -67,7 +68,7 @@ export default function Home() {
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
           <div className="h-12 w-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-          <div className="text-primary font-bold animate-pulse">Conectando ao Rappi Commander...</div>
+          <div className="text-primary font-bold animate-pulse">Iniciando Rappi Commander...</div>
         </div>
       </div>
     );
