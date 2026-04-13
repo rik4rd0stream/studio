@@ -1,57 +1,257 @@
-
 {
   "entities": {
-    "User": {
-      "title": "User",
+    "UserProfile": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "UserProfile",
       "type": "object",
+      "description": "Represents a user within the Rappi Commander system, managing access and roles. Authentication is handled by an external system.",
       "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "email": { "type": "string" },
-        "profile": { "type": "string", "enum": ["normal", "master"] },
-        "notificationsEnabled": { "type": "boolean" },
-        "hasRequestAccess": { "type": "boolean" },
-        "fcmToken": { "type": "string" }
-      }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the UserProfile entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The full name of the user."
+        },
+        "email": {
+          "type": "string",
+          "description": "The email address of the user. This is primarily for communication and identification, assuming an external authentication system manages login credentials.",
+          "format": "email"
+        },
+        "profileType": {
+          "type": "string",
+          "description": "The access level or role of the user (e.g., 'normal' for regular users, 'master' for administrative users)."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the user profile was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp indicating the last time the user profile was updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "email",
+        "profileType",
+        "createdAt"
+      ]
     },
-    "Courier": {
-      "title": "Courier",
+    "DeliveryPerson": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "DeliveryPerson",
       "type": "object",
+      "description": "Represents a delivery person registered in the Rappi Commander system, available for order assignments.",
       "properties": {
-        "id": { "type": "string" },
-        "nome": { "type": "string" },
-        "id_motoboy": { "type": "string" }
-      }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the DeliveryPerson entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The full name of the delivery person."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the delivery person's profile was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp indicating the last time the delivery person's profile was updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "createdAt"
+      ]
     },
-    "Request": {
-      "title": "Request",
+    "Order": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Order",
       "type": "object",
+      "description": "Represents a delivery order within the Rappi Commander system, tracking its details, status, and lifecycle from creation to delivery.",
       "properties": {
-        "orderId": { "type": "string" },
-        "storeName": { "type": "string" },
-        "command": { "type": "string" },
-        "targetUserId": { "type": "string" },
-        "senderName": { "type": "string" },
-        "status": { "type": "string" },
-        "createdAt": { "type": "string" }
-      }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Order entity."
+        },
+        "creatorUserId": {
+          "type": "string",
+          "description": "Reference to the UserProfile who initiated and created this order. (Relationship: UserProfile 1:N Order)"
+        },
+        "assignedDeliveryPersonId": {
+          "type": "string",
+          "description": "Reference to the DeliveryPerson currently assigned to this order. This field can be null if the order has not yet been assigned to a delivery person. (Relationship: DeliveryPerson 1:N Order)"
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status of the order (e.g., 'pending', 'accepted', 'picked_up', 'in_transit', 'delivered', 'cancelled')."
+        },
+        "pickupAddress": {
+          "type": "string",
+          "description": "The full street address for the pickup location of the order."
+        },
+        "pickupLatitude": {
+          "type": "number",
+          "description": "The geographical latitude coordinate for the pickup location, providing precise location data."
+        },
+        "pickupLongitude": {
+          "type": "number",
+          "description": "The geographical longitude coordinate for the pickup location, providing precise location data."
+        },
+        "pickupContactName": {
+          "type": "string",
+          "description": "The name of the primary contact person at the pickup location."
+        },
+        "pickupContactPhone": {
+          "type": "string",
+          "description": "The phone number of the primary contact person at the pickup location."
+        },
+        "pickupInstructions": {
+          "type": "string",
+          "description": "Any special instructions or notes relevant to the pickup process."
+        },
+        "deliveryAddress": {
+          "type": "string",
+          "description": "The full street address for the final delivery location of the order."
+        },
+        "deliveryLatitude": {
+          "type": "number",
+          "description": "The geographical latitude coordinate for the delivery location, providing precise location data."
+        },
+        "deliveryLongitude": {
+          "type": "number",
+          "description": "The geographical longitude coordinate for the delivery location, providing precise location data."
+        },
+        "deliveryContactName": {
+          "type": "string",
+          "description": "The name of the primary contact person at the delivery location."
+        },
+        "deliveryContactPhone": {
+          "type": "string",
+          "description": "The phone number of the primary contact person at the delivery location."
+        },
+        "deliveryInstructions": {
+          "type": "string",
+          "description": "Any special instructions or notes relevant to the delivery process."
+        },
+        "itemDescription": {
+          "type": "string",
+          "description": "A free-text description of the items to be delivered. This field is used as input for the AI refinement tool."
+        },
+        "aiSuggestedCategories": {
+          "type": "array",
+          "description": "An array of AI-suggested categorizations or key details extracted from the 'itemDescription' field.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the order was initially created in the system.",
+          "format": "date-time"
+        },
+        "acceptedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when a delivery person accepted this order. Null if not yet accepted.",
+          "format": "date-time"
+        },
+        "pickedUpAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the items were picked up by the assigned delivery person. Null if not yet picked up.",
+          "format": "date-time"
+        },
+        "deliveredAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the order was successfully delivered to its destination. Null if not yet delivered.",
+          "format": "date-time"
+        },
+        "estimatedDeliveryCompletionTime": {
+          "type": "string",
+          "description": "The estimated time for the order to be fully completed and delivered. Null if not yet estimated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "creatorUserId",
+        "status",
+        "pickupAddress",
+        "pickupContactName",
+        "pickupContactPhone",
+        "deliveryAddress",
+        "deliveryContactName",
+        "deliveryContactPhone",
+        "itemDescription",
+        "createdAt"
+      ]
     }
   },
   "auth": {
-    "providers": ["anonymous", "password"]
+    "providers": [
+      "password",
+      "anonymous"
+    ]
   },
   "firestore": {
-    "/users/{userId}": {
-      "schema": "User",
-      "description": "Perfis de operadores do sistema"
-    },
-    "/entregadores/{id}": {
-      "schema": "Courier",
-      "description": "Lista de motoboys cadastrados"
-    },
-    "/requests/{id}": {
-      "schema": "Request",
-      "description": "Solicitações de envio via push"
-    }
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "UserProfile",
+          "schema": {
+            "$ref": "#/backend/entities/UserProfile"
+          },
+          "description": "Stores individual user profiles. The `profileType` field (e.g., 'normal', 'master') is critical for role-based access control and is stored directly on this document. Authorization for a user to manage their own profile is path-based (request.auth.uid must match userId). Master users can manage other user profiles, determined by their own profileType.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique ID of the user, matching `request.auth.uid`."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/delivery_persons/{deliveryPersonId}",
+        "definition": {
+          "entityName": "DeliveryPerson",
+          "schema": {
+            "$ref": "#/backend/entities/DeliveryPerson"
+          },
+          "description": "Stores profiles of delivery personnel. Access (create, read, update, delete) is restricted to users with a 'master' profileType, as determined by their own UserProfile document. No denormalization is required for authorization at this level beyond the master role check.",
+          "params": [
+            {
+              "name": "deliveryPersonId",
+              "description": "The unique ID of the delivery person."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/orders/{orderId}",
+        "definition": {
+          "entityName": "Order",
+          "schema": {
+            "$ref": "#/backend/entities/Order"
+          },
+          "description": "Stores all delivery order details. Includes denormalized 'creatorUserId' and 'assignedDeliveryPersonId' fields for Authorization Independence, allowing direct checks in security rules without 'get()' calls to other documents. The 'status' field is also crucial for enabling Query-Based Access Patterns (QAPs) for both creators and assigned delivery persons, and for finding available orders.",
+          "params": [
+            {
+              "name": "orderId",
+              "description": "The unique ID of the order."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure for Rappi Commander is designed with a strong emphasis on security, scalability, and debuggability, adhering to the core design principles. It primarily utilizes three top-level collections: 'users', 'delivery_persons', and 'orders'. This structure facilitates simple, robust, and easily debuggable security rules.\n\n**Authorization Independence (CRITICAL):**\nThis design achieves authorization independence by ensuring that all necessary authorization context is either present within the document being accessed or is derived directly from the requesting user's own profile (`request.auth.uid`).\n\n*   For `Order` documents in the `/orders/{orderId}` collection, key authorization fields like `creatorUserId` and `assignedDeliveryPersonId` are denormalized and stored directly within each `Order` document. This eliminates the need for `get()` calls to parent documents or related user profiles when determining access rights for an order. For instance, to verify if a user can access an order, security rules can directly compare `request.auth.uid` with `resource.data.creatorUserId` or `resource.data.assignedDeliveryPersonId`.\n*   For `master` role-based authorization, the `profileType` field is stored directly on the `UserProfile` document in `/users/{userId}`. While checking if `request.auth.uid` is a 'master' does involve a `get()` call (e.g., `get(/users/$(request.auth.uid)).data.profileType == 'master'`), this is a `get()` on the *requester's own profile*. This pattern is widely accepted as it does not create hierarchical authorization dependencies on *other data documents* or break atomic operations for unrelated data. It is a fundamental mechanism for implementing DBAC (Database-Backed Access Control) where roles are stored within the database itself.\n\n**Structural Segregation (Homogeneous Security Posture):**\nEach collection is designed to hold documents with a consistent security posture, simplifying rule definitions:\n\n*   `/users`: Contains `UserProfile` documents, where each user primarily manages their own profile. Access for 'master' users is a global permission managed via their own `profileType`.\n*   `/delivery_persons`: Contains `DeliveryPerson` documents, managed exclusively by 'master' users.\n*   `/orders`: Contains `Order` documents, with access controlled by the `creatorUserId`, `assignedDeliveryPersonId`, and 'master' role, all determined by fields within the `Order` document or the requesting user's `UserProfile`.\n\n**Querying for Authorization Purposes (QAPs - Rules are not Filters):**\nThe structure supports secure and efficient `list` operations (QAPs):\n\n*   **For Users (Order Creators):** Users can query for orders they created using `db.collection('orders').where('creatorUserId', '==', request.auth.uid)`. The rules enforce that `creatorUserId` matches `request.auth.uid` for read access.\n*   **For Delivery Persons (Assigned):** Delivery persons can query for orders assigned to them using `db.collection('orders').where('assignedDeliveryPersonId', '==', request.auth.uid)`. Rules ensure `assignedDeliveryPersonId` matches `request.auth.uid` for read/update access to *their* assigned orders.\n*   **For Delivery Persons (Available Orders):** Delivery persons can query for unassigned pending orders using `db.collection('orders').where('status', '==', 'pending').where('assignedDeliveryPersonId', '==', null)`. Rules allow read access to any order matching these criteria.\n*   **For Master Users:** Master users have broader access rights, allowing them to list and manage all `Order` documents, facilitated by their `profileType` check.\n\nThis design minimizes rule complexity by externalizing authorization logic into the data structure itself and leveraging direct field comparisons, significantly enhancing both security and debuggability."
   }
 }
