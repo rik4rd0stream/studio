@@ -9,8 +9,9 @@
         "name": { "type": "string" },
         "email": { "type": "string", "format": "email" },
         "profile": { "type": "string", "enum": ["normal", "master"] },
-        "notificationsEnabled": { "type": "boolean", "description": "Se o usuário está autorizado a receber notificações push" },
-        "hasRequestAccess": { "type": "boolean", "description": "Se o usuário tem acesso à funcionalidade de solicitação de pedidos" }
+        "notificationsEnabled": { "type": "boolean", "description": "Se o usuário está autorizado a receber notificações" },
+        "hasRequestAccess": { "type": "boolean", "description": "Se o usuário tem acesso à funcionalidade de solicitação de pedidos" },
+        "fcmToken": { "type": "string", "description": "Token para envio de notificações push via FCM" }
       },
       "required": ["name", "email", "profile"]
     },
