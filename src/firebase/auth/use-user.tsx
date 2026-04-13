@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
+import { onAuthStateChanged } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { useAuth, useFirestore } from '../provider';
 import { User } from '@/lib/types';
@@ -22,11 +22,16 @@ export function useUser() {
             setUser({ id: firebaseUser.uid, ...snapshot.data() } as User);
           } else {
             // Se o usuário existe no Auth mas não no Firestore, criamos um perfil básico
+            // Verificação especial para o email master do administrador
+            const isMasterEmail = firebaseUser.email === 'rik4rd0stream@gmail.com';
+            
             setUser({
               id: firebaseUser.uid,
-              name: firebaseUser.displayName || 'Usuário',
+              name: firebaseUser.displayName || (isMasterEmail ? 'Administrador Master' : 'Usuário'),
               email: firebaseUser.email || '',
-              profile: 'normal'
+              profile: isMasterEmail ? 'master' : 'normal',
+              hasRequestAccess: isMasterEmail,
+              notificationsEnabled: true
             });
           }
           setLoading(false);

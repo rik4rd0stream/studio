@@ -30,27 +30,25 @@ export default function Home() {
 
   // Recupera a sessão do perfil local (Master/Normal)
   useEffect(() => {
-    if (firebaseUser) {
-      const saved = localStorage.getItem('rappi_commander_session');
-      if (saved) {
-        try {
-          setLocalUser(JSON.parse(saved));
-        } catch (e) {
-          localStorage.removeItem('rappi_commander_session');
-        }
+    const saved = localStorage.getItem('rappi_commander_session');
+    if (saved) {
+      try {
+        setLocalUser(JSON.parse(saved));
+      } catch (e) {
+        localStorage.removeItem('rappi_commander_session');
       }
     }
-  }, [firebaseUser]);
+  }, []);
 
   const handleLogin = (email: string, pass: string) => {
-    const isMaster = email.includes('master') || email === 'rik4rd0stream@gmail.com';
+    const isMaster = email.toLowerCase().includes('master') || email.toLowerCase() === 'rik4rd0stream@gmail.com';
     const userData: User = {
       id: firebaseUser?.uid || 'usr_' + Math.random().toString(36).substr(2, 5),
       name: isMaster ? 'Administrador Master' : 'Operador Logístico',
       email: email,
       profile: isMaster ? 'master' : 'normal',
       notificationsEnabled: true,
-      hasRequestAccess: isMaster // Inicializa como true apenas para Master
+      hasRequestAccess: isMaster // Master tem acesso total
     };
     
     setLocalUser(userData);
@@ -62,11 +60,11 @@ export default function Home() {
     localStorage.removeItem('rappi_commander_session');
   };
 
-  // Prioriza os dados do Firestore (firebaseUser) se estiverem disponíveis, 
-  // pois eles contêm as permissões reais editadas pelo Master.
-  const currentUser = firebaseUser || localUser;
+  // Prioriza o localUser (sessão ativa do formulário de login) para garantir que as permissões 
+  // de Master/Normal selecionadas no login manual não sejam perdidas pelo usuário anônimo do Firebase.
+  const currentUser = localUser || firebaseUser;
 
-  if (!mounted || isUserLoading || !firebaseUser) {
+  if (!mounted || isUserLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
