@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -17,11 +16,10 @@ export default function Home() {
   useEffect(() => {
     setMounted(true);
     
-    // Garantir login anônimo para segurança do Firestore
-    signInAnonymously(auth).catch(err => console.error("Auth Error:", err));
-
+    // Configurar listener de estado de autenticação
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
+        // Se já temos um usuário no localStorage, restauramos
         const saved = localStorage.getItem('rappi_commander_session');
         if (saved) {
           try {
@@ -30,7 +28,11 @@ export default function Home() {
             localStorage.removeItem('rappi_commander_session');
           }
         }
+      } else {
+        // Se não está autenticado, força login anônimo para segurança do Firestore
+        signInAnonymously(auth).catch(err => console.error("Auth Error:", err));
       }
+      // Consideramos inicializado apenas após o Firebase responder
       setAuthInitialized(true);
     });
 
