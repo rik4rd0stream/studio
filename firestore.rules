@@ -1,43 +1,13 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
     /**
-     * Regras de Segurança - Rappi Commander (Versão Android Nativo)
-     * Permissões simplificadas e explícitas para evitar bloqueios de listagem.
+     * REGRAS SIMPLIFICADAS - ACESSO TOTAL
+     * Liberado para leitura e escrita em todas as coleções.
+     * Ideal para fase de testes e pequenos grupos.
      */
-
-    // Coleção de Entregadores (Banco Antigo)
-    match /entregadores/{document=**} {
-      allow read, write: if true;
-    }
-
-    // Coleção de Perfis de Usuário (Novo Banco)
-    match /userProfiles/{userId} {
-      allow read, write: if true; 
-    }
-
-    // Pedidos e Itens (Geral)
-    match /orders/{orderId} {
-      allow read, write: if true;
-      match /orderItems/{orderItemId} {
-        allow read, write: if true;
-      }
-    }
-
-    // Solicitações de Push
-    match /requests/{requestId} {
-      allow read, write: if true;
-    }
-
-    // Controle de Cargos Master
-    match /roles_master/{userId} {
-      allow read, write: if true;
-    }
-    
-    // Regra global de segurança para qualquer outra coleção
     match /{document=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if true;
     }
   }
 }
