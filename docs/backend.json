@@ -1,241 +1,57 @@
 {
   "entities": {
     "UserProfile": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "UserProfile",
       "type": "object",
-      "description": "Represents a user of the Rappi Commander system, including regular users and master administrators. Used for managing access and associating orders.",
+      "description": "Perfil do usuário operacional do Rappi Commander.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the UserProfile entity."
-        },
-        "name": {
-          "type": "string",
-          "description": "Full name of the user."
-        },
-        "email": {
-          "type": "string",
-          "description": "Email address of the user, primarily used for identification and contact. Authentication is handled by an external system (Firebase)."
-        },
-        "role": {
-          "type": "string",
-          "description": "Role of the user in the system (e.g., 'normal' for regular users, 'master' for administrators with elevated privileges)."
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the user profile was created.",
-          "format": "date-time"
-        },
-        "updatedAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the user profile was last updated.",
-          "format": "date-time"
-        }
-      },
-      "required": [
-        "id",
-        "name",
-        "email",
-        "role",
-        "createdAt"
-      ]
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["normal", "master"] },
+        "notificationsEnabled": { "type": "boolean" },
+        "hasRequestAccess": { "type": "boolean" }
+      }
     },
-    "DelivererProfile": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "DelivererProfile",
+    "Courier": {
+      "title": "Courier",
       "type": "object",
-      "description": "Represents a deliverer registered in the Rappi Commander system. Deliverers accept and execute delivery orders.",
+      "description": "Dados do entregador parceiro.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the DelivererProfile entity."
-        },
-        "name": {
-          "type": "string",
-          "description": "Full name of the deliverer."
-        },
-        "email": {
-          "type": "string",
-          "description": "Email address of the deliverer, primarily used for identification and contact. Authentication is handled by an external system (Firebase)."
-        },
-        "status": {
-          "type": "string",
-          "description": "Current operational status of the deliverer (e.g., 'available', 'on_delivery', 'offline')."
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the deliverer profile was created.",
-          "format": "date-time"
-        },
-        "updatedAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the deliverer profile was last updated.",
-          "format": "date-time"
-        }
-      },
-      "required": [
-        "id",
-        "name",
-        "email",
-        "status",
-        "createdAt"
-      ]
+        "id": { "type": "string" },
+        "nome": { "type": "string" },
+        "id_motoboy": { "type": "string" }
+      }
     },
-    "Order": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Order",
+    "OrderRequest": {
+      "title": "OrderRequest",
       "type": "object",
-      "description": "Represents a single delivery order created in the Rappi Commander system, containing details from collection to delivery, including items and special instructions.",
+      "description": "Solicitação de despacho enviada entre usuários.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Order entity."
-        },
-        "description": {
-          "type": "string",
-          "description": "Original free-text description of the order provided by the requester. This can be analyzed by the AI tool."
-        },
-        "collectionAddress": {
-          "type": "string",
-          "description": "Full address where the items need to be collected from."
-        },
-        "deliveryAddress": {
-          "type": "string",
-          "description": "Full address where the items need to be delivered to."
-        },
-        "items": {
-          "type": "array",
-          "description": "List of items to be delivered, where each item is represented as a descriptive string (e.g., '1x Large Pizza', '2x Coca-Cola').",
-          "items": {
-            "type": "string"
-          }
-        },
-        "specialInstructions": {
-          "type": "string",
-          "description": "Any additional specific instructions for the deliverer regarding the order."
-        },
-        "status": {
-          "type": "string",
-          "description": "Current status of the order (e.g., 'pending', 'accepted', 'in_transit', 'delivered', 'cancelled')."
-        },
-        "requesterUserId": {
-          "type": "string",
-          "description": "Reference to the UserProfile who created this order. (Relationship: UserProfile 1:N Order)"
-        },
-        "assignedDelivererId": {
-          "type": "string",
-          "description": "Reference to the DelivererProfile currently assigned to this order. This field is optional if no deliverer has been assigned yet. (Relationship: DelivererProfile 1:N Order)"
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the order was initially created.",
-          "format": "date-time"
-        },
-        "acceptedAt": {
-          "type": "string",
-          "description": "Timestamp indicating when a deliverer accepted the order.",
-          "format": "date-time"
-        },
-        "pickedUpAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the items were picked up by the assigned deliverer.",
-          "format": "date-time"
-        },
-        "deliveredAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the order was successfully delivered to its destination.",
-          "format": "date-time"
-        },
-        "estimatedDeliveryTime": {
-          "type": "string",
-          "description": "Estimated time for the order's delivery.",
-          "format": "date-time"
-        },
-        "aiExtractedDataJson": {
-          "type": "string",
-          "description": "A JSON string containing structured data extracted or refined by the AI tool, such as categorized items, extracted keywords, or other insights from the free-text description."
-        }
-      },
-      "required": [
-        "id",
-        "description",
-        "collectionAddress",
-        "deliveryAddress",
-        "items",
-        "status",
-        "requesterUserId",
-        "createdAt"
-      ]
+        "orderId": { "type": "string" },
+        "storeName": { "type": "string" },
+        "command": { "type": "string" },
+        "targetUserId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "status": { "type": "string" }
+      }
     }
   },
   "auth": {
-    "providers": [
-      "password",
-      "anonymous"
-    ]
+    "providers": ["password", "anonymous"]
   },
   "firestore": {
-    "structure": [
-      {
-        "path": "/user_profiles/{userId}",
-        "definition": {
-          "entityName": "UserProfile",
-          "schema": {
-            "$ref": "#/backend/entities/UserProfile"
-          },
-          "description": "Stores user profile information. Each document's ID (`userId`) must match the authenticated user's UID (`request.auth.uid`) for direct access by the user. Includes the 'role' field, but master authorization for cross-collection access is handled by the /master_roles collection."
-        }
-      },
-      {
-        "path": "/master_roles/{masterId}",
-        "definition": {
-          "entityName": "UserProfile",
-          "schema": {
-            "$ref": "#/backend/entities/UserProfile"
-          },
-          "description": "A sentinel collection used for Database Access Control (DBAC) to identify users with 'master' administrative privileges. The existence of a document at `/master_roles/$(request.auth.uid)` grants master authorization across the system, adhering to the 'Existence over Content' principle for Authorization Independence.",
-          "params": [
-            {
-              "name": "masterId",
-              "description": "The unique identifier (UID) of a user who has 'master' administrative privileges."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/deliverer_profiles/{delivererId}",
-        "definition": {
-          "entityName": "DelivererProfile",
-          "schema": {
-            "$ref": "#/backend/entities/DelivererProfile"
-          },
-          "description": "Stores deliverer profile information. Each document's ID (`delivererId`) must match the authenticated deliverer's UID (`request.auth.uid`) for direct access by the deliverer. Master users also have full access.",
-          "params": [
-            {
-              "name": "delivererId",
-              "description": "The unique identifier (UID) of the deliverer."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/orders/{orderId}",
-        "definition": {
-          "entityName": "Order",
-          "schema": {
-            "$ref": "#/backend/entities/Order"
-          },
-          "description": "Contains details for each delivery order. Includes denormalized `requesterUserId` and `assignedDelivererId` fields for authorization independence, allowing security rules to directly check ownership and assignment without requiring `get()` calls. This structure supports QAPs for listing orders by requester, assigned deliverer, and all pending orders for eligible deliverers.",
-          "params": [
-            {
-              "name": "orderId",
-              "description": "The unique identifier for the order."
-            }
-          ]
-        }
-      }
-    ],
-    "reasoning": "The Firestore structure is designed to be secure, scalable, and debuggable by strictly following the core design principles and mandates. Authorization Independence is paramount, achieved primarily through denormalization and the 'Existence over Content' pattern for global roles. All authorization logic directly references fields within the document (`request.resource.data`) or uses atomic `exists()` checks, eliminating the need for `get()` calls in security rules. This ensures that security rules are simple, robust, and easy to debug.\n\nKey strategies applied:\n\n1.  \n**Authorization Independence via Denormalization (Strategy A):**\n    *   For the `/orders/{orderId}` collection, both `requesterUserId` and `assignedDelivererId` are directly embedded within each `Order` document. This allows security rules to check ownership (`request.auth.uid == resource.data.requesterUserId`) or assignment (`request.auth.uid == resource.data.assignedDelivererId`) without performing a `get()` operation on a parent document or another collection. This is critical for maintaining atomicity in transactions and batches and simplifying rule logic.\n    *   Master administrator roles are managed through a dedicated `/master_roles/{masterId}` collection. Authorization for master users is determined by the *existence* of a document at `/master_roles/$(request.auth.uid)`. This 'Existence over Content' pattern is atomic and completely independent of other document reads, thus upholding Authorization Independence for global privileges.\n\n2.  \n**Structural Segregation (Strategy B):**\n    *   Each core entity (`UserProfile`, `DelivererProfile`, `Order`) is housed in its own top-level collection (`/user_profiles`, `/deliverer_profiles`, `/orders`). This ensures that all documents within a given collection share a homogeneous security posture. For example, all documents in `/user_profiles` are user profiles, with specific rules for self-access and master access. This prevents mixing data with different access requirements in the same collection, simplifying rule sets.\n\n3.  \n**Access Modeling (Strategy C) and QAPs (Queryable Access Patterns):**\n    *   \n**Private Data & Hierarchical Paths:**\n        *   `/user_profiles/{userId}` and `/deliverer_profiles/{delivererId}` collections follow a path-based ownership model, where `userId` or `delivererId` is expected to match `request.auth.uid` for individual access. This makes rules for personal profile management extremely straightforward.\n    *   \n**Global Roles (DBAC):**\n        *   The `/master_roles/{masterId}` collection provides a clean, independent mechanism for checking master user privileges. This is key for QAPs where a master user needs to `list` all documents in other collections (e.g., all user profiles, all deliverer profiles, all orders) or perform administrative actions.\n    *   \n**QAPs for Orders:**\n        *   The `/orders/{orderId}` collection is designed to support multiple QAPs efficiently and securely:\n            *   **Requester's Orders:** Users can query for their own orders using `db.collection('orders').where('requesterUserId', '==', request.auth.uid)`. The security rules will allow reads if `request.auth.uid == resource.data.requesterUserId`.\n            *   **Assigned Deliverer's Orders:** Deliverers can query for orders assigned to them using `db.collection('orders').where('assignedDelivererId', '==', request.auth.uid)`. Rules will allow reads if `request.auth.uid == resource.data.assignedDelivererId`.\n            *   \n**Pending Orders for Deliverers:**\n             Deliverers need to `list` all `pending` orders to choose from. This is supported by `db.collection('orders').where('status', '==', 'pending')`. Security rules will permit reads for documents with `status == 'pending'` *only if* `request.auth.uid` is identified as a deliverer (by checking `exists(/deliverer_profiles/$(request.auth.uid))`). This ensures that only deliverers can see pending orders without exposing them to all authenticated users, thus fulfilling the QAP requirement securely. This also leverages the 'Existence over Content' for role checking to enable this QAP.\n\n4.  \n**Data Clarity and Predictability (Strategy D):**\n    *   A single `status` field is used in `DelivererProfile` and `Order` entities to manage state changes (e.g., 'pending', 'accepted', 'in_transit', 'delivered', 'cancelled'), promoting explicit state modeling. \n    *   Consistent naming conventions like `requesterUserId`, `assignedDelivererId`, and descriptive wildcards (`{userId}`, `{orderId}`) enhance clarity and predictability for developers and for writing robust security rules."
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Perfis de usuários"
+    },
+    "/entregadores/{courierId}": {
+      "schema": { "$ref": "#/entities/Courier" },
+      "description": "Lista de motoboys"
+    },
+    "/requests/{requestId}": {
+      "schema": { "$ref": "#/entities/OrderRequest" },
+      "description": "Solicitações push"
+    }
   }
 }

@@ -17,10 +17,10 @@ export default function Home() {
     setMounted(true);
     
     // Inicia login anônimo automático se não houver usuário
-    // Isso garante que o Firestore sempre tenha um 'request.auth' válido
+    // Isso garante que o Firestore sempre tenha um 'request.auth' válido para as regras
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
-        // Se temos um usuário Firebase (anônimo ou logado), recuperamos a sessão local se houver
+        // Se temos um usuário Firebase, verificamos se há uma sessão de perfil local
         const saved = localStorage.getItem('rappi_commander_session');
         if (saved) {
           try {
@@ -31,11 +31,13 @@ export default function Home() {
         }
         setAuthInitialized(true);
       } else {
-        // Se não houver ninguém, fazemos login anônimo para ganhar o "crachá" de acesso ao Firestore
-        signInAnonymously(auth).catch(err => {
-          console.error("Erro no Auth Silencioso:", err);
-          setAuthInitialized(true);
-        });
+        // Tenta o login anônimo para ganhar permissão no Firestore
+        signInAnonymously(auth)
+          .then(() => setAuthInitialized(true))
+          .catch(err => {
+            console.error("Erro no Auth Silencioso:", err);
+            setAuthInitialized(true);
+          });
       }
     });
 
@@ -43,7 +45,6 @@ export default function Home() {
   }, [auth]);
 
   const handleLogin = (email: string, pass: string) => {
-    // Definimos perfil master baseado no email ou se for o seu email de dev
     const isMaster = email.includes('master') || email === 'rik4rd0stream@gmail.com';
     const userData: User = {
       id: auth.currentUser?.uid || 'usr_' + Math.random().toString(36).substr(2, 5),
@@ -51,7 +52,7 @@ export default function Home() {
       email: email,
       profile: isMaster ? 'master' : 'normal',
       notificationsEnabled: true,
-      hasRequestAccess: isMaster
+      hasRequestAccess: true
     };
     
     setUser(userData);
@@ -68,7 +69,7 @@ export default function Home() {
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
           <div className="h-12 w-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-          <div className="text-primary font-bold animate-pulse">Iniciando Rappi Commander...</div>
+          <div className="text-primary font-bold animate-pulse">Autenticando no Firebase...</div>
         </div>
       </div>
     );
