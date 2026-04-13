@@ -3,11 +3,11 @@
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { initializeFirestore, getFirestore, Firestore } from 'firebase/firestore'
+import { initializeFirestore, getFirestore, Firestore, terminate } from 'firebase/firestore'
 
 /**
- * Inicialização robusta para Android e Web.
- * Usamos initializeFirestore com configurações específicas para MOBILE (Android/APK).
+ * Inicialização robusta e única para Android e Web.
+ * Garantimos que o Firestore não seja inicializado mais de uma vez.
  */
 export function initializeFirebase() {
   let app: FirebaseApp;
@@ -18,12 +18,16 @@ export function initializeFirebase() {
     app = getApp();
   }
 
-  // Configuração CRÍTICA para Android:
-  // 1. experimentalForceLongPolling: Força o app a usar HTTP simples, evitando bloqueios de operadoras.
-  // 2. ignoreUndefinedProperties: Evita erros ao salvar objetos com campos vazios.
-  const firestore = initializeFirestore(app, {
-    experimentalForceLongPolling: true,
-  });
+  // No Firebase v10+, não podemos chamar initializeFirestore se ele já estiver ativo.
+  // Buscamos a instância existente ou criamos uma nova com as flags de Android.
+  let firestore: Firestore;
+  try {
+    firestore = getFirestore(app);
+  } catch (e) {
+    firestore = initializeFirestore(app, {
+      experimentalForceLongPolling: true,
+    });
+  }
 
   return {
     firebaseApp: app,

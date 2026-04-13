@@ -19,12 +19,13 @@ import {
   PackageSearch,
   AlertTriangle,
   RefreshCw,
-  Database
+  Database,
+  CloudOff
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { UserRole } from "@/lib/types";
 import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { doc, setDoc, deleteDoc, updateDoc, collection, getDocs } from "firebase/firestore";
+import { doc, setDoc, deleteDoc, updateDoc, collection, getDocs, limit, query } from "firebase/firestore";
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
 import { cn } from "@/lib/utils";
@@ -54,7 +55,7 @@ export function Registration({ type }: RegistrationProps) {
   
   // Consulta em tempo real (onSnapshot)
   const listQuery = useMemoFirebase(() => collection(db, collectionName), [db, collectionName]);
-  const { data: realTimeItems, isLoading: loadingList, error: listError } = useCollection<any>(listQuery);
+  const { data: realTimeItems, isLoading: loadingList } = useCollection<any>(listQuery);
 
   // Itens finais (preferência para manual se houver erro ou forçar)
   const items = manualItems || realTimeItems;
@@ -74,18 +75,32 @@ export function Registration({ type }: RegistrationProps) {
   const handleForceLoad = async () => {
     setForceLoading(true);
     try {
-      const querySnapshot = await getDocs(collection(db, collectionName));
-      const docs = querySnapshot.docs.map(doc => ({ 
-        id: doc.id, 
-        ...doc.data(),
-        // Normalização de campos para o Android aceitar qualquer versão do banco
-        nome: doc.data().nome || doc.data().name || "Sem Nome",
-        id_motoboy: doc.data().id_motoboy || doc.data().id || doc.id
-      }));
+      // Usamos uma query simples com limite para garantir que o Android consiga baixar os dados
+      const q = query(collection(db, collectionName), limit(50));
+      const querySnapshot = await getDocs(q);
+      
+      const docs = querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return { 
+          id: doc.id, 
+          ...data,
+          nome: data.nome || data.name || "Sem Nome",
+          id_motoboy: data.id_motoboy || data.id || doc.id
+        };
+      });
+      
       setManualItems(docs);
-      toast({ title: "Sincronizado", description: `${docs.length} registros encontrados.` });
-    } catch (err) {
-      toast({ variant: "destructive", title: "Erro de Busca", description: "Falha ao conectar com o banco de dados." });
+      toast({ 
+        title: "Sincronizado", 
+        description: `${docs.length} registros encontrados no projeto ${firebaseConfig.projectId}.` 
+      });
+    } catch (err: any) {
+      console.error("Force Load Error:", err);
+      toast({ 
+        variant: "destructive", 
+        title: "Erro na Nuvem", 
+        description: "Falha ao conectar com o servidor central." 
+      });
     } finally {
       setForceLoading(false);
     }
@@ -154,9 +169,10 @@ export function Registration({ type }: RegistrationProps) {
         toast({ title: "Salvo", description: "Dados gravados na nuvem." });
         resetForm();
         setLoading(false);
-        handleForceLoad();
+        setTimeout(() => handleForceLoad(), 500);
       })
-      .catch(async () => {
+      .catch(async (err) => {
+        console.error("Submit Error:", err);
         toast({ variant: "destructive", title: "Erro ao Salvar", description: "Verifique sua internet." });
         setLoading(false);
       });
@@ -279,19 +295,19 @@ export function Registration({ type }: RegistrationProps) {
             </TableHeader>
             <TableBody>
               {(loadingList && !manualItems) ? (
-                <TableRow><TableCell colSpan={3} className="text-center py-8"><Loader2 className="animate-spin mx-auto" /></TableCell></TableRow>
+                <TableRow><TableCell colSpan={3} className="text-center py-8"><Loader2 className="animate-spin mx-auto text-primary" /></TableCell></TableRow>
               ) : items?.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={3} className="text-center py-12 text-muted-foreground">
-                    <Database className="h-10 w-10 mx-auto mb-2 opacity-10" />
-                    <p className="text-xs">Nenhum dado encontrado na coleção '{collectionName}'.</p>
-                    <Button variant="link" onClick={handleForceLoad} className="text-[10px] uppercase">Clique para tentar de novo</Button>
+                    <CloudOff className="h-10 w-10 mx-auto mb-2 opacity-10" />
+                    <p className="text-xs font-bold uppercase tracking-widest opacity-40">Dados não sincronizados</p>
+                    <Button variant="link" onClick={handleForceLoad} className="text-[10px] uppercase font-bold mt-2">Clique em Sincronizar Agora</Button>
                   </TableCell>
                 </TableRow>
               ) : items?.map((item) => (
                 <TableRow key={item.id}>
                   <TableCell>
-                    <div className="font-medium text-xs">{item.nome || item.name}</div>
+                    <div className="font-bold text-[11px] text-foreground uppercase">{item.nome || item.name}</div>
                     <div className="text-[9px] opacity-60 truncate max-w-[150px]">{item.email || ""}</div>
                   </TableCell>
                   <TableCell>
@@ -301,7 +317,7 @@ export function Registration({ type }: RegistrationProps) {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(item)}><Pencil className="h-3 w-3" /></Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(item)}><Pencil className="h-3 w-3 text-primary" /></Button>
                       <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDelete(item.id)}><Trash2 className="h-3 w-3" /></Button>
                     </div>
                   </TableCell>
@@ -318,7 +334,7 @@ export function Registration({ type }: RegistrationProps) {
             <Database className="h-3 w-3 text-muted-foreground" />
             <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-tight">Status da Conexão:</span>
          </div>
-         <span className="text-[8px] font-mono text-green-600 font-bold">PROJETO: {firebaseConfig.projectId}</span>
+         <span className="text-[8px] font-mono text-green-600 font-bold uppercase">PROJETO ATIVO: {firebaseConfig.projectId}</span>
       </div>
     </div>
   );
