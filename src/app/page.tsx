@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -16,10 +17,10 @@ export default function Home() {
   useEffect(() => {
     setMounted(true);
     
-    // 1. Ouvir mudanças de autenticação
+    // Ouvir mudanças de autenticação
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
-        // Se o usuário já estava logado no sistema do Rappi, restauramos a sessão local
+        // Se temos um usuário Firebase (mesmo anônimo), podemos prosseguir
         const saved = localStorage.getItem('rappi_commander_session');
         if (saved) {
           try {
@@ -28,18 +29,21 @@ export default function Home() {
             localStorage.removeItem('rappi_commander_session');
           }
         }
+        setAuthInitialized(true);
       } else {
-        // 2. Se não houver ninguém, fazemos login anônimo para ganhar permissão no Firestore
-        signInAnonymously(auth).catch(err => console.error("Erro no Auth Silencioso:", err));
+        // Se não houver ninguém, fazemos login anônimo
+        signInAnonymously(auth).catch(err => {
+          console.error("Erro no Auth Silencioso:", err);
+          // Mesmo com erro, marcamos como inicializado para não travar o app
+          setAuthInitialized(true);
+        });
       }
-      setAuthInitialized(true);
     });
 
     return () => unsubscribe();
   }, [auth]);
 
   const handleLogin = (email: string, pass: string) => {
-    // Simulação de regras de perfil baseada no email
     const isMaster = email.includes('master') || email === 'rik4rd0stream@gmail.com';
     const userData: User = {
       id: auth.currentUser?.uid || 'usr_' + Math.random().toString(36).substr(2, 5),
@@ -57,13 +61,15 @@ export default function Home() {
   const handleLogout = () => {
     setUser(null);
     localStorage.removeItem('rappi_commander_session');
-    // Mantemos a conexão anônima para que o app continue funcionando
   };
 
   if (!mounted || !authInitialized) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-pulse text-primary font-bold">Conectando ao Rappi Commander...</div>
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-12 w-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          <div className="text-primary font-bold animate-pulse">Conectando ao Rappi Commander...</div>
+        </div>
       </div>
     );
   }
