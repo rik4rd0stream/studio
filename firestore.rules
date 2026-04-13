@@ -1,123 +1,31 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    /**
-     * Rappi Commander Security Rules
-     *
-     * Core Philosophy:
-     * This ruleset implements a Database-Backed Access Control (DBAC) model combined with direct 
-     * resource ownership. Security is centered around the UserProfile's 'profileType' (master vs normal) 
-     * and denormalized relationship IDs stored directly on documents to ensure Authorization Independence.
-     *
-     * Data Structure:
-     * - /users/{userId}: Private user profiles where 'profileType' defines global permissions.
-     * - /delivery_persons/{deliveryPersonId}: Registry of delivery staff, managed by administrators.
-     * - /orders/{orderId}: Transactional order data, accessible by creators, assigned delivery 
-     *   personnel, and administrators.
-     *
-     * Key Security Decisions:
-     * 1. Authorization Independence: Orders contain 'creatorUserId' and 'assignedDeliveryPersonId' 
-     *    to allow instant ownership checks without cross-document lookups.
-     * 2. Master Role: A global 'master' role is stored in the user's profile. Checking this role 
-     *    requires a single 'get' call to the requester's own profile document.
-     * 3. Public Discovery: Orders that are 'pending' and 'unassigned' are readable by any 
-     *    authenticated user to facilitate the order acceptance workflow.
-     * 4. Prototyping Mode: Schema validation is restricted to relational integrity (IDs and ownership 
-     *    links) to allow for rapid data model iteration while maintaining strict access control.
-     */
-
-    // --- GLOBAL HELPER FUNCTIONS ---
-
+    // Funções auxiliares
     function isSignedIn() {
       return request.auth != null;
     }
 
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
-
-    // Checks if the current user has a 'master' profileType in their profile document.
-    function isMaster() {
-      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.profileType == 'master';
-    }
-
-    // Helper for update/delete: ensures the document exists and the user is the owner or a master.
-    function isExistingOwnerOrMaster(ownerId) {
-      return resource != null && (request.auth.uid == ownerId || isMaster());
-    }
-
-    // --- COLLECTION RULES ---
-
-    /**
-     * @description Rules for the UserProfile collection. Users manage their own data; Masters manage all.
-     * @path /users/{userId}
-     * @allow (get) If requester is the owner of the profile or a master user.
-     * @deny (list) If requester is not a master user (prevents user enumeration).
-     * @principle Path-based ownership for users, role-based access for administrators.
-     */
+    // Regras para usuários
     match /users/{userId} {
-      allow get: if isOwner(userId) || isMaster();
-      allow list: if isMaster();
-      
-      // On create, ensure the internal ID matches the document path for consistency.
-      allow create: if (isOwner(userId) || isMaster()) && request.resource.data.id == userId;
-      
-      // On update, ensure ownership/master status and prevent changing the internal ID.
-      allow update: if (isExistingOwnerOrMaster(userId)) && request.resource.data.id == resource.data.id;
-      
-      allow delete: if isMaster();
+      allow get, list: if isSignedIn();
+      allow write: if isSignedIn() && (request.auth.uid == userId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.profileType == 'master');
     }
 
-    /**
-     * @description Registry for delivery personnel. Administrative access only.
-     * @path /delivery_persons/{deliveryPersonId}
-     * @allow (create) If requester is a master user.
-     * @deny (get) If requester is a normal user without administrative privileges.
-     * @principle Strict structural segregation for administrative entities.
-     */
-    match /delivery_persons/{deliveryPersonId} {
-      allow get, list: if isMaster();
-      allow create, update, delete: if isMaster();
+    // Regras para entregadores (motoboys)
+    match /entregadores/{courierId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn(); // Permitir para prototipagem rápida
     }
 
-    /**
-     * @description Rules for Orders. Controlled by creator, assignee, or status-based discovery.
-     * @path /orders/{orderId}
-     * @allow (list) If filtering by creatorUserId == auth.uid, or if listing pending/unassigned orders.
-     * @deny (update) If requester is not the creator, the assigned person, or a master user.
-     * @principle Denormalization for Authorization allows performant checks on order participants.
-     */
+    // Regras para solicitações push (requests)
+    match /requests/{requestId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // Regras para pedidos (opcional, se usar coleção orders)
     match /orders/{orderId} {
-      
-      // Helper specific to Order logic
-      function isOrderParticipant(orderData) {
-        return orderData.creatorUserId == request.auth.uid || orderData.assignedDeliveryPersonId == request.auth.uid;
-      }
-
-      function isAvailableOrder(orderData) {
-        return orderData.status == 'pending' && orderData.assignedDeliveryPersonId == null;
-      }
-
-      allow get: if isSignedIn() && (isOrderParticipant(resource.data) || isMaster() || isAvailableOrder(resource.data));
-      
-      // List operations are safe if they match the participant IDs or the discovery criteria.
-      allow list: if isSignedIn(); 
-
-      // On create: Force the creatorUserId to match the authenticated user.
-      allow create: if isSignedIn() && request.resource.data.creatorUserId == request.auth.uid;
-
-      // On update: 
-      // 1. Participant/Master can update.
-      // 2. Any user can update IF the order is unassigned/pending (e.g., to "accept" the order).
-      // 3. Immutable field: creatorUserId must never change.
-      allow update: if resource != null && (
-        isOrderParticipant(resource.data) || 
-        isMaster() || 
-        isAvailableOrder(resource.data)
-      ) && request.resource.data.creatorUserId == resource.data.creatorUserId;
-
-      allow delete: if resource != null && (resource.data.creatorUserId == request.auth.uid || isMaster());
+      allow read, write: if isSignedIn();
     }
   }
 }

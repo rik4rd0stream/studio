@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -18,6 +17,7 @@ export default function Home() {
     setMounted(true);
     
     // Inicia login anônimo automático se não houver usuário
+    // Isso garante que o Firestore sempre tenha um 'request.auth' válido
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
         // Se temos um usuário Firebase (anônimo ou logado), recuperamos a sessão local se houver
