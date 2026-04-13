@@ -16,7 +16,7 @@ import {
   ArrowRight,
   AlertCircle
 } from "lucide-react";
-import { fetchRedashOrders, RedashOrder } from "@/app/actions/redash";
+import { redashService, RedashOrder } from "@/lib/api/redash-service";
 import { useToast } from "@/hooks/use-toast";
 import { 
   Dialog, 
@@ -78,7 +78,7 @@ export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
       setLoading(true);
       setFetchError(null);
     }
-    const result = await fetchRedashOrders();
+    const result = await redashService.fetchOrders();
     if (result.success) {
       setAllOrders(result.data || []);
     } else {
@@ -89,7 +89,7 @@ export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
 
   useEffect(() => {
     loadData();
-    const interval = setInterval(() => loadData(true), 20000); // Intervalo maior para economizar recursos
+    const interval = setInterval(() => loadData(true), 20000); 
     return () => clearInterval(interval);
   }, []);
 
@@ -131,7 +131,7 @@ export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Erro de Conexão</AlertTitle>
           <AlertDescription className="text-[10px] leading-tight opacity-80">
-            {fetchError}. O navegador pode estar bloqueando a requisição direta (CORS).
+            {fetchError}
           </AlertDescription>
           <Button variant="outline" size="sm" onClick={() => loadData()} className="mt-2 h-7 text-[9px] uppercase font-bold border-destructive/20 hover:bg-destructive/10 text-destructive">
             Tentar Novamente
@@ -176,7 +176,7 @@ export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
         {loading && allOrders.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 gap-3">
             <Loader2 className="h-6 w-6 animate-spin text-primary opacity-50" />
-            <p className="text-[10px] text-muted-foreground font-medium animate-pulse">Buscando dados no Redash...</p>
+            <p className="text-[10px] text-muted-foreground font-medium animate-pulse">Buscando dados...</p>
           </div>
         ) : redashOrders.length === 0 && !loading ? (
           <div className="text-center py-8 bg-muted/20 rounded-xl border border-dashed flex flex-col items-center">
@@ -229,7 +229,7 @@ export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
         <DialogContent className="max-w-sm rounded-2xl overflow-hidden p-0 border-none shadow-2xl">
           <DialogHeader className="p-5 pb-2">
             <DialogTitle>Enviar para:</DialogTitle>
-            <DialogDescription className="text-xs">Pedido <span className="font-bold">#{selectedOrder?.order_id}</span></DialogDescription>
+            <DialogTitle className="text-xs">Pedido <span className="font-bold">#{selectedOrder?.order_id}</span></DialogTitle>
           </DialogHeader>
           <div className="px-5 py-2">
             <div className="relative">

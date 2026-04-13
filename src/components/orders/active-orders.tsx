@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { RedashOrder, fetchRedashOrders } from "@/app/actions/redash";
+import { redashService, RedashOrder } from "@/lib/api/redash-service";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { RefreshCw, Loader2, Package, User, Copy } from "lucide-react";
@@ -23,16 +23,18 @@ export function ActiveOrders() {
 
   const loadData = async (silent = false) => {
     if (!silent) setLoading(true);
-    const result = await fetchRedashOrders();
+    const result = await redashService.fetchOrders();
     if (result.success) {
       setAllOrders(result.data || []);
+    } else {
+      console.error(result.error);
     }
     if (!silent) setLoading(false);
   };
 
   useEffect(() => {
     loadData();
-    const interval = setInterval(() => loadData(true), 10000); 
+    const interval = setInterval(() => loadData(true), 15000); 
     return () => clearInterval(interval);
   }, []);
 
