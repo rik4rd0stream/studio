@@ -22,10 +22,14 @@ interface SidebarNavProps {
 }
 
 export function SidebarNav({ currentView, setView, user, onLogout }: SidebarNavProps) {
-  // Removido o item 'home' conforme solicitado
   const navItems = [
     { id: 'send-order', label: 'Envio de Pedido', icon: Send },
-    { id: 'request-order', label: 'Solicitação de Pedido', icon: PackageSearch },
+    { 
+      id: 'request-order', 
+      label: 'Solicitação de Pedido', 
+      icon: PackageSearch,
+      restricted: true 
+    },
     { id: 'active-orders', label: 'Pedidos Ativos', icon: Activity },
   ];
 
@@ -35,7 +39,9 @@ export function SidebarNav({ currentView, setView, user, onLogout }: SidebarNavP
   ];
 
   const renderItem = (item: any) => {
+    // Regra: Master vê tudo, outros dependem de permissões específicas
     if (item.masterOnly && user.profile !== 'master') return null;
+    if (item.restricted && !user.hasRequestAccess && user.profile !== 'master') return null;
     
     const active = currentView === item.id;
     

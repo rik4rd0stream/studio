@@ -8,7 +8,21 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Users, Bike, UserPlus, Fingerprint, ShieldAlert, Loader2, Pencil, Trash2, X, Check } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { 
+  Users, 
+  Bike, 
+  UserPlus, 
+  Fingerprint, 
+  ShieldAlert, 
+  Loader2, 
+  Pencil, 
+  Trash2, 
+  X, 
+  Check,
+  Bell,
+  PackageSearch
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { UserProfile } from "@/lib/types";
 import { useFirestore, useCollection } from "@/firebase";
@@ -30,9 +44,11 @@ export function Registration({ type }: RegistrationProps) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [profile, setProfile] = useState<UserProfile>("normal");
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [hasRequestAccess, setHasRequestAccess] = useState(false);
   const [idMotoboy, setIdMotoboy] = useState("");
 
-  // Fetch List - Removida ordenação para garantir que registros sem 'createdAt' apareçam
+  // Fetch List
   const collectionName = type === 'users' ? 'users' : 'entregadores';
   const listQuery = useMemo(() => query(collection(db, collectionName)), [db, collectionName]);
   const { data: items, loading: loadingList } = useCollection<any>(listQuery);
@@ -41,6 +57,8 @@ export function Registration({ type }: RegistrationProps) {
     setName("");
     setEmail("");
     setProfile("normal");
+    setNotificationsEnabled(false);
+    setHasRequestAccess(false);
     setIdMotoboy("");
     setEditingId(null);
   };
@@ -51,6 +69,8 @@ export function Registration({ type }: RegistrationProps) {
       setName(item.name || "");
       setEmail(item.email || "");
       setProfile(item.profile || "normal");
+      setNotificationsEnabled(item.notificationsEnabled || false);
+      setHasRequestAccess(item.hasRequestAccess || false);
     } else {
       setName(item.nome || "");
       setIdMotoboy(item.id_motoboy || "");
@@ -84,6 +104,8 @@ export function Registration({ type }: RegistrationProps) {
       name,
       email,
       profile,
+      notificationsEnabled,
+      hasRequestAccess,
       updatedAt: new Date().toISOString()
     } : {
       nome: name,
@@ -161,21 +183,49 @@ export function Registration({ type }: RegistrationProps) {
                     className="bg-muted border-none"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>Nível de Acesso</Label>
-                  <Select value={profile} onValueChange={(val) => setProfile(val as UserProfile)}>
-                    <SelectTrigger className="bg-muted border-none">
-                      <SelectValue placeholder="Selecione o perfil" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="normal">Operador Normal</SelectItem>
-                      <SelectItem value="master">Acesso Master</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p className="text-[10px] text-muted-foreground flex items-center gap-1 mt-1">
-                    <ShieldAlert className="h-3 w-3" />
-                    Usuários Master podem gerenciar outros usuários.
-                  </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Nível de Acesso</Label>
+                    <Select value={profile} onValueChange={(val) => setProfile(val as UserProfile)}>
+                      <SelectTrigger className="bg-muted border-none">
+                        <SelectValue placeholder="Selecione o perfil" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="normal">Operador Normal</SelectItem>
+                        <SelectItem value="master">Acesso Master</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-4 p-4 bg-muted/30 rounded-xl border border-border/40">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Bell className="h-4 w-4 text-primary" />
+                        <div className="space-y-0.5">
+                          <Label className="text-xs">Notificações Push</Label>
+                          <p className="text-[10px] text-muted-foreground">Autorizar recebimento</p>
+                        </div>
+                      </div>
+                      <Switch 
+                        checked={notificationsEnabled} 
+                        onCheckedChange={setNotificationsEnabled} 
+                      />
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <PackageSearch className="h-4 w-4 text-primary" />
+                        <div className="space-y-0.5">
+                          <Label className="text-xs">Solicitação de Pedido</Label>
+                          <p className="text-[10px] text-muted-foreground">Acesso à aba de pedidos</p>
+                        </div>
+                      </div>
+                      <Switch 
+                        checked={hasRequestAccess} 
+                        onCheckedChange={setHasRequestAccess} 
+                      />
+                    </div>
+                  </div>
                 </div>
               </>
             ) : (
@@ -227,7 +277,7 @@ export function Registration({ type }: RegistrationProps) {
             <TableHeader>
               <TableRow className="bg-muted/50">
                 <TableHead>{type === 'users' ? 'Nome' : 'Entregador'}</TableHead>
-                <TableHead>{type === 'users' ? 'Email / Perfil' : 'ID Motoboy'}</TableHead>
+                <TableHead>{type === 'users' ? 'Email / Permissões' : 'ID Motoboy'}</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
@@ -249,16 +299,19 @@ export function Registration({ type }: RegistrationProps) {
                   <TableRow key={item.id} className="group">
                     <TableCell>
                       <div className="font-medium">{type === 'users' ? item.name : item.nome}</div>
-                      {type === 'couriers' && <div className="text-[10px] text-muted-foreground">ID Interno: {item.id}</div>}
+                      <div className="text-[10px] font-bold uppercase text-primary">{type === 'users' ? item.profile : `ID: ${item.id_motoboy}`}</div>
                     </TableCell>
                     <TableCell>
                       {type === 'users' ? (
                         <div className="space-y-1">
                           <div className="text-xs">{item.email}</div>
-                          <div className="text-[10px] font-bold uppercase text-primary">{item.profile}</div>
+                          <div className="flex gap-2">
+                            {item.notificationsEnabled && <Bell className="h-3 w-3 text-green-500" title="Notificações Ativas" />}
+                            {item.hasRequestAccess && <PackageSearch className="h-3 w-3 text-blue-500" title="Acesso a Solicitação" />}
+                          </div>
                         </div>
                       ) : (
-                        <div className="font-mono text-xs">{item.id_motoboy}</div>
+                        <div className="font-mono text-xs text-muted-foreground">ID Interno: {item.id}</div>
                       )}
                     </TableCell>
                     <TableCell className="text-right">

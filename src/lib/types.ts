@@ -1,3 +1,4 @@
+
 export type UserProfile = 'normal' | 'master';
 
 export interface User {
@@ -5,6 +6,8 @@ export interface User {
   name: string;
   email: string;
   profile: UserProfile;
+  notificationsEnabled?: boolean;
+  hasRequestAccess?: boolean;
 }
 
 export interface Courier {

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -5,7 +6,7 @@ import { AppView, User } from "@/lib/types";
 import { SidebarNav } from "./sidebar-nav";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
-import { Send, Bell, Users, Activity } from "lucide-react";
+import { Send, Bell, Users, Activity, PackageSearch } from "lucide-react";
 import { CreateOrder } from "@/components/orders/create-order";
 import { ActiveOrders } from "@/components/orders/active-orders";
 import { Registration } from "@/components/admin/registration";
@@ -31,6 +32,7 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
       case 'request-order':
         return (
           <div className="space-y-6 text-center py-20 animate-slide-up">
+            <PackageSearch className="h-12 w-12 text-primary mx-auto mb-4 opacity-20" />
             <h2 className="text-2xl font-bold">Solicitação de Pedidos</h2>
             <p className="text-muted-foreground max-w-md mx-auto">
               Nesta tela, os entregadores solicitam pedidos específicos.
@@ -70,6 +72,16 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
               >
                 <Activity className="h-3.5 w-3.5" /> Monitorar
               </Button>
+              {(user.hasRequestAccess || user.profile === 'master') && (
+                <Button 
+                  size="sm" 
+                  variant={currentView === 'request-order' ? 'default' : 'outline'} 
+                  className="rounded-full h-8 gap-1.5 hidden sm:flex"
+                  onClick={() => setView('request-order')}
+                >
+                  <PackageSearch className="h-3.5 w-3.5" /> Solicitação
+                </Button>
+              )}
             </div>
           </div>
           
@@ -83,10 +95,12 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
                 <Users className="h-4 w-4" /> Admin
               </Button>
             )}
-            <Button variant="ghost" size="icon" className="rounded-full relative">
-              <Bell className="h-5 w-5" />
-              <span className="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full" />
-            </Button>
+            {user.notificationsEnabled && (
+              <Button variant="ghost" size="icon" className="rounded-full relative">
+                <Bell className="h-5 w-5" />
+                <span className="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full" />
+              </Button>
+            )}
             <ThemeToggle />
           </div>
         </header>

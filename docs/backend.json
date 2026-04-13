@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "UserProfile": {
@@ -7,7 +8,9 @@
       "properties": {
         "name": { "type": "string" },
         "email": { "type": "string", "format": "email" },
-        "profile": { "type": "string", "enum": ["normal", "master"] }
+        "profile": { "type": "string", "enum": ["normal", "master"] },
+        "notificationsEnabled": { "type": "boolean", "description": "Se o usuário está autorizado a receber notificações push" },
+        "hasRequestAccess": { "type": "boolean", "description": "Se o usuário tem acesso à funcionalidade de solicitação de pedidos" }
       },
       "required": ["name", "email", "profile"]
     },

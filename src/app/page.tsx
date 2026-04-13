@@ -30,7 +30,9 @@ export default function Home() {
       id: 'usr_' + Math.random().toString(36).substr(2, 5),
       name: isMaster ? 'Administrador Master' : 'Operador Logístico',
       email: email,
-      profile: isMaster ? 'master' : 'normal'
+      profile: isMaster ? 'master' : 'normal',
+      notificationsEnabled: true,
+      hasRequestAccess: isMaster // Por padrão Master tem acesso, mas isso é editável no painel
     };
     setUser(userData);
     localStorage.setItem('rappi_commander_session', JSON.stringify(userData));
