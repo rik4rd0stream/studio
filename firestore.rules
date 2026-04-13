@@ -3,25 +3,21 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * Regras de Segurança - Rappi Commander
-     * Permissões simplificadas para garantir funcionamento em Android Nativo.
+     * Regras de Segurança - Rappi Commander (Versão Android Nativo)
+     * Permissões simplificadas e explícitas para evitar bloqueios de listagem.
      */
 
-    // Coleção de Entregadores (Acesso Público para Teste no Android)
+    // Coleção de Entregadores (Banco Antigo)
     match /entregadores/{document=**} {
       allow read, write: if true;
     }
-    
-    match /deliveryDrivers/{document=**} {
-      allow read, write: if true;
-    }
 
-    // Perfis de Usuário
+    // Coleção de Perfis de Usuário (Novo Banco)
     match /userProfiles/{userId} {
       allow read, write: if true; 
     }
 
-    // Pedidos e Itens
+    // Pedidos e Itens (Geral)
     match /orders/{orderId} {
       allow read, write: if true;
       match /orderItems/{orderItemId} {
@@ -39,7 +35,7 @@ service cloud.firestore {
       allow read, write: if true;
     }
     
-    // Regra global de segurança
+    // Regra global de segurança para qualquer outra coleção
     match /{document=**} {
       allow read, write: if request.auth != null;
     }

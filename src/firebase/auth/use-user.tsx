@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -7,6 +6,10 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import { useAuth, useFirestore } from '../provider';
 import { User } from '@/lib/types';
 
+/**
+ * Hook para monitorar o usuário logado e seu perfil no Firestore.
+ * Sincronizado para usar a coleção 'userProfiles'.
+ */
 export function useUser() {
   const auth = useAuth();
   const db = useFirestore();
@@ -16,24 +19,28 @@ export function useUser() {
   useEffect(() => {
     return onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
-        const userDocRef = doc(db, 'users', firebaseUser.uid);
+        // Mudança crítica: de 'users' para 'userProfiles'
+        const userDocRef = doc(db, 'userProfiles', firebaseUser.uid);
+        
         return onSnapshot(userDocRef, (snapshot) => {
           if (snapshot.exists()) {
             setUser({ id: firebaseUser.uid, ...snapshot.data() } as User);
           } else {
-            // Se o usuário existe no Auth mas não no Firestore, criamos um perfil básico
-            // Verificação especial para o email master do administrador
+            // Perfil básico se ainda não existir no Firestore
             const isMasterEmail = firebaseUser.email === 'rik4rd0stream@gmail.com';
             
             setUser({
               id: firebaseUser.uid,
-              name: firebaseUser.displayName || (isMasterEmail ? 'Administrador Master' : 'Usuário'),
+              name: firebaseUser.displayName || (isMasterEmail ? 'Ricardo (Master)' : 'Operador'),
               email: firebaseUser.email || '',
-              profile: isMasterEmail ? 'master' : 'normal',
+              role: isMasterEmail ? 'master' : 'normal',
               hasRequestAccess: isMasterEmail,
               notificationsEnabled: true
             });
           }
+          setLoading(false);
+        }, (error) => {
+          console.warn("Aguardando permissão de leitura do perfil...");
           setLoading(false);
         });
       } else {
