@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,18 +12,28 @@ import {
   Package, 
   RefreshCw, 
   AlertCircle,
-  Clock
+  Clock,
+  Bike,
+  Search
 } from "lucide-react";
 import { fetchRedashOrders, RedashOrder } from "@/app/actions/redash";
 import { useToast } from "@/hooks/use-toast";
-import { Order } from "@/lib/types";
-import { useFirestore } from "@/firebase";
-import { doc, setDoc } from "firebase/firestore";
-import { errorEmitter } from "@/firebase/error-emitter";
-import { FirestorePermissionError } from "@/firebase/errors";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogDescription 
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { useFirestore, useCollection } from "@/firebase";
+import { collection, query } from "firebase/firestore";
+import { cn } from "@/lib/utils";
+
+const COMMANDS = ["!!bundleBR", "!!rebr", "!!Br", "!!forzabr"];
 
 interface CreateOrderProps {
-  onOrderCreated: (order: Order) => void;
+  onOrderCreated: (order: any) => void;
 }
 
 export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
@@ -31,6 +42,24 @@ export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
   const [loading, setLoading] = useState(false);
   const [redashOrders, setRedashOrders] = useState<RedashOrder[]>([]);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  
+  // States for the WhatsApp flow
+  const [selectedCommand, setSelectedCommand] = useState("!!bundleBR");
+  const [selectedOrder, setSelectedOrder] = useState<RedashOrder | null>(null);
+  const [isCourierDialogOpen, setIsCourierDialogOpen] = useState(false);
+  const [searchCourier, setSearchCourier] = useState("");
+
+  // Fetch Couriers from Firestore
+  const couriersQuery = useMemo(() => query(collection(db, 'entregadores')), [db]);
+  const { data: couriers, loading: loadingCouriers } = useCollection<any>(couriersQuery);
+
+  const filteredCouriers = useMemo(() => {
+    if (!couriers) return [];
+    return couriers.filter(c => 
+      c.nome?.toLowerCase().includes(searchCourier.toLowerCase()) || 
+      c.id_motoboy?.includes(searchCourier)
+    );
+  }, [couriers, searchCourier]);
 
   const loadData = async () => {
     setLoading(true);
@@ -50,52 +79,66 @@ export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
 
   useEffect(() => {
     loadData();
-    const interval = setInterval(loadData, 300000); // Atualiza a cada 5 min
+    const interval = setInterval(loadData, 300000); // 5 min
     return () => clearInterval(interval);
   }, []);
 
-  const handleDispatch = (redashOrder: RedashOrder) => {
-    const orderId = redashOrder.order_id || Math.random().toString(36).substr(2, 9);
-    const docRef = doc(db, 'orders', orderId);
+  const handleOpenCourierSelection = (order: RedashOrder) => {
+    setSelectedOrder(order);
+    setIsCourierDialogOpen(true);
+  };
 
-    const newOrder: Order = {
-      id: orderId,
-      items: [redashOrder.items || "Pedido Redash"],
-      status: 'pending',
-      deliveryAddress: redashOrder.address || "Verificar no App",
-      pickupAddress: "Point📍9944",
-      specialInstructions: `Extraído do Redash - es_trusted: ${redashOrder.es_trusted}`,
-      createdAt: new Date().toISOString(),
-      categories: ['Redash'],
-    };
+  const handleGenerateCommand = (courierId: string) => {
+    if (!selectedOrder) return;
 
-    setDoc(docRef, newOrder)
-      .then(() => {
-        toast({ title: "Pedido Despachado", description: `ID: ${orderId} agora está em monitoramento.` });
-        onOrderCreated(newOrder);
-      })
-      .catch(async (error) => {
-        const permissionError = new FirestorePermissionError({
-          path: docRef.path,
-          operation: 'create',
-          requestResourceData: newOrder,
-        });
-        errorEmitter.emit('permission-error', permissionError);
-      });
+    const orderId = selectedOrder.order_id || "0";
+    const fullCommand = `${selectedCommand} ${orderId} ${courierId}`;
+    
+    // Create WhatsApp URL
+    const waUrl = `https://wa.me/?text=${encodeURIComponent(fullCommand)}`;
+    
+    // Open WhatsApp
+    window.open(waUrl, '_blank');
+    
+    toast({
+      title: "Comando Gerado",
+      description: `Enviando: ${fullCommand}`,
+    });
+
+    setIsCourierDialogOpen(false);
+    setSelectedOrder(null);
   };
 
   return (
-    <div className="space-y-6 animate-slide-up">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-6 animate-slide-up pb-20">
+      {/* Command Selection Header */}
+      <div className="bg-card p-4 rounded-xl border shadow-sm space-y-3">
+        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Selecione o Comando</p>
+        <div className="flex flex-wrap gap-2">
+          {COMMANDS.map((cmd) => (
+            <Button
+              key={cmd}
+              variant={selectedCommand === cmd ? "default" : "secondary"}
+              onClick={() => setSelectedCommand(cmd)}
+              className={cn(
+                "h-12 px-6 font-bold text-md transition-all",
+                selectedCommand === cmd ? "shadow-lg scale-105" : "opacity-80 hover:opacity-100"
+              )}
+            >
+              {cmd}
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-4">
         <div>
           <h1 className="text-3xl font-bold font-headline flex items-center gap-2">
-            Envio Automático (Redash)
+            Pedidos Pendentes
             {loading && <Loader2 className="h-5 w-5 animate-spin text-primary" />}
           </h1>
-          <div className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
-            Monitorando: 
+          <div className="flex items-center gap-2 mt-1">
             <Badge variant="outline" className="text-primary border-primary">Point📍9944</Badge> 
-            e 
             <Badge variant="outline">Sin RT➖</Badge>
           </div>
         </div>
@@ -108,7 +151,7 @@ export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
           )}
           <Button variant="outline" size="sm" onClick={loadData} disabled={loading} className="gap-2">
             <RefreshCw className={loading ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
-            Atualizar Agora
+            Atualizar
           </Button>
         </div>
       </div>
@@ -117,10 +160,7 @@ export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
         {redashOrders.length === 0 && !loading ? (
           <div className="text-center py-20 bg-muted/30 rounded-xl border-2 border-dashed flex flex-col items-center">
             <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium text-muted-foreground">Nenhum pedido pendente no Redash</h3>
-            <p className="text-sm text-muted-foreground max-w-xs">
-              Aguardando novas ordens do Point📍9944 que atendam aos critérios de filtragem.
-            </p>
+            <h3 className="text-lg font-medium text-muted-foreground">Nenhum pedido filtrado</h3>
           </div>
         ) : (
           redashOrders.map((order, idx) => (
@@ -130,20 +170,13 @@ export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
                   <div className="p-6 flex-1 space-y-4">
                     <div className="flex items-start justify-between">
                       <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-mono font-bold bg-muted px-2 py-0.5 rounded">
-                            {order.order_id || `ID-${idx}`}
-                          </span>
-                          <Badge className="bg-orange-500/10 text-orange-600 border-none">Aguardando Coleta</Badge>
-                        </div>
+                        <span className="text-xs font-mono font-bold bg-muted px-2 py-0.5 rounded">
+                          ID: {order.order_id || `ID-${idx}`}
+                        </span>
                         <h3 className="text-lg font-bold flex items-center gap-2">
                           <Package className="h-4 w-4 text-primary" />
                           {order.items || "Itens do Pedido"}
                         </h3>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-[10px] font-bold text-muted-foreground uppercase">Trusted Status</p>
-                        <p className="text-xs font-medium text-green-600">{order.es_trusted}</p>
                       </div>
                     </div>
 
@@ -159,7 +192,7 @@ export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
                         <MapPin className="h-4 w-4 text-green-500 shrink-0 mt-1" />
                         <div>
                           <p className="text-[10px] font-bold text-muted-foreground uppercase">Destino</p>
-                          <p className="text-sm font-medium truncate max-w-[200px]">{order.address || "Endereço Pendente"}</p>
+                          <p className="text-sm font-medium truncate max-w-[250px]">{order.address || "Endereço"}</p>
                         </div>
                       </div>
                     </div>
@@ -167,7 +200,7 @@ export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
                   
                   <div className="p-4 bg-muted/20 flex items-center justify-center border-t md:border-t-0 md:border-l">
                     <Button 
-                      onClick={() => handleDispatch(order)}
+                      onClick={() => handleOpenCourierSelection(order)}
                       className="w-full md:w-auto px-8 h-12 gap-2 text-lg font-bold"
                     >
                       <SendHorizontal className="h-5 w-5" />
@@ -180,6 +213,60 @@ export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
           ))
         )}
       </div>
+
+      {/* Courier Selection Modal */}
+      <Dialog open={isCourierDialogOpen} onOpenChange={setIsCourierDialogOpen}>
+        <DialogContent className="max-w-md max-h-[80vh] flex flex-col p-0">
+          <DialogHeader className="p-6 pb-2">
+            <DialogTitle>Selecionar Motoboy</DialogTitle>
+            <DialogDescription>
+              Escolha o entregador para o comando <span className="font-bold text-primary">{selectedCommand}</span>
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="px-6 py-2">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input 
+                placeholder="Buscar motoboy por nome ou ID..." 
+                className="pl-10"
+                value={searchCourier}
+                onChange={(e) => setSearchCourier(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto px-6 py-2 space-y-2 pb-6">
+            {loadingCouriers ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              </div>
+            ) : filteredCouriers.length === 0 ? (
+              <p className="text-center py-8 text-muted-foreground text-sm italic">Nenhum motoboy encontrado.</p>
+            ) : (
+              filteredCouriers.map((courier) => (
+                <Button
+                  key={courier.id}
+                  variant="outline"
+                  className="w-full h-auto py-3 px-4 justify-between hover:bg-primary/5 hover:border-primary transition-colors group"
+                  onClick={() => handleGenerateCommand(courier.id_motoboy)}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20">
+                      <Bike className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="text-left">
+                      <p className="font-bold text-sm leading-none">{courier.nome}</p>
+                      <p className="text-[10px] text-muted-foreground mt-1">ID Motoboy: {courier.id_motoboy}</p>
+                    </div>
+                  </div>
+                  <SendHorizontal className="h-4 w-4 text-muted-foreground group-hover:text-primary" />
+                </Button>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
