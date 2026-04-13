@@ -50,7 +50,7 @@ export default function Home() {
       email: email,
       profile: isMaster ? 'master' : 'normal',
       notificationsEnabled: true,
-      hasRequestAccess: true
+      hasRequestAccess: isMaster // Inicializa como true apenas para Master
     };
     
     setLocalUser(userData);
@@ -62,8 +62,10 @@ export default function Home() {
     localStorage.removeItem('rappi_commander_session');
   };
 
-  // Enquanto o Firebase não autenticar (mesmo que anônimo), não mostramos o Dash
-  // Isso evita o erro "permission-denied" com "auth: null"
+  // Prioriza os dados do Firestore (firebaseUser) se estiverem disponíveis, 
+  // pois eles contêm as permissões reais editadas pelo Master.
+  const currentUser = firebaseUser || localUser;
+
   if (!mounted || isUserLoading || !firebaseUser) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -80,7 +82,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background">
       {localUser ? (
-        <MainDashboard user={localUser} onLogout={handleLogout} />
+        <MainDashboard user={currentUser as User} onLogout={handleLogout} />
       ) : (
         <LoginView onLogin={handleLogin} />
       )}
