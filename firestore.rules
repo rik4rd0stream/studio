@@ -1,9 +1,10 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     /**
-     * REGRAS TOTAIS - ACESSO LIVRE (MODO SIMPLIFICADO)
-     * Como solicitado, as regras estão 100% abertas para evitar bloqueios no Android.
+     * REGRAS SIMPLIFICADAS
+     * Permissão total para facilitar o desenvolvimento e testes em equipe reduzida.
      */
     match /{document=**} {
       allow read, write: if true;
