@@ -1,8 +1,8 @@
 
-'use server';
 /**
- * @fileOverview Funções para buscar dados do Redash via Server Action.
- * 'use server' reativado para resolver problemas de CORS no navegador (Vercel/Web).
+ * @fileOverview Funções para buscar dados do Redash.
+ * 'use server' removido para compatibilidade com build estático (APK).
+ * Requer CapacitorHttp habilitado no capacitor.config.ts para funcionar no Android sem CORS.
  */
 
 export interface RedashOrder {
@@ -24,8 +24,7 @@ export async function fetchRedashOrders() {
       method: 'GET',
       headers: {
         'Accept': 'application/json'
-      },
-      next: { revalidate: 10 } // Cache de 10 segundos no servidor
+      }
     }); 
     
     if (!response.ok) {

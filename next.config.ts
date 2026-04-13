@@ -3,10 +3,10 @@ import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
   /**
-   * CONFIGURAÇÃO WEB (DESENVOLVIMENTO):
-   * 'output: export' removido para permitir Server Actions ('use server').
-   * Quando for gerar um novo APK, esta linha deve ser reativada.
+   * CONFIGURAÇÃO PARA APK (ANDROID):
+   * output: 'export' habilitado para gerar os arquivos estáticos necessários para o Capacitor.
    */
+  output: 'export',
   images: {
     unoptimized: true, 
     remotePatterns: [

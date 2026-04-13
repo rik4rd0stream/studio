@@ -1,8 +1,9 @@
 
-'use server';
 /**
  * @fileOverview Flow para refinar detalhes de pedidos via Genkit.
- * 'use server' restaurado para permitir execução via Server Actions.
+ * 'use server' removido para compatibilidade com build estático (APK).
+ * Nota: Esta funcionalidade requer conexão com servidor de IA. No APK estático, 
+ * ela funcionará apenas se as chaves de API estiverem acessíveis ou via proxy.
  */
 
 import {ai} from '@/ai/genkit';
