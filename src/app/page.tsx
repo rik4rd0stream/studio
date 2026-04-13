@@ -61,7 +61,7 @@ export default function Home() {
         const userDoc = querySnapshot.docs[0];
         const data = userDoc.data();
         
-        // Validação de Senha (se houver senha cadastrada)
+        // Validação de Senha do Banco de Dados
         if (data.password && data.password !== password) {
           toast({
             variant: "destructive",
@@ -74,21 +74,10 @@ export default function Home() {
 
         userData = { id: userDoc.id, ...data } as User;
       } else {
-        // Fallback Master para o primeiro acesso ou administrador fixo
+        // Se não encontrar no banco, mas for o Master, permite entrada para configuração inicial
         const isMaster = email.includes('master') || email === 'rik4rd0stream@gmail.com';
         
         if (isMaster) {
-           // No primeiro acesso (antes de estar no banco), a senha deve ser rappi123
-           if (password !== 'rappi123') {
-              toast({
-                variant: "destructive",
-                title: "Acesso Negado",
-                description: "Senha incorreta para o perfil Master."
-              });
-              setIsAuthenticating(false);
-              return;
-           }
-
            userData = {
               id: firebaseUser?.uid || 'usr_' + Math.random().toString(36).substr(2, 5),
               name: 'Administrador Master',
