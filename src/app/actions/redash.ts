@@ -1,7 +1,8 @@
 'use server';
 
 /**
- * @fileOverview Ação de servidor para buscar e filtrar dados do Redash.
+ * @fileOverview Ação de servidor para buscar dados do Redash sem filtros fixos,
+ * permitindo que os componentes filtrem conforme a necessidade (Envio vs Monitoramento).
  */
 
 export interface RedashOrder {
@@ -10,6 +11,7 @@ export interface RedashOrder {
   direccion_entrega?: string;
   point?: string;
   es_trusted?: string;
+  rt_asignado_orden?: string;
   [key: string]: any;
 }
 
@@ -17,28 +19,14 @@ export async function fetchRedashOrders() {
   const url = `https://redash.rappi.com/api/queries/130603/results.json?api_key=VqwlaUY9wOLjhUJTvrfuKdFExSsJG8ktuzUXy4fR`;
 
   try {
-    const response = await fetch(url, { next: { revalidate: 60 } }); // Cache de 1 minuto
+    const response = await fetch(url, { next: { revalidate: 30 } }); // Cache de 30 segundos
     if (!response.ok) throw new Error('Falha ao conectar com o Redash');
 
     const data = await response.json();
     const rows: RedashOrder[] = data.query_result.data.rows;
 
-    // Filtros solicitados:
-    // 1. Point📍9944
-    // 2. es_trusted: Sin RT➖
-    const filtered = rows.filter(row => {
-      const isPoint9944 = Object.values(row).some(val => 
-        String(val).includes('9944') || String(val).includes('Point')
-      );
-      
-      const isSinRT = Object.entries(row).some(([key, val]) => 
-        key.toLowerCase().includes('trusted') && String(val).includes('Sin RT')
-      );
-
-      return isPoint9944 && isSinRT;
-    });
-
-    return { success: true, data: filtered };
+    // Retorna todos os dados para que o componente decida o que filtrar
+    return { success: true, data: rows };
   } catch (error: any) {
     console.error('Redash Proxy Error:', error);
     return { success: false, error: error.message };

@@ -1,18 +1,14 @@
-
 "use client";
 
-import { useState, useMemo } from "react";
-import { AppView, User, Order, Courier } from "@/lib/types";
+import { useState } from "react";
+import { AppView, User } from "@/lib/types";
 import { SidebarNav } from "./sidebar-nav";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
-import { Send, PackageSearch, Bell, Users, Activity } from "lucide-react";
+import { Send, Bell, Users, Activity } from "lucide-react";
 import { CreateOrder } from "@/components/orders/create-order";
 import { ActiveOrders } from "@/components/orders/active-orders";
 import { Registration } from "@/components/admin/registration";
-import { useFirestore, useCollection } from "@/firebase";
-import { collection, query } from "firebase/firestore";
-import { Badge } from "@/components/ui/badge";
 
 interface MainDashboardProps {
   user: User;
@@ -20,19 +16,14 @@ interface MainDashboardProps {
 }
 
 export function MainDashboard({ user, onLogout }: MainDashboardProps) {
-  // Alterado para 'send-order' como padrão conforme solicitado
   const [currentView, setView] = useState<AppView>('send-order');
-  const db = useFirestore();
-
-  const ordersQuery = useMemo(() => query(collection(db, 'orders')), [db]);
-  const { data: orders } = useCollection<Order>(ordersQuery);
 
   const renderContent = () => {
     switch (currentView) {
       case 'send-order':
         return <CreateOrder onOrderCreated={() => setView('active-orders')} />;
       case 'active-orders':
-        return <ActiveOrders orders={orders || []} />;
+        return <ActiveOrders />;
       case 'admin-users':
         return <Registration type="users" />;
       case 'admin-couriers':
@@ -40,7 +31,6 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
       case 'request-order':
         return (
           <div className="space-y-6 text-center py-20 animate-slide-up">
-            <PackageSearch className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
             <h2 className="text-2xl font-bold">Solicitação de Pedidos</h2>
             <p className="text-muted-foreground max-w-md mx-auto">
               Nesta tela, os entregadores solicitam pedidos específicos.

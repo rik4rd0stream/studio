@@ -1,116 +1,140 @@
 "use client";
 
-import { Order } from "@/lib/types";
+import { useState, useEffect, useMemo } from "react";
+import { RedashOrder, fetchRedashOrders } from "@/app/actions/redash";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Clock, MapPin, Truck, CheckCircle2, MoreVertical, Package } from "lucide-react";
+import { RefreshCw, Loader2, Package, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useFirestore, useCollection } from "@/firebase";
+import { collection, query } from "firebase/firestore";
+import { cn } from "@/lib/utils";
 
-interface ActiveOrdersProps {
-  orders: Order[];
-}
+export function ActiveOrders() {
+  const db = useFirestore();
+  const [loading, setLoading] = useState(false);
+  const [allOrders, setAllOrders] = useState<RedashOrder[]>([]);
+  
+  // Busca entregadores do banco para mapear ID -> Nome
+  const couriersQuery = useMemo(() => query(collection(db, 'entregadores')), [db]);
+  const { data: couriers } = useCollection<any>(couriersQuery);
 
-export function ActiveOrders({ orders }: ActiveOrdersProps) {
-  const getStatusBadge = (status: Order['status']) => {
-    switch (status) {
-      case 'pending': return <Badge className="bg-yellow-500/10 text-yellow-600 hover:bg-yellow-500/20 border-none">Pendente</Badge>;
-      case 'accepted': return <Badge className="bg-blue-500/10 text-blue-600 hover:bg-blue-500/20 border-none">Aceito</Badge>;
-      case 'delivering': return <Badge className="bg-primary/10 text-primary hover:bg-primary/20 border-none">Em Entrega</Badge>;
-      case 'completed': return <Badge className="bg-green-500/10 text-green-600 hover:bg-green-500/20 border-none">Concluído</Badge>;
+  const loadData = async () => {
+    setLoading(true);
+    const result = await fetchRedashOrders();
+    if (result.success) {
+      setAllOrders(result.data || []);
     }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    loadData();
+    const interval = setInterval(loadData, 30000); // 30s
+    return () => clearInterval(interval);
+  }, []);
+
+  // Filtros de Monitoramento: Point 9944 E (GEO ou EXTERNO)
+  const filteredOrders = useMemo(() => {
+    return allOrders.filter(row => {
+      const isPoint9944 = Object.values(row).some(val => String(val).includes('9944'));
+      const isGeo = Object.entries(row).some(([key, val]) => 
+        key.toLowerCase().includes('trusted') && String(val).includes('GEO⚡')
+      );
+      const isExterno = Object.entries(row).some(([key, val]) => 
+        key.toLowerCase().includes('trusted') && String(val).includes('EXTERNO❌')
+      );
+      return isPoint9944 && (isGeo || isExterno);
+    });
+  }, [allOrders]);
+
+  // Agrupamento por Entregador
+  const groupedOrders = useMemo(() => {
+    const groups: { [key: string]: RedashOrder[] } = {};
+    filteredOrders.forEach(order => {
+      const rtId = order.rt_asignado_orden || "Sem ID";
+      if (!groups[rtId]) groups[rtId] = [];
+      groups[rtId].push(order);
+    });
+    return groups;
+  }, [filteredOrders]);
+
+  const getCourierName = (id: string) => {
+    const courier = couriers?.find(c => String(c.id_motoboy) === String(id));
+    return courier ? courier.nome : "Motoboy não identificado";
   };
 
   return (
-    <div className="space-y-6 animate-slide-up">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 animate-slide-up max-w-2xl mx-auto pb-20">
+      <div className="flex items-center justify-between px-1">
         <div>
-          <h1 className="text-3xl font-bold font-headline">Monitoramento</h1>
-          <p className="text-muted-foreground">Acompanhe o status de todos os pedidos em tempo real.</p>
+          <h2 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Monitoramento Ativo</h2>
+          <p className="text-[9px] text-muted-foreground">{Object.keys(groupedOrders).length} RT(s) em operação</p>
         </div>
-        <div className="flex gap-2">
-          <Badge variant="outline" className="px-3 py-1">{orders.length} Total</Badge>
-          <Badge variant="outline" className="px-3 py-1 text-yellow-600 bg-yellow-50 border-yellow-200">
-            {orders.filter(o => o.status === 'pending').length} Pendentes
-          </Badge>
-        </div>
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={loadData} 
+          disabled={loading} 
+          className="h-7 gap-1.5 text-blue-600 hover:bg-blue-50 text-[10px] font-bold"
+        >
+          <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
+          Atualizar
+        </Button>
       </div>
 
-      <div className="grid grid-cols-1 gap-4">
-        {orders.length === 0 ? (
-          <div className="text-center py-20 bg-muted/30 rounded-xl border-2 border-dashed">
-            <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-medium">Nenhum pedido ativo</h3>
-            <p className="text-muted-foreground">Novos pedidos aparecerão aqui automaticamente.</p>
+      <div className="space-y-4">
+        {Object.keys(groupedOrders).length === 0 && !loading ? (
+          <div className="text-center py-16 bg-muted/20 rounded-2xl border border-dashed flex flex-col items-center">
+            <Package className="h-8 w-8 text-muted-foreground/30 mb-2" />
+            <h3 className="text-xs font-medium text-muted-foreground">Nenhum pedido GEO/EXTERNO</h3>
           </div>
         ) : (
-          orders.map((order) => (
-            <Card key={order.id} className="border-none shadow-sm hover:shadow-md transition-shadow">
+          Object.entries(groupedOrders).map(([rtId, orders]) => (
+            <Card key={rtId} className="border border-border/60 bg-card/80 shadow-sm overflow-hidden rounded-2xl">
               <CardContent className="p-0">
-                <div className="flex flex-col md:flex-row">
-                  <div className="p-6 flex-1 space-y-4">
-                    <div className="flex items-start justify-between">
-                      <div className="space-y-1">
-                        <p className="text-xs font-mono text-muted-foreground uppercase tracking-wider">#{order.id}</p>
-                        <h3 className="text-lg font-bold truncate max-w-[200px]">{order.items.join(', ')}</h3>
-                      </div>
-                      <div className="flex flex-col items-end gap-2">
-                        {getStatusBadge(order.status)}
-                        <div className="flex items-center text-[10px] text-muted-foreground gap-1">
-                          <Clock className="h-3 w-3" />
-                          {new Date(order.createdAt).toLocaleTimeString()}
-                        </div>
-                      </div>
+                {/* Header do Entregador */}
+                <div className="p-4 bg-muted/30 flex items-center justify-between border-b border-border/40">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                      <User className="h-4 w-4 text-primary" />
                     </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-foreground">RT: {rtId} - {getCourierName(rtId)}</h3>
+                    </div>
+                  </div>
+                  <div className="w-7 h-7 rounded-full bg-blue-500/10 text-blue-600 flex items-center justify-center text-[10px] font-bold border border-blue-200">
+                    {orders.length}
+                  </div>
+                </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-                      <div className="space-y-3">
-                        <div className="flex gap-3">
-                          <div className="flex flex-col items-center">
-                            <div className="w-2 h-2 rounded-full bg-orange-400 mt-1.5" />
-                            <div className="w-0.5 flex-1 bg-border my-1" />
-                            <div className="w-2 h-2 rounded-full bg-green-500" />
-                          </div>
-                          <div className="space-y-4 flex-1">
-                            <div>
-                              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight">Coleta</p>
-                              <p className="text-sm font-medium leading-none">{order.pickupAddress}</p>
-                            </div>
-                            <div>
-                              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight">Entrega</p>
-                              <p className="text-sm font-medium leading-none">{order.deliveryAddress}</p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="space-y-4">
-                        {order.specialInstructions && (
-                          <div className="p-3 bg-muted rounded-lg text-xs italic text-muted-foreground">
-                            "{order.specialInstructions}"
-                          </div>
+                {/* Lista de Pedidos do Entregador */}
+                <div className="p-3 space-y-2">
+                  {orders.map((order, idx) => {
+                    const isExterno = Object.values(order).some(val => String(val).includes('EXTERNO❌'));
+                    return (
+                      <div 
+                        key={idx} 
+                        className={cn(
+                          "p-3 rounded-xl border border-border/40 flex items-center justify-between transition-all",
+                          isExterno ? "bg-red-500/5 border-red-200/50" : "bg-muted/10"
                         )}
-                        <div className="flex items-center justify-between pt-2">
-                          <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-                              <Truck className="h-4 w-4 text-primary" />
-                            </div>
-                            <div>
-                              <p className="text-[10px] text-muted-foreground font-bold uppercase">Entregador</p>
-                              <p className="text-xs font-medium">{order.courierId ? `ID: ${order.courierId}` : 'Aguardando...'}</p>
-                            </div>
-                          </div>
+                      >
+                        <div className="space-y-1">
+                          <p className="text-[11px] font-bold text-foreground leading-tight">{order.store_name}</p>
+                          <p className="text-[10px] text-muted-foreground truncate max-w-[200px]">{order.direccion_entrega}</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          {isExterno && (
+                            <Badge className="h-5 px-1.5 text-[8px] font-bold bg-red-500 text-white border-none uppercase">
+                              Externo
+                            </Badge>
+                          )}
+                          <span className="text-[10px] font-mono font-bold text-muted-foreground">#{order.order_id}</span>
                         </div>
                       </div>
-                    </div>
-                  </div>
-                  
-                  <div className="border-t md:border-t-0 md:border-l p-4 flex md:flex-col justify-center gap-2 bg-muted/30">
-                    <Button variant="ghost" size="icon" className="h-10 w-10"><MoreVertical className="h-4 w-4" /></Button>
-                    <Button variant="outline" size="sm" className="hidden md:flex">Detalhes</Button>
-                    {order.status === 'pending' && (
-                      <Button className="flex-1 md:flex-none">Priorizar</Button>
-                    )}
-                  </div>
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>

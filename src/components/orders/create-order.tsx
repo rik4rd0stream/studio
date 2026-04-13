@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -39,7 +38,7 @@ export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
   const { toast } = useToast();
   const db = useFirestore();
   const [loading, setLoading] = useState(false);
-  const [redashOrders, setRedashOrders] = useState<RedashOrder[]>([]);
+  const [allOrders, setAllOrders] = useState<RedashOrder[]>([]);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   
   const [selectedCommand, setSelectedCommand] = useState("!!bundleBR");
@@ -50,6 +49,19 @@ export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
 
   const couriersQuery = useMemo(() => query(collection(db, 'entregadores')), [db]);
   const { data: couriers, loading: loadingCouriers } = useCollection<any>(couriersQuery);
+
+  // Filtro específico para a tela de ENVIO: Point 9944 e Sin RT
+  const redashOrders = useMemo(() => {
+    return allOrders.filter(row => {
+      const isPoint9944 = Object.values(row).some(val => 
+        String(val).includes('9944')
+      );
+      const isSinRT = Object.entries(row).some(([key, val]) => 
+        key.toLowerCase().includes('trusted') && String(val).includes('Sin RT')
+      );
+      return isPoint9944 && isSinRT;
+    });
+  }, [allOrders]);
 
   const filteredCouriers = useMemo(() => {
     if (!couriers) return [];
@@ -63,7 +75,7 @@ export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
     setLoading(true);
     const result = await fetchRedashOrders();
     if (result.success) {
-      setRedashOrders(result.data || []);
+      setAllOrders(result.data || []);
       setLastUpdate(new Date());
     } else {
       toast({ 
@@ -108,7 +120,7 @@ export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
         toast({ title: "Colado", description: "ID colado da área de transferência." });
       }
     } catch (err) {
-      toast({ variant: "destructive", title: "Erro", description: "Não foi possível ler a área de transferência. Verifique as permissões do navegador." });
+      toast({ variant: "destructive", title: "Erro", description: "Área de transferência inacessível." });
     }
   };
 
@@ -121,11 +133,6 @@ export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
     const waUrl = `https://wa.me/?text=${encodeURIComponent(fullCommand)}`;
     window.open(waUrl, '_blank');
     
-    toast({
-      title: "Comando Gerado",
-      description: `Enviando: ${fullCommand}`,
-    });
-
     setIsCourierDialogOpen(false);
     setSelectedOrder(null);
     setManualOrderId(""); 
@@ -133,7 +140,6 @@ export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
 
   return (
     <div className="space-y-6 animate-slide-up pb-32 max-w-xl mx-auto">
-      {/* Seleção de Comando Superior */}
       <div className="bg-card p-3 rounded-xl border shadow-sm space-y-2">
         <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-1">Selecione o Comando</p>
         <div className="flex flex-wrap gap-1.5">
@@ -155,7 +161,6 @@ export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
         </div>
       </div>
 
-      {/* Cabeçalho de Pedidos */}
       <div className="flex items-center justify-between gap-4 px-1">
         <div className="flex items-center gap-2">
           <h2 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Pedidos Disponíveis</h2>
@@ -165,11 +170,6 @@ export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
         </div>
         
         <div className="flex items-center gap-2">
-          {lastUpdate && (
-            <span className="hidden sm:inline text-[8px] text-muted-foreground font-mono">
-              {lastUpdate.toLocaleTimeString()}
-            </span>
-          )}
           <Button 
             variant="ghost" 
             size="sm" 
@@ -183,12 +183,11 @@ export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
         </div>
       </div>
 
-      {/* Lista de Pedidos */}
       <div className="space-y-2">
         {redashOrders.length === 0 && !loading ? (
           <div className="text-center py-8 bg-muted/20 rounded-xl border border-dashed flex flex-col items-center">
             <Package className="h-6 w-6 text-muted-foreground/50 mb-2" />
-            <h3 className="text-xs font-medium text-muted-foreground">Nenhum pedido filtrado</h3>
+            <h3 className="text-xs font-medium text-muted-foreground">Nenhum pedido para envio</h3>
           </div>
         ) : (
           redashOrders.map((order, idx) => (
@@ -219,7 +218,6 @@ export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
         )}
       </div>
 
-      {/* Seção de Entrada Manual Minimalista */}
       <div className="pt-6 space-y-3">
         <form onSubmit={handleManualSubmit} className="space-y-3">
           <Input 
@@ -251,7 +249,6 @@ export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
         </form>
       </div>
 
-      {/* Modal de Seleção de Motoboy */}
       <Dialog open={isCourierDialogOpen} onOpenChange={setIsCourierDialogOpen}>
         <DialogContent className="max-w-sm max-h-[80vh] flex flex-col p-0 border-none shadow-2xl overflow-hidden rounded-2xl">
           <DialogHeader className="p-5 pb-2">
