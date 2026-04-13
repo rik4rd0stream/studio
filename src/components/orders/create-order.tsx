@@ -13,7 +13,8 @@ import {
   Search,
   Package,
   ClipboardPaste,
-  ArrowRight
+  ArrowRight,
+  AlertCircle
 } from "lucide-react";
 import { fetchRedashOrders, RedashOrder } from "@/app/actions/redash";
 import { useToast } from "@/hooks/use-toast";
@@ -28,6 +29,7 @@ import { Input } from "@/components/ui/input";
 import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, query } from "firebase/firestore";
 import { cn } from "@/lib/utils";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const COMMANDS = ["!!bundleBR", "!!rebr", "!!Br", "!!forzabr"];
 
@@ -39,6 +41,7 @@ export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
   const { toast } = useToast();
   const db = useFirestore();
   const [loading, setLoading] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [allOrders, setAllOrders] = useState<RedashOrder[]>([]);
   
   const [selectedCommand, setSelectedCommand] = useState("!!bundleBR");
@@ -71,17 +74,22 @@ export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
   }, [couriers, searchCourier]);
 
   const loadData = async (silent = false) => {
-    if (!silent) setLoading(true);
+    if (!silent) {
+      setLoading(true);
+      setFetchError(null);
+    }
     const result = await fetchRedashOrders();
     if (result.success) {
       setAllOrders(result.data || []);
+    } else {
+      setFetchError(result.error || "Erro ao carregar dados.");
     }
     if (!silent) setLoading(false);
   };
 
   useEffect(() => {
     loadData();
-    const interval = setInterval(() => loadData(true), 10000);
+    const interval = setInterval(() => loadData(true), 20000); // Intervalo maior para economizar recursos
     return () => clearInterval(interval);
   }, []);
 
@@ -118,6 +126,19 @@ export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
 
   return (
     <div className="space-y-6 animate-slide-up pb-32 max-w-xl mx-auto">
+      {fetchError && (
+        <Alert variant="destructive" className="bg-destructive/10 border-destructive/20 text-destructive rounded-2xl animate-in fade-in">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Erro de Conexão</AlertTitle>
+          <AlertDescription className="text-[10px] leading-tight opacity-80">
+            {fetchError}. O navegador pode estar bloqueando a requisição direta (CORS).
+          </AlertDescription>
+          <Button variant="outline" size="sm" onClick={() => loadData()} className="mt-2 h-7 text-[9px] uppercase font-bold border-destructive/20 hover:bg-destructive/10 text-destructive">
+            Tentar Novamente
+          </Button>
+        </Alert>
+      )}
+
       <div className="bg-card p-3 rounded-xl border shadow-sm space-y-2">
         <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-1">Comando de Despacho</p>
         <div className="flex flex-wrap gap-1.5">
@@ -152,7 +173,12 @@ export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
       </div>
 
       <div className="space-y-2">
-        {redashOrders.length === 0 && !loading ? (
+        {loading && allOrders.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 gap-3">
+            <Loader2 className="h-6 w-6 animate-spin text-primary opacity-50" />
+            <p className="text-[10px] text-muted-foreground font-medium animate-pulse">Buscando dados no Redash...</p>
+          </div>
+        ) : redashOrders.length === 0 && !loading ? (
           <div className="text-center py-8 bg-muted/20 rounded-xl border border-dashed flex flex-col items-center">
             <Package className="h-6 w-6 text-muted-foreground/50 mb-2" />
             <h3 className="text-xs font-medium text-muted-foreground">Nenhum pedido pendente</h3>

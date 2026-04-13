@@ -2,9 +2,12 @@
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
-  output: 'export', // Ativa a exportação estática necessária para o Capacitor
+  // Nota: 'output: export' é necessário para gerar o APK via Capacitor.
+  // Para testes na Web (Vercel/Firebase Hosting), recomendamos manter desativado
+  // para permitir o uso de Server Actions e evitar erros de CORS com o Redash.
+  // output: 'export', 
   images: {
-    unoptimized: true, // Obrigatório para build estático/APK
+    unoptimized: true, 
     remotePatterns: [
       {
         protocol: 'https',

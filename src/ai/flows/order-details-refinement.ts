@@ -1,9 +1,7 @@
 
+'use server';
 /**
  * @fileOverview Genkit flow to refine order details.
- * Removido 'use server' para compatibilidade com build estático.
- * Nota: Funcionalidades de IA que dependem de servidor Node.js (Genkit) 
- * não funcionarão nativamente dentro do APK sem uma API intermediária.
  */
 
 import {ai} from '@/ai/genkit';
