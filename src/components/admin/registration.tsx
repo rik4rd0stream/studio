@@ -26,6 +26,7 @@ import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { doc, setDoc, deleteDoc, updateDoc, collection, getDocs } from "firebase/firestore";
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
+import { cn } from "@/lib/utils";
 
 interface RegistrationProps {
   type: 'users' | 'couriers';
