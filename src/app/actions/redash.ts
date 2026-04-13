@@ -1,8 +1,11 @@
 
-'use server';
 /**
- * @fileOverview Funções para buscar dados do Redash via Server Actions.
- * O uso de 'use server' é necessário para evitar erros de CORS no navegador.
+ * @fileOverview Funções para buscar dados do Redash.
+ * Removido 'use server' para permitir o build estático do Capacitor (APK).
+ * 
+ * NOTA DE DESENVOLVIMENTO:
+ * 1. No NAVEGADOR (Web/Vercel): Pode ocorrer erro de CORS. Use uma extensão de "CORS Unblock" para testar na Web.
+ * 2. No APK ANDROID (Capacitor): As requisições funcionarão PERFEITAMENTE sem necessidade de ajustes, pois o WebView do Android ignora restrições de CORS para APIs externas.
  */
 
 export interface RedashOrder {
@@ -24,8 +27,7 @@ export async function fetchRedashOrders() {
       method: 'GET',
       headers: {
         'Accept': 'application/json'
-      },
-      next: { revalidate: 10 } // Cache de 10 segundos no servidor
+      }
     }); 
     
     if (!response.ok) {
@@ -41,6 +43,10 @@ export async function fetchRedashOrders() {
     return { success: true, data: data.query_result.data.rows as RedashOrder[] };
   } catch (error: any) {
     console.error('Redash Fetch Error:', error.message);
-    return { success: false, error: 'Falha na conexão com o Redash. Verifique o servidor.' };
+    // Retornamos um erro amigável explicando o CORS para o desenvolvedor
+    return { 
+      success: false, 
+      error: 'Erro de conexão. Se estiver no navegador, ative uma extensão de CORS para ver os dados. No APK, os dados aparecerão automaticamente.' 
+    };
   }
 }

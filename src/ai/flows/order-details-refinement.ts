@@ -1,7 +1,7 @@
 
-'use server';
 /**
- * @fileOverview Genkit flow to refine order details.
+ * @fileOverview Flow para refinar detalhes de pedidos via Genkit.
+ * Removido 'use server' para compatibilidade com build estático (APK).
  */
 
 import {ai} from '@/ai/genkit';
@@ -45,35 +45,12 @@ export type OrderDetailsRefinementOutput = z.infer<
 export async function refineOrderDetails(
   input: OrderDetailsRefinementInput
 ): Promise<OrderDetailsRefinementOutput> {
-  return orderDetailsRefinementFlow(input);
+  const {output} = await ai.generate({
+    model: 'googleai/gemini-2.5-flash',
+    prompt: `You are an AI assistant specialized in extracting and refining order details.
+    Analyze the provided description and extract information in structured JSON according to the schema.
+    Order Description: ${input.description}`,
+    output: {schema: OrderDetailsRefinementOutputSchema},
+  });
+  return output!;
 }
-
-const prompt = ai.definePrompt({
-  name: 'orderDetailsRefinementPrompt',
-  input: {schema: OrderDetailsRefinementInputSchema},
-  output: {schema: OrderDetailsRefinementOutputSchema},
-  prompt: `You are an AI assistant specialized in extracting and refining order details.
-Your task is to analyze the provided free-form text description of an order and extract the following information:
--   Individual items mentioned in the order.
--   Suggested categories for these items.
--   A delivery address, if specified.
--   A pickup address, if specified.
--   Any special instructions.
-
-Return the information in a structured JSON format according to the output schema.
-If a piece of information is not found, omit it or provide an empty array where appropriate.
-
-Order Description: {{{description}}}`,
-});
-
-const orderDetailsRefinementFlow = ai.defineFlow(
-  {
-    name: 'orderDetailsRefinementFlow',
-    inputSchema: OrderDetailsRefinementInputSchema,
-    outputSchema: OrderDetailsRefinementOutputSchema,
-  },
-  async input => {
-    const {output} = await prompt(input);
-    return output!;
-  }
-);

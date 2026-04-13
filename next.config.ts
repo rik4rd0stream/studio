@@ -2,9 +2,12 @@
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
-  // Nota: 'output: export' é necessário para gerar o APK via Capacitor.
-  // Para testes na Web (Vercel/Firebase Hosting), recomendamos manter desativado
-  // para permitir o uso de Server Actions e evitar erros de CORS com o Redash.
+  /**
+   * CONFIGURAÇÃO PARA O APK (CAPACITOR):
+   * Para gerar o APK Android, você PRECISA descomentar a linha 'output: export' abaixo.
+   * Enquanto estiver apenas testando na Vercel (Web), pode deixá-la comentada para usar 
+   * recursos de servidor se necessário.
+   */
   // output: 'export', 
   images: {
     unoptimized: true, 
