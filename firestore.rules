@@ -12,8 +12,8 @@ service cloud.firestore {
       allow read, write: if true; 
     }
 
-    // Banco de Entregadores (Antigo e Novo)
-    match /entregadores/{id} {
+    // Banco de Entregadores (Antigo e Novo) - Permissão recursiva para listagem
+    match /entregadores/{document=**} {
       allow read, write: if true;
     }
     
@@ -40,7 +40,7 @@ service cloud.firestore {
       allow read, write: if true;
     }
     
-    // Regra global para garantir que nada seja bloqueado por falta de definição
+    // Regra global de segurança
     match /{document=**} {
       allow read, write: if request.auth != null;
     }

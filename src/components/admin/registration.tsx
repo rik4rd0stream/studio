@@ -17,7 +17,8 @@ import {
   Trash2, 
   KeyRound,
   Bell,
-  PackageSearch
+  PackageSearch,
+  AlertTriangle
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { UserRole } from "@/lib/types";
@@ -44,11 +45,10 @@ export function Registration({ type }: RegistrationProps) {
   const [hasRequestAccess, setHasRequestAccess] = useState(false);
   const [idMotoboy, setIdMotoboy] = useState("");
 
-  // 'userProfiles' para novo banco de usuários, 'entregadores' para o banco antigo de motoboys
   const collectionName = type === 'users' ? 'userProfiles' : 'entregadores';
   
   const listQuery = useMemoFirebase(() => query(collection(db, collectionName)), [db, collectionName]);
-  const { data: items, isLoading: loadingList } = useCollection<any>(listQuery);
+  const { data: items, isLoading: loadingList, error: listError } = useCollection<any>(listQuery);
 
   const resetForm = () => {
     setName("");
@@ -139,7 +139,7 @@ export function Registration({ type }: RegistrationProps) {
             {editingId ? 'Editar' : (type === 'users' ? 'Novo Usuário' : 'Novo Entregador')}
           </CardTitle>
           <CardDescription>
-            {type === 'users' ? 'Novo banco de dados profissional.' : 'Banco de dados de entregadores ativo.'}
+            {type === 'users' ? 'Gestão de operadores do sistema.' : 'Banco de dados de entregadores ativo.'}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -225,6 +225,14 @@ export function Registration({ type }: RegistrationProps) {
             <TableBody>
               {loadingList ? (
                 <TableRow><TableCell colSpan={3} className="text-center py-8"><Loader2 className="animate-spin mx-auto" /></TableCell></TableRow>
+              ) : listError ? (
+                <TableRow>
+                  <TableCell colSpan={3} className="text-center py-8 text-destructive">
+                    <AlertTriangle className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-[10px] font-bold uppercase">Erro de Permissão no Android</p>
+                    <p className="text-[9px] opacity-70">Verifique se as Regras de Segurança foram aplicadas.</p>
+                  </TableCell>
+                </TableRow>
               ) : items?.length === 0 ? (
                 <TableRow><TableCell colSpan={3} className="text-center py-8 text-muted-foreground italic text-xs">Nenhum registro encontrado.</TableCell></TableRow>
               ) : items?.map((item) => (
