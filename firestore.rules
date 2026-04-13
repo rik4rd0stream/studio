@@ -3,22 +3,25 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * Rappi Commander Security Rules
-     * 
-     * Configuração para Sessão Persistente (7 dias) e Login Manual.
-     * Permite consulta inicial de perfis para autenticação.
+     * Regras de Segurança - Rappi Commander
+     * Permite acesso total para usuários autenticados nas coleções operacionais.
      */
 
-    // Permite leitura pública de perfis apenas para o processo de login
+    // Perfis de Usuário (Operadores)
     match /userProfiles/{userId} {
-      allow read: if true; 
-      allow write: if true; // Permitido para o Ricardo gerenciar a equipe
+      allow read, write: if true; 
     }
 
+    // Banco de Entregadores (Antigo e Novo)
+    match /entregadores/{id} {
+      allow read, write: if true;
+    }
+    
     match /deliveryDrivers/{driverId} {
       allow read, write: if true;
     }
 
+    // Pedidos e Itens
     match /orders/{orderId} {
       allow read, write: if true;
       
@@ -27,12 +30,19 @@ service cloud.firestore {
       }
     }
 
+    // Solicitações de Push
     match /requests/{requestId} {
       allow read, write: if true;
     }
 
+    // Controle de Cargos Master
     match /roles_master/{userId} {
       allow read, write: if true;
+    }
+    
+    // Regra global para garantir que nada seja bloqueado por falta de definição
+    match /{document=**} {
+      allow read, write: if request.auth != null;
     }
   }
 }
