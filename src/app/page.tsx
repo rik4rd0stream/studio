@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -23,11 +24,11 @@ export default function Home() {
   }, []);
 
   const handleLogin = (email: string, pass: string) => {
-    // Simulating user profiles for demo
-    const isMaster = email.includes('master');
+    // Definindo rik4rd0stream@gmail.com como Master conforme solicitado
+    const isMaster = email.includes('master') || email === 'rik4rd0stream@gmail.com';
     const userData: User = {
-      id: 'usr_1',
-      name: isMaster ? 'Gerente Master' : 'Operador Logístico',
+      id: 'usr_' + Math.random().toString(36).substr(2, 5),
+      name: isMaster ? 'Administrador Master' : 'Operador Logístico',
       email: email,
       profile: isMaster ? 'master' : 'normal'
     };

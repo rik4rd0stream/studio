@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -9,6 +10,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Users, Bike, UserPlus, Fingerprint, ShieldAlert, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { User, Courier, UserProfile } from "@/lib/types";
+import { useFirestore } from "@/firebase";
+import { doc, setDoc, collection } from "firebase/firestore";
+import { errorEmitter } from "@/firebase/error-emitter";
+import { FirestorePermissionError } from "@/firebase/errors";
 
 interface RegistrationProps {
   type: 'users' | 'couriers';
@@ -18,6 +23,7 @@ interface RegistrationProps {
 
 export function Registration({ type, onAddUser, onAddCourier }: RegistrationProps) {
   const { toast } = useToast();
+  const db = useFirestore();
   const [loading, setLoading] = useState(false);
   
   // Form States
@@ -31,31 +37,47 @@ export function Registration({ type, onAddUser, onAddCourier }: RegistrationProp
     e.preventDefault();
     setLoading(true);
     
-    setTimeout(() => {
-      if (type === 'users' && onAddUser) {
-        onAddUser({
-          id: Math.random().toString(36).substr(2, 9),
-          name,
-          email,
-          profile
+    const id = Math.random().toString(36).substr(2, 9);
+    const collectionName = type === 'users' ? 'users' : 'couriers';
+    const docRef = doc(db, collectionName, id);
+
+    const data = type === 'users' ? {
+      name,
+      email,
+      profile,
+      createdAt: new Date().toISOString()
+    } : {
+      name,
+      externalId,
+      createdAt: new Date().toISOString()
+    };
+
+    setDoc(docRef, data)
+      .then(() => {
+        if (type === 'users' && onAddUser) {
+          onAddUser({ id, name, email, profile });
+          toast({ title: "Usuário Cadastrado", description: `${name} salvo no banco de dados.` });
+        } else if (type === 'couriers' && onAddCourier) {
+          onAddCourier({ id, name, externalId });
+          toast({ title: "Entregador Cadastrado", description: `${name} adicionado à frota.` });
+        }
+        
+        // Limpar campos
+        setName("");
+        setEmail("");
+        setPassword("");
+        setExternalId("");
+        setLoading(false);
+      })
+      .catch(async (error) => {
+        const permissionError = new FirestorePermissionError({
+          path: docRef.path,
+          operation: 'create',
+          requestResourceData: data,
         });
-        toast({ title: "Usuário Cadastrado", description: `${name} agora tem acesso ao sistema.` });
-      } else if (type === 'couriers' && onAddCourier) {
-        onAddCourier({
-          id: Math.random().toString(36).substr(2, 9),
-          name,
-          externalId
-        });
-        toast({ title: "Entregador Cadastrado", description: `${name} foi adicionado à frota.` });
-      }
-      
-      // Clear
-      setName("");
-      setEmail("");
-      setPassword("");
-      setExternalId("");
-      setLoading(false);
-    }, 600);
+        errorEmitter.emit('permission-error', permissionError);
+        setLoading(false);
+      });
   };
 
   return (
@@ -97,20 +119,19 @@ export function Registration({ type, onAddUser, onAddCourier }: RegistrationProp
                     type="email" 
                     value={email} 
                     onChange={(e) => setEmail(e.target.value)} 
-                    placeholder="joao.silva@rappi.com" 
+                    placeholder="exemplo@gmail.com" 
                     required
                     className="bg-muted border-none"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="reg-pass">Senha Temporária</Label>
+                  <Label htmlFor="reg-pass">Senha Temporária (Opcional no momento)</Label>
                   <Input 
                     id="reg-pass" 
                     type="password" 
                     value={password} 
                     onChange={(e) => setPassword(e.target.value)} 
                     placeholder="••••••••" 
-                    required
                     className="bg-muted border-none"
                   />
                 </div>
@@ -153,7 +174,7 @@ export function Registration({ type, onAddUser, onAddCourier }: RegistrationProp
               ) : (
                 <>
                   <UserPlus className="h-5 w-5 mr-2" />
-                  Finalizar Cadastro
+                  Salvar no Banco de Dados
                 </>
               )}
             </Button>

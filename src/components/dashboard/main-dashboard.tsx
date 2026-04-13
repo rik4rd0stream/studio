@@ -1,15 +1,18 @@
+
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { AppView, User, Order, Courier } from "@/lib/types";
 import { SidebarNav } from "./sidebar-nav";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
-import { Send, PackageSearch, Bell } from "lucide-react";
+import { Send, PackageSearch, Bell, Users, Activity } from "lucide-react";
 import { CreateOrder } from "@/components/orders/create-order";
 import { ActiveOrders } from "@/components/orders/active-orders";
 import { Registration } from "@/components/admin/registration";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useFirestore, useCollection } from "@/firebase";
+import { collection, query, orderBy } from "firebase/firestore";
 
 interface MainDashboardProps {
   user: User;
@@ -18,13 +21,16 @@ interface MainDashboardProps {
 
 export function MainDashboard({ user, onLogout }: MainDashboardProps) {
   const [currentView, setView] = useState<AppView>('home');
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [couriers, setCouriers] = useState<Courier[]>([]);
-  const [users, setUsers] = useState<User[]>([user]);
+  const db = useFirestore();
 
-  const addOrder = (order: Order) => setOrders([order, ...orders]);
-  const addCourier = (courier: Courier) => setCouriers([...couriers, courier]);
-  const addUser = (newUser: User) => setUsers([...users, newUser]);
+  // Integrando com coleções reais do Firestore
+  const ordersQuery = useMemo(() => query(collection(db, 'orders'), orderBy('createdAt', 'desc')), [db]);
+  const couriersQuery = useMemo(() => query(collection(db, 'couriers'), orderBy('createdAt', 'desc')), [db]);
+  const usersQuery = useMemo(() => query(collection(db, 'users'), orderBy('createdAt', 'desc')), [db]);
+
+  const { data: orders } = useCollection<Order>(ordersQuery);
+  const { data: couriers } = useCollection<Courier>(couriersQuery);
+  const { data: usersList } = useCollection<User>(usersQuery);
 
   const renderContent = () => {
     switch (currentView) {
@@ -62,7 +68,7 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
               </Card>
 
               <Card className="border-none shadow-sm flex flex-col justify-center p-6 text-center">
-                <h4 className="text-4xl font-bold text-primary">{orders.filter(o => o.status !== 'completed').length}</h4>
+                <h4 className="text-4xl font-bold text-primary">{orders?.filter(o => o.status !== 'completed').length || 0}</h4>
                 <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mt-2">Pedidos Ativos</p>
               </Card>
             </div>
@@ -72,17 +78,20 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
                 <h3 className="text-lg font-bold font-headline flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-primary animate-pulse" /> Últimos Pedidos
                 </h3>
-                <ActiveOrders orders={orders.slice(0, 3)} />
-                {orders.length > 3 && (
+                <ActiveOrders orders={orders?.slice(0, 3) || []} />
+                {orders && orders.length > 3 && (
                   <Button variant="ghost" className="w-full" onClick={() => setView('active-orders')}>Ver todos os pedidos</Button>
                 )}
               </div>
               <div className="space-y-4">
-                <h3 className="text-lg font-bold font-headline">Status da Frota</h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-bold font-headline">Status da Frota</h3>
+                  <Badge variant="outline">{couriers?.length || 0} Entregadores</Badge>
+                </div>
                 <Card className="border-none shadow-sm">
                   <CardContent className="p-6">
                     <div className="space-y-4">
-                      {couriers.length === 0 ? (
+                      {!couriers || couriers.length === 0 ? (
                         <p className="text-sm text-muted-foreground italic text-center py-4">Nenhum entregador cadastrado.</p>
                       ) : (
                         couriers.map(c => (
@@ -104,13 +113,13 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
           </div>
         );
       case 'send-order':
-        return <CreateOrder onOrderCreated={addOrder} />;
+        return <CreateOrder onOrderCreated={() => setView('active-orders')} />;
       case 'active-orders':
-        return <ActiveOrders orders={orders} />;
+        return <ActiveOrders orders={orders || []} />;
       case 'admin-users':
-        return <Registration type="users" onAddUser={addUser} />;
+        return <Registration type="users" />;
       case 'admin-couriers':
-        return <Registration type="couriers" onAddCourier={addCourier} />;
+        return <Registration type="couriers" />;
       case 'request-order':
         return (
           <div className="space-y-6 text-center py-20 animate-slide-up">
@@ -150,16 +159,21 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
               </Button>
               <Button 
                 size="sm" 
-                variant={currentView === 'request-order' ? 'default' : 'outline'} 
+                variant={currentView === 'active-orders' ? 'default' : 'outline'} 
                 className="rounded-full h-8 gap-1.5"
-                onClick={() => setView('request-order')}
+                onClick={() => setView('active-orders')}
               >
-                <PackageSearch className="h-3.5 w-3.5" /> Solicitação
+                <Activity className="h-3.5 w-3.5" /> Monitorar
               </Button>
             </div>
           </div>
           
           <div className="flex items-center gap-3">
+            {user.profile === 'master' && (
+              <Button variant="ghost" size="sm" className="hidden lg:flex gap-2 text-xs" onClick={() => setView('admin-users')}>
+                <Users className="h-4 w-4" /> Admin
+              </Button>
+            )}
             <Button variant="ghost" size="icon" className="rounded-full relative">
               <Bell className="h-5 w-5" />
               <span className="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full" />
@@ -173,5 +187,14 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
         </main>
       </div>
     </div>
+  );
+}
+
+// Helper local component for consistency
+function Badge({ children, variant = "default" }: { children: React.ReactNode, variant?: any }) {
+  return (
+    <span className={`px-2 py-0.5 text-[10px] font-bold uppercase rounded-full border ${variant === 'outline' ? 'border-primary text-primary' : 'bg-primary text-white'}`}>
+      {children}
+    </span>
   );
 }
