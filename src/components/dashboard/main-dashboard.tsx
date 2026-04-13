@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo } from "react";
@@ -6,13 +5,14 @@ import { AppView, User, Order, Courier } from "@/lib/types";
 import { SidebarNav } from "./sidebar-nav";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
-import { Send, PackageSearch, Bell, Users, Activity } from "lucide-react";
+import { Send, PackageSearch, Bell, Users, Activity, Bike } from "lucide-react";
 import { CreateOrder } from "@/components/orders/create-order";
 import { ActiveOrders } from "@/components/orders/active-orders";
 import { Registration } from "@/components/admin/registration";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useFirestore, useCollection } from "@/firebase";
 import { collection, query, orderBy } from "firebase/firestore";
+import { Badge } from "@/components/ui/badge";
 
 interface MainDashboardProps {
   user: User;
@@ -23,14 +23,12 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
   const [currentView, setView] = useState<AppView>('home');
   const db = useFirestore();
 
-  // Integrando com coleções reais do Firestore
   const ordersQuery = useMemo(() => query(collection(db, 'orders'), orderBy('createdAt', 'desc')), [db]);
-  const couriersQuery = useMemo(() => query(collection(db, 'couriers'), orderBy('createdAt', 'desc')), [db]);
-  const usersQuery = useMemo(() => query(collection(db, 'users'), orderBy('createdAt', 'desc')), [db]);
+  const couriersQuery = useMemo(() => query(collection(db, 'entregadores')), [db]);
+  const usersQuery = useMemo(() => query(collection(db, 'users')), [db]);
 
   const { data: orders } = useCollection<Order>(ordersQuery);
   const { data: couriers } = useCollection<Courier>(couriersQuery);
-  const { data: usersList } = useCollection<User>(usersQuery);
 
   const renderContent = () => {
     switch (currentView) {
@@ -94,11 +92,11 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
                       {!couriers || couriers.length === 0 ? (
                         <p className="text-sm text-muted-foreground italic text-center py-4">Nenhum entregador cadastrado.</p>
                       ) : (
-                        couriers.map(c => (
+                        couriers.slice(0, 5).map(c => (
                           <div key={c.id} className="flex items-center justify-between border-b pb-2 last:border-0 last:pb-0">
                             <div>
-                              <p className="text-sm font-medium">{c.name}</p>
-                              <p className="text-[10px] text-muted-foreground">{c.externalId}</p>
+                              <p className="text-sm font-medium">{c.nome}</p>
+                              <p className="text-[10px] text-muted-foreground">ID: {c.id_motoboy}</p>
                             </div>
                             <span className="h-2 w-2 rounded-full bg-green-500" />
                           </div>
@@ -138,12 +136,10 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
-      {/* Sidebar - Tablet style width */}
       <div className="w-64 h-full hidden md:block">
         <SidebarNav currentView={currentView} setView={setView} user={user} onLogout={onLogout} />
       </div>
 
-      {/* Main Area */}
       <div className="flex-1 flex flex-col min-w-0">
         <header className="h-16 border-b flex items-center justify-between px-6 bg-card/50 backdrop-blur-sm z-10">
           <div className="flex items-center gap-4">
@@ -187,14 +183,5 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
         </main>
       </div>
     </div>
-  );
-}
-
-// Helper local component for consistency
-function Badge({ children, variant = "default" }: { children: React.ReactNode, variant?: any }) {
-  return (
-    <span className={`px-2 py-0.5 text-[10px] font-bold uppercase rounded-full border ${variant === 'outline' ? 'border-primary text-primary' : 'bg-primary text-white'}`}>
-      {children}
-    </span>
   );
 }

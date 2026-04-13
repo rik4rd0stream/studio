@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -11,7 +10,7 @@ import { Users, Bike, UserPlus, Fingerprint, ShieldAlert, Loader2 } from "lucide
 import { useToast } from "@/hooks/use-toast";
 import { User, Courier, UserProfile } from "@/lib/types";
 import { useFirestore } from "@/firebase";
-import { doc, setDoc, collection } from "firebase/firestore";
+import { doc, setDoc } from "firebase/firestore";
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
 
@@ -31,14 +30,14 @@ export function Registration({ type, onAddUser, onAddCourier }: RegistrationProp
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [profile, setProfile] = useState<UserProfile>("normal");
-  const [externalId, setExternalId] = useState("");
+  const [idMotoboy, setIdMotoboy] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     
     const id = Math.random().toString(36).substr(2, 9);
-    const collectionName = type === 'users' ? 'users' : 'couriers';
+    const collectionName = type === 'users' ? 'users' : 'entregadores';
     const docRef = doc(db, collectionName, id);
 
     const data = type === 'users' ? {
@@ -47,8 +46,8 @@ export function Registration({ type, onAddUser, onAddCourier }: RegistrationProp
       profile,
       createdAt: new Date().toISOString()
     } : {
-      name,
-      externalId,
+      nome: name,
+      id_motoboy: idMotoboy,
       createdAt: new Date().toISOString()
     };
 
@@ -58,15 +57,14 @@ export function Registration({ type, onAddUser, onAddCourier }: RegistrationProp
           onAddUser({ id, name, email, profile });
           toast({ title: "Usuário Cadastrado", description: `${name} salvo no banco de dados.` });
         } else if (type === 'couriers' && onAddCourier) {
-          onAddCourier({ id, name, externalId });
+          onAddCourier({ id, nome: name, id_motoboy: idMotoboy });
           toast({ title: "Entregador Cadastrado", description: `${name} adicionado à frota.` });
         }
         
-        // Limpar campos
         setName("");
         setEmail("");
         setPassword("");
-        setExternalId("");
+        setIdMotoboy("");
         setLoading(false);
       })
       .catch(async (error) => {
@@ -159,9 +157,9 @@ export function Registration({ type, onAddUser, onAddCourier }: RegistrationProp
                 </Label>
                 <Input 
                   id="reg-ext-id" 
-                  value={externalId} 
-                  onChange={(e) => setExternalId(e.target.value)} 
-                  placeholder="Ex: MOTO-9982" 
+                  value={idMotoboy} 
+                  onChange={(e) => setIdMotoboy(e.target.value)} 
+                  placeholder="Ex: 1562680" 
                   required
                   className="bg-muted border-none"
                 />

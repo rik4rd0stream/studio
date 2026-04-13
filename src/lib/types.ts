@@ -9,8 +9,9 @@ export interface User {
 
 export interface Courier {
   id: string;
-  name: string;
-  externalId: string;
+  nome: string;
+  id_motoboy: string;
+  createdAt?: string;
 }
 
 export interface Order {

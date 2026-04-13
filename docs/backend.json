@@ -1,4 +1,3 @@
-
 {
   "entities": {
     "UserProfile": {
@@ -17,10 +16,10 @@
       "description": "Cadastro de entregador parceiro",
       "type": "object",
       "properties": {
-        "name": { "type": "string" },
-        "externalId": { "type": "string" }
+        "nome": { "type": "string" },
+        "id_motoboy": { "type": "string" }
       },
-      "required": ["name", "externalId"]
+      "required": ["nome", "id_motoboy"]
     },
     "Order": {
       "title": "Order",
@@ -47,7 +46,7 @@
       "schema": "#/entities/UserProfile",
       "description": "Perfis de usuários operacionais"
     },
-    "/couriers/{courierId}": {
+    "/entregadores/{courierId}": {
       "schema": "#/entities/Courier",
       "description": "Lista de entregadores cadastrados"
     },
