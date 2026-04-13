@@ -17,10 +17,11 @@ export default function Home() {
   useEffect(() => {
     setMounted(true);
     
-    // Subscrever ao estado de autenticação do Firebase
+    // Garantir login anônimo para segurança do Firestore
+    signInAnonymously(auth).catch(err => console.error("Auth Error:", err));
+
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
-        // Se autenticado no Firebase, tentamos recuperar os dados locais
         const saved = localStorage.getItem('rappi_commander_session');
         if (saved) {
           try {
@@ -37,25 +38,18 @@ export default function Home() {
   }, [auth]);
 
   const handleLogin = async (email: string, pass: string) => {
-    try {
-      // Garante que o usuário está autenticado no Firebase para as regras de segurança
-      await signInAnonymously(auth);
-      
-      const isMaster = email.includes('master') || email === 'rik4rd0stream@gmail.com';
-      const userData: User = {
-        id: auth.currentUser?.uid || 'usr_' + Math.random().toString(36).substr(2, 5),
-        name: isMaster ? 'Administrador Master' : 'Operador Logístico',
-        email: email,
-        profile: isMaster ? 'master' : 'normal',
-        notificationsEnabled: true,
-        hasRequestAccess: isMaster
-      };
-      
-      setUser(userData);
-      localStorage.setItem('rappi_commander_session', JSON.stringify(userData));
-    } catch (error) {
-      console.error("Erro ao autenticar no Firebase:", error);
-    }
+    const isMaster = email.includes('master') || email === 'rik4rd0stream@gmail.com';
+    const userData: User = {
+      id: auth.currentUser?.uid || 'usr_' + Math.random().toString(36).substr(2, 5),
+      name: isMaster ? 'Administrador Master' : 'Operador Logístico',
+      email: email,
+      profile: isMaster ? 'master' : 'normal',
+      notificationsEnabled: true,
+      hasRequestAccess: isMaster
+    };
+    
+    setUser(userData);
+    localStorage.setItem('rappi_commander_session', JSON.stringify(userData));
   };
 
   const handleLogout = () => {
