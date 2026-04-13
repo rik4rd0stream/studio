@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { 
   Loader2, 
@@ -92,9 +92,12 @@ export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
             Envio Automático (Redash)
             {loading && <Loader2 className="h-5 w-5 animate-spin text-primary" />}
           </h1>
-          <p className="text-muted-foreground">
-            Monitorando: <Badge variant="outline" className="text-primary border-primary">Point📍9944</Badge> e <Badge variant="outline">Sin RT➖</Badge>
-          </p>
+          <div className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
+            Monitorando: 
+            <Badge variant="outline" className="text-primary border-primary">Point📍9944</Badge> 
+            e 
+            <Badge variant="outline">Sin RT➖</Badge>
+          </div>
         </div>
         <div className="flex items-center gap-4">
           {lastUpdate && (
