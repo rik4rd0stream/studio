@@ -1,18 +1,25 @@
-
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, Loader2, SendHorizontal, MapPin, Package, ListChecks, Monitor, ChevronRight, ChevronLeft } from "lucide-react";
-import { refineOrderDetails } from "@/ai/flows/order-details-refinement";
+import { 
+  Loader2, 
+  SendHorizontal, 
+  MapPin, 
+  Package, 
+  RefreshCw, 
+  AlertCircle,
+  Clock
+} from "lucide-react";
+import { fetchRedashOrders, RedashOrder } from "@/app/actions/redash";
 import { useToast } from "@/hooks/use-toast";
 import { Order } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { useFirestore } from "@/firebase";
+import { doc, setDoc } from "firebase/firestore";
+import { errorEmitter } from "@/firebase/error-emitter";
+import { FirestorePermissionError } from "@/firebase/errors";
 
 interface CreateOrderProps {
   onOrderCreated: (order: Order) => void;
@@ -20,203 +27,155 @@ interface CreateOrderProps {
 
 export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
   const { toast } = useToast();
-  const [description, setDescription] = useState("");
+  const db = useFirestore();
   const [loading, setLoading] = useState(false);
-  const [showRedash, setShowRedash] = useState(false);
-  
-  const [extractedData, setExtractedData] = useState<{
-    items: string[];
-    pickup: string;
-    delivery: string;
-    instructions: string;
-    categories: string[];
-  }>({
-    items: [],
-    pickup: "",
-    delivery: "",
-    instructions: "",
-    categories: [],
-  });
+  const [redashOrders, setRedashOrders] = useState<RedashOrder[]>([]);
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 
-  const handleRefine = async () => {
-    if (!description.trim()) return;
+  const loadData = async () => {
     setLoading(true);
-    try {
-      const result = await refineOrderDetails({ description });
-      setExtractedData({
-        items: result.extractedItems,
-        pickup: result.pickupAddress || "",
-        delivery: result.deliveryAddress || "",
-        instructions: result.specialInstructions || "",
-        categories: result.suggestedCategories,
+    const result = await fetchRedashOrders();
+    if (result.success) {
+      setRedashOrders(result.data || []);
+      setLastUpdate(new Date());
+    } else {
+      toast({ 
+        variant: "destructive", 
+        title: "Erro no Redash", 
+        description: "Não foi possível carregar os dados automáticos." 
       });
-      toast({ title: "Refinamento concluído", description: "Dados extraídos com IA com sucesso." });
-    } catch (err) {
-      toast({ variant: "destructive", title: "Erro na IA", description: "Não foi possível analisar o texto agora." });
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  useEffect(() => {
+    loadData();
+    const interval = setInterval(loadData, 300000); // Atualiza a cada 5 min
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleDispatch = (redashOrder: RedashOrder) => {
+    const orderId = redashOrder.order_id || Math.random().toString(36).substr(2, 9);
+    const docRef = doc(db, 'orders', orderId);
+
     const newOrder: Order = {
-      id: Math.random().toString(36).substr(2, 9),
-      items: extractedData.items.length > 0 ? extractedData.items : ["Item Diversos"],
+      id: orderId,
+      items: [redashOrder.items || "Pedido Redash"],
       status: 'pending',
-      deliveryAddress: extractedData.delivery || "Endereço não especificado",
-      pickupAddress: extractedData.pickup || "Base Central",
-      specialInstructions: extractedData.instructions,
+      deliveryAddress: redashOrder.address || "Verificar no App",
+      pickupAddress: "Point📍9944",
+      specialInstructions: `Extraído do Redash - es_trusted: ${redashOrder.es_trusted}`,
       createdAt: new Date().toISOString(),
-      categories: extractedData.categories,
+      categories: ['Redash'],
     };
-    onOrderCreated(newOrder);
-    setDescription("");
-    setExtractedData({ items: [], pickup: "", delivery: "", instructions: "", categories: [] });
-    toast({ title: "Pedido enviado!", description: "O pedido já está disponível para os entregadores." });
-  };
 
-  const redashUrl = "https://redash.rappi.com/embed/query/130603/visualization/176504?api_key=VqwlaUY9wOLjhUJTvrfuKdFExSsJG8ktuzUXy4fR&";
+    setDoc(docRef, newOrder)
+      .then(() => {
+        toast({ title: "Pedido Despachado", description: `ID: ${orderId} agora está em monitoramento.` });
+        onOrderCreated(newOrder);
+      })
+      .catch(async (error) => {
+        const permissionError = new FirestorePermissionError({
+          path: docRef.path,
+          operation: 'create',
+          requestResourceData: newOrder,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+      });
+  };
 
   return (
-    <div className="flex h-full gap-6 animate-slide-up relative">
-      <div className={cn("flex-1 space-y-6 transition-all duration-300", showRedash ? "mr-[500px]" : "mr-0")}>
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold font-headline">Novo Pedido</h1>
-            <p className="text-muted-foreground">Analise os dados do Redash e cole aqui para processamento com IA.</p>
-          </div>
-          <Button 
-            variant="outline" 
-            className="gap-2" 
-            onClick={() => setShowRedash(!showRedash)}
-          >
-            <Monitor className="h-4 w-4" />
-            {showRedash ? "Ocultar Redash" : "Monitorar Redash"}
-          </Button>
+    <div className="space-y-6 animate-slide-up">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold font-headline flex items-center gap-2">
+            Envio Automático (Redash)
+            {loading && <Loader2 className="h-5 w-5 animate-spin text-primary" />}
+          </h1>
+          <p className="text-muted-foreground">
+            Monitorando: <Badge variant="outline" className="text-primary border-primary">Point📍9944</Badge> e <Badge variant="outline">Sin RT➖</Badge>
+          </p>
         </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card className="border-none shadow-sm h-fit">
-            <CardHeader>
-              <CardTitle className="text-xl flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-primary" />
-                Entrada Inteligente
-              </CardTitle>
-              <CardDescription>Copie e cole os detalhes brutos do Redash aqui</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Textarea 
-                placeholder="Ex: Pedido 1234, Pizza, Rua A 100..."
-                className="min-h-[250px] resize-none text-base p-4 bg-muted border-none focus:ring-primary"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-              />
-              <Button 
-                onClick={handleRefine} 
-                className="w-full h-12 text-lg gap-2" 
-                disabled={loading || !description}
-              >
-                {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Sparkles className="h-5 w-5" />}
-                Extrair Dados com IA
-              </Button>
-            </CardContent>
-          </Card>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <Card className="border-none shadow-sm">
-              <CardHeader>
-                <CardTitle className="text-xl flex items-center gap-2">
-                  <ListChecks className="h-5 w-5 text-primary" />
-                  Conferência de Dados
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-2">
-                    <Package className="h-4 w-4 text-primary" /> Itens Detectados
-                  </Label>
-                  <div className="flex flex-wrap gap-2 min-h-[40px] p-2 bg-muted rounded-md border border-dashed">
-                    {extractedData.items.map((item, i) => (
-                      <Badge key={i} variant="secondary" className="bg-primary/10 text-primary border-none">
-                        {item}
-                      </Badge>
-                    ))}
-                    {extractedData.items.length === 0 && <span className="text-muted-foreground text-xs italic">Aguardando entrada...</span>}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 gap-4">
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2 text-xs font-bold text-muted-foreground uppercase">
-                      <MapPin className="h-3 w-3 text-orange-500" /> Origem (Coleta)
-                    </Label>
-                    <Input 
-                      value={extractedData.pickup} 
-                      onChange={(e) => setExtractedData({...extractedData, pickup: e.target.value})} 
-                      placeholder="Ponto de partida"
-                      className="bg-muted border-none"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2 text-xs font-bold text-muted-foreground uppercase">
-                      <MapPin className="h-3 w-3 text-green-500" /> Destino (Entrega)
-                    </Label>
-                    <Input 
-                      value={extractedData.delivery} 
-                      onChange={(e) => setExtractedData({...extractedData, delivery: e.target.value})}
-                      placeholder="Local de chegada"
-                      className="bg-muted border-none"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold text-muted-foreground uppercase">Notas do Operador</Label>
-                  <Input 
-                    value={extractedData.instructions} 
-                    onChange={(e) => setExtractedData({...extractedData, instructions: e.target.value})}
-                    placeholder="Complementos ou orientações"
-                    className="bg-muted border-none"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Button type="submit" className="w-full h-16 text-xl gap-2 font-bold shadow-xl shadow-primary/20 hover:scale-[1.01] transition-transform">
-              <SendHorizontal className="h-6 w-6" />
-              DESPACHAR AGORA
-            </Button>
-          </form>
+        <div className="flex items-center gap-4">
+          {lastUpdate && (
+            <div className="text-[10px] text-muted-foreground flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              Atualizado: {lastUpdate.toLocaleTimeString()}
+            </div>
+          )}
+          <Button variant="outline" size="sm" onClick={loadData} disabled={loading} className="gap-2">
+            <RefreshCw className={loading ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
+            Atualizar Agora
+          </Button>
         </div>
       </div>
 
-      {/* Painel Lateral Redash */}
-      <div className={cn(
-        "fixed top-16 right-0 bottom-0 w-[480px] bg-card border-l shadow-2xl transition-transform duration-300 z-20 overflow-hidden",
-        showRedash ? "translate-x-0" : "translate-x-full"
-      )}>
-        <div className="flex flex-col h-full">
-          <div className="p-4 border-b bg-muted/20 flex items-center justify-between">
-            <h3 className="font-bold flex items-center gap-2">
-              <Monitor className="h-4 w-4 text-primary" />
-              Fonte de Dados (Redash)
-            </h3>
-            <Button variant="ghost" size="icon" onClick={() => setShowRedash(false)}>
-              <ChevronRight className="h-4 w-4" />
-            </Button>
+      <div className="grid grid-cols-1 gap-4">
+        {redashOrders.length === 0 && !loading ? (
+          <div className="text-center py-20 bg-muted/30 rounded-xl border-2 border-dashed flex flex-col items-center">
+            <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-medium text-muted-foreground">Nenhum pedido pendente no Redash</h3>
+            <p className="text-sm text-muted-foreground max-w-xs">
+              Aguardando novas ordens do Point📍9944 que atendam aos critérios de filtragem.
+            </p>
           </div>
-          <div className="flex-1 bg-white">
-            <iframe 
-              src={redashUrl}
-              className="w-full h-full border-none"
-              title="Monitoramento Redash"
-            />
-          </div>
-          <div className="p-4 bg-muted/50 text-[10px] text-muted-foreground">
-            Dica: Utilize filtros no Redash para localizar pedidos específicos antes de copiar.
-          </div>
-        </div>
+        ) : (
+          redashOrders.map((order, idx) => (
+            <Card key={idx} className="border-none shadow-sm hover:shadow-md transition-all overflow-hidden border-l-4 border-l-primary">
+              <CardContent className="p-0">
+                <div className="flex flex-col md:flex-row">
+                  <div className="p-6 flex-1 space-y-4">
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-mono font-bold bg-muted px-2 py-0.5 rounded">
+                            {order.order_id || `ID-${idx}`}
+                          </span>
+                          <Badge className="bg-orange-500/10 text-orange-600 border-none">Aguardando Coleta</Badge>
+                        </div>
+                        <h3 className="text-lg font-bold flex items-center gap-2">
+                          <Package className="h-4 w-4 text-primary" />
+                          {order.items || "Itens do Pedido"}
+                        </h3>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase">Trusted Status</p>
+                        <p className="text-xs font-medium text-green-600">{order.es_trusted}</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="flex gap-3">
+                        <MapPin className="h-4 w-4 text-orange-500 shrink-0 mt-1" />
+                        <div>
+                          <p className="text-[10px] font-bold text-muted-foreground uppercase">Origem</p>
+                          <p className="text-sm font-medium">{order.pickup || "Point📍9944"}</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-3">
+                        <MapPin className="h-4 w-4 text-green-500 shrink-0 mt-1" />
+                        <div>
+                          <p className="text-[10px] font-bold text-muted-foreground uppercase">Destino</p>
+                          <p className="text-sm font-medium truncate max-w-[200px]">{order.address || "Endereço Pendente"}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="p-4 bg-muted/20 flex items-center justify-center border-t md:border-t-0 md:border-l">
+                    <Button 
+                      onClick={() => handleDispatch(order)}
+                      className="w-full md:w-auto px-8 h-12 gap-2 text-lg font-bold"
+                    >
+                      <SendHorizontal className="h-5 w-5" />
+                      DESPACHAR
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
       </div>
     </div>
   );
