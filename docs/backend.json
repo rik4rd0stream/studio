@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "UserProfile": {
@@ -8,7 +9,7 @@
         "id": { "type": "string" },
         "name": { "type": "string" },
         "email": { "type": "string" },
-        "role": { "type": "string", "enum": ["normal", "master"] },
+        "profile": { "type": "string", "enum": ["normal", "master"] },
         "notificationsEnabled": { "type": "boolean" },
         "hasRequestAccess": { "type": "boolean" }
       }
@@ -33,7 +34,7 @@
         "command": { "type": "string" },
         "targetUserId": { "type": "string" },
         "senderName": { "type": "string" },
-        "status": { "type": "string" }
+        "status": { "type": "string", "enum": ["pending", "accepted"] }
       }
     }
   },

@@ -1,3 +1,4 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -5,8 +6,7 @@ service cloud.firestore {
     /**
      * RAPPI COMMANDER SECURITY RULES
      * 
-     * Permissões simplificadas para prototipagem rápida.
-     * Exige que o usuário esteja autenticado (pode ser login anônimo).
+     * Regras baseadas em autenticação para evitar erros de permissão negada.
      */
 
     function isSignedIn() {
@@ -27,11 +27,10 @@ service cloud.firestore {
     match /requests/{requestId} {
       allow read, write: if isSignedIn();
     }
-
-    // Compatibilidade com caminhos legados do blueprint
+    
+    // Fallback para caminhos legados do blueprint se necessário
     match /user_profiles/{id} { allow read, write: if isSignedIn(); }
     match /deliverer_profiles/{id} { allow read, write: if isSignedIn(); }
     match /orders/{id} { allow read, write: if isSignedIn(); }
-    match /master_roles/{id} { allow read, write: if isSignedIn(); }
   }
 }
