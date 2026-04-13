@@ -4,43 +4,43 @@ import { useState, useEffect } from "react";
 import { LoginView } from "@/components/auth/login-view";
 import { MainDashboard } from "@/components/dashboard/main-dashboard";
 import { User } from "@/lib/types";
-import { useAuth, useUser, useFirestore } from "@/firebase";
-import { signInAnonymously } from "firebase/auth";
+import { useFirestore } from "@/firebase";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 
+const SESSION_KEY = 'rappi_commander_session_v2';
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
 export default function Home() {
-  const auth = useAuth();
   const db = useFirestore();
   const { toast } = useToast();
-  const { user: firebaseUser, isUserLoading } = useUser();
   const [localUser, setLocalUser] = useState<User | null>(null);
   const [mounted, setMounted] = useState(false);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
 
   useEffect(() => {
     setMounted(true);
-  }, []);
-
-  // Garante uma conexão anônima persistente para evitar erros de permissão iniciais
-  useEffect(() => {
-    if (mounted && !isUserLoading && !firebaseUser) {
-      signInAnonymously(auth).catch((err) => {
-        console.error("Erro na autenticação anônima:", err);
-      });
-    }
-  }, [firebaseUser, isUserLoading, auth, mounted]);
-
-  useEffect(() => {
-    const saved = localStorage.getItem('rappi_commander_session');
-    if (saved) {
+    
+    // Verifica sessão salva
+    const savedSession = localStorage.getItem(SESSION_KEY);
+    if (savedSession) {
       try {
-        setLocalUser(JSON.parse(saved));
+        const { user, expiry } = JSON.parse(savedSession);
+        const now = new Date().getTime();
+        
+        if (now < expiry) {
+          setLocalUser(user);
+        } else {
+          localStorage.removeItem(SESSION_KEY);
+          toast({ title: "Sessão Expirada", description: "Por favor, faça login novamente." });
+        }
       } catch (e) {
-        localStorage.removeItem('rappi_commander_session');
+        localStorage.removeItem(SESSION_KEY);
       }
     }
-  }, []);
+    setIsInitializing(false);
+  }, [toast]);
 
   const handleLogin = async (emailInput: string, passInput: string) => {
     setIsAuthenticating(true);
@@ -49,22 +49,22 @@ export default function Home() {
     const password = passInput.trim();
     
     try {
-      // Busca no novo banco de perfis (userProfiles)
+      // Busca o perfil no novo banco de dados
       const q = query(collection(db, 'userProfiles'), where('email', '==', email));
       const querySnapshot = await getDocs(q);
       
-      let userData: User;
+      let userData: User | null = null;
       
       if (!querySnapshot.empty) {
         const userDoc = querySnapshot.docs[0];
         const data = userDoc.data();
         
-        // Validação de senha simples via Firestore
+        // Validação de senha
         if (data.password && data.password !== password) {
           toast({
             variant: "destructive",
             title: "Senha Incorreta",
-            description: "Verifique seus dados e tente novamente."
+            description: "Verifique seus dados."
           });
           setIsAuthenticating(false);
           return;
@@ -79,12 +79,10 @@ export default function Home() {
           hasRequestAccess: data.hasRequestAccess
         } as User;
       } else {
-        // Se não existir no banco, apenas o Ricardo entra como Master Inicial
-        const isMasterAdmin = email === 'rik4rd0stream@gmail.com';
-        
-        if (isMasterAdmin) {
+        // Mestre Único se não estiver no banco
+        if (email === 'rik4rd0stream@gmail.com') {
            userData = {
-              id: firebaseUser?.uid || 'master_root',
+              id: 'master_root',
               name: 'Ricardo (Master)',
               email: email,
               role: 'master',
@@ -94,23 +92,26 @@ export default function Home() {
         } else {
           toast({
             variant: "destructive",
-            title: "Não autorizado",
-            description: "Usuário não encontrado no novo banco. Peça ao administrador para cadastrá-lo."
+            title: "Acesso Negado",
+            description: "Usuário não cadastrado."
           });
           setIsAuthenticating(false);
           return;
         }
       }
       
-      setLocalUser(userData);
-      localStorage.setItem('rappi_commander_session', JSON.stringify(userData));
-      toast({ title: "Bem-vindo!", description: `Logado como ${userData.name}` });
+      if (userData) {
+        setLocalUser(userData);
+        const expiry = new Date().getTime() + SEVEN_DAYS_MS;
+        localStorage.setItem(SESSION_KEY, JSON.stringify({ user: userData, expiry }));
+        toast({ title: "Bem-vindo!", description: `Olá, ${userData.name}` });
+      }
     } catch (err: any) {
       console.error("Login Error:", err);
       toast({
         variant: "destructive",
-        title: "Erro de Permissão",
-        description: "O banco de dados ainda está sendo configurado. Tente novamente em instantes."
+        title: "Erro de Conexão",
+        description: "Não foi possível validar o acesso agora."
       });
     } finally {
       setIsAuthenticating(false);
@@ -119,16 +120,16 @@ export default function Home() {
 
   const handleLogout = () => {
     setLocalUser(null);
-    localStorage.removeItem('rappi_commander_session');
+    localStorage.removeItem(SESSION_KEY);
   };
 
-  if (!mounted || isUserLoading || isAuthenticating) {
+  if (!mounted || isInitializing || isAuthenticating) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
-          <div className="h-12 w-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-          <p className="text-primary font-bold animate-pulse text-xs uppercase tracking-widest">
-            Sincronizando Banco...
+          <div className="h-10 w-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          <p className="text-primary font-bold animate-pulse text-[10px] uppercase tracking-widest">
+            {isAuthenticating ? "Validando Acesso..." : "Carregando Rappi..."}
           </p>
         </div>
       </div>

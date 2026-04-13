@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -24,9 +23,11 @@ export function PushListener({ user }: { user: User }) {
   const [activeRequest, setActiveRequest] = useState<OrderRequest | null>(null);
 
   useEffect(() => {
-    if (!user || !user.id || !user.notificationsEnabled) return;
+    // Só ativa se o usuário estiver logado e com notificações habilitadas
+    if (!user || !user.email || !user.notificationsEnabled) return;
 
-    // Ouve solicitações onde o targetUserId coincide com o ID do usuário logado
+    // Busca o ID do usuário no banco (que agora é persistente)
+    // O targetUserId deve coincidir com o ID que você usa no request-order.tsx
     const q = query(
       collection(db, "requests"),
       where("targetUserId", "==", user.id),
@@ -38,17 +39,14 @@ export function PushListener({ user }: { user: User }) {
         const lastDoc = snapshot.docs[snapshot.docs.length - 1];
         const request = { id: lastDoc.id, ...lastDoc.data() } as OrderRequest;
         
-        // Evita duplicidade se já estiver aberto
         if (activeRequest?.id !== request.id) {
           setActiveRequest(request);
           
-          // Alerta visual secundário
           toast({
-            title: "NOVA SOLICITAÇÃO",
-            description: `De: ${request.senderName}`,
+            title: "NOVO PEDIDO RECEBIDO",
+            description: `Enviado por: ${request.senderName}`,
           });
 
-          // Toca som de alerta
           try {
             const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
             audio.play().catch(() => {});
@@ -58,7 +56,7 @@ export function PushListener({ user }: { user: User }) {
         setActiveRequest(null);
       }
     }, (error) => {
-      console.error("Erro no Listener de Push:", error);
+      console.warn("Listener de Push aguardando sincronização...");
     });
 
     return () => unsubscribe();
@@ -75,7 +73,7 @@ export function PushListener({ user }: { user: User }) {
 
     toast({
       title: "Despachado",
-      description: "Comando enviado para o WhatsApp.",
+      description: "Comando enviado para o WhatsApp com sucesso.",
     });
   };
 
@@ -94,12 +92,12 @@ export function PushListener({ user }: { user: User }) {
           <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-2 animate-bounce">
             <BellRing className="h-8 w-8 text-primary" />
           </div>
-          <AlertDialogTitle className="text-xl font-bold text-primary">Novo Pedido!</AlertDialogTitle>
+          <AlertDialogTitle className="text-xl font-bold text-primary">Solicitação de Operação</AlertDialogTitle>
           <AlertDialogDescription className="text-sm">
-            <span className="font-bold text-foreground">{activeRequest.senderName}</span> enviou uma solicitação:
+            <span className="font-bold text-foreground">{activeRequest.senderName}</span> solicita sua ação:
             <div className="mt-4 p-4 bg-muted/50 rounded-2xl font-mono text-[11px] text-left border border-primary/10">
               <p className="font-bold text-primary mb-1 uppercase">{activeRequest.storeName}</p>
-              <p className="opacity-70 font-bold">PEDIDO: #{activeRequest.orderId}</p>
+              <p className="opacity-70 font-bold">ORDEM: #{activeRequest.orderId}</p>
             </div>
           </AlertDialogDescription>
         </AlertDialogHeader>
@@ -114,7 +112,7 @@ export function PushListener({ user }: { user: User }) {
             onClick={handleReject} 
             className="w-full h-10 bg-transparent border-none text-muted-foreground hover:text-foreground text-xs"
           >
-            IGNORAR
+            RECUSAR
           </AlertDialogCancel>
         </AlertDialogFooter>
       </AlertDialogContent>
