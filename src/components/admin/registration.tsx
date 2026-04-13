@@ -233,7 +233,7 @@ export function Registration({ type }: RegistrationProps) {
                     <div className="font-medium">{type === 'users' ? item.name : item.nome}</div>
                     <div className="text-[10px] font-bold text-primary uppercase">{type === 'users' ? item.role : `ID: ${item.id_motoboy}`}</div>
                   </TableCell>
-                  <TableCell className="text-xs">{type === 'users' ? item.email : `Ref: ${item.id}`}</TableCell>
+                  <TableCell className="text-xs">{type === 'users' ? item.email : ""}</TableCell>
                   <TableCell className="text-right">
                     <Button variant="ghost" size="icon" onClick={() => handleEdit(item)}><Pencil className="h-4 w-4" /></Button>
                     <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDelete(item.id)}><Trash2 className="h-4 w-4" /></Button>
