@@ -1,16 +1,19 @@
+
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
 import { RedashOrder, fetchRedashOrders } from "@/app/actions/redash";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { RefreshCw, Loader2, Package, User } from "lucide-react";
+import { RefreshCw, Loader2, Package, User, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useFirestore, useCollection } from "@/firebase";
 import { collection, query } from "firebase/firestore";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 export function ActiveOrders() {
+  const { toast } = useToast();
   const db = useFirestore();
   const [loading, setLoading] = useState(false);
   const [allOrders, setAllOrders] = useState<RedashOrder[]>([]);
@@ -33,6 +36,16 @@ export function ActiveOrders() {
     const interval = setInterval(loadData, 30000); // 30s
     return () => clearInterval(interval);
   }, []);
+
+  const handleCopyId = (id: string) => {
+    navigator.clipboard.writeText(id).then(() => {
+      toast({
+        title: "ID Copiado",
+        description: `O código #${id} foi salvo na área de transferência.`,
+        duration: 2000,
+      });
+    });
+  };
 
   // Filtros de Monitoramento: Point 9944 E (GEO ou EXTERNO)
   const filteredOrders = useMemo(() => {
@@ -124,13 +137,24 @@ export function ActiveOrders() {
                           <p className="text-[11px] font-bold text-foreground leading-tight">{order.store_name}</p>
                           <p className="text-[10px] text-muted-foreground truncate max-w-[200px]">{order.direccion_entrega}</p>
                         </div>
-                        <div className="flex items-center gap-3">
-                          {isExterno && (
-                            <Badge className="h-5 px-1.5 text-[8px] font-bold bg-red-500 text-white border-none uppercase">
-                              Externo
-                            </Badge>
-                          )}
-                          <span className="text-[10px] font-mono font-bold text-muted-foreground">#{order.order_id}</span>
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 mr-1">
+                            {isExterno && (
+                              <Badge className="h-5 px-1.5 text-[8px] font-bold bg-red-500 text-white border-none uppercase">
+                                Externo
+                              </Badge>
+                            )}
+                            <span className="text-[10px] font-mono font-bold text-muted-foreground">#{order.order_id}</span>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-full"
+                            onClick={() => handleCopyId(order.order_id)}
+                            title="Copiar ID"
+                          >
+                            <Copy className="h-3 w-3" />
+                          </Button>
                         </div>
                       </div>
                     );
