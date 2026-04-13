@@ -7,7 +7,7 @@ service cloud.firestore {
      * Permissões simplificadas para garantir funcionamento em Android Nativo.
      */
 
-    // Coleção de Entregadores (Prioridade Máxima)
+    // Coleção de Entregadores (Acesso Público para Teste no Android)
     match /entregadores/{document=**} {
       allow read, write: if true;
     }
@@ -29,7 +29,7 @@ service cloud.firestore {
       }
     }
 
-    // Solicitações de Push (Essencial para funcionamento no celular)
+    // Solicitações de Push
     match /requests/{requestId} {
       allow read, write: if true;
     }
@@ -39,7 +39,7 @@ service cloud.firestore {
       allow read, write: if true;
     }
     
-    // Regra global de segurança para qualquer outra coleção
+    // Regra global de segurança
     match /{document=**} {
       allow read, write: if request.auth != null;
     }

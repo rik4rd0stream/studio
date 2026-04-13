@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,12 +17,13 @@ import {
   KeyRound,
   Bell,
   PackageSearch,
-  AlertTriangle
+  AlertTriangle,
+  RefreshCw
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { UserRole } from "@/lib/types";
 import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { doc, setDoc, deleteDoc, updateDoc, collection, query } from "firebase/firestore";
+import { doc, setDoc, deleteDoc, updateDoc, collection, getDocs } from "firebase/firestore";
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
 
@@ -34,6 +35,8 @@ export function Registration({ type }: RegistrationProps) {
   const { toast } = useToast();
   const db = useFirestore();
   const [loading, setLoading] = useState(false);
+  const [forceLoading, setForceLoading] = useState(false);
+  const [manualItems, setManualItems] = useState<any[] | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   
   const [name, setName] = useState("");
@@ -46,9 +49,12 @@ export function Registration({ type }: RegistrationProps) {
 
   const collectionName = type === 'users' ? 'userProfiles' : 'entregadores';
   
-  // Consulta simplificada para evitar erros no Android
+  // Consulta em tempo real (onSnapshot)
   const listQuery = useMemoFirebase(() => collection(db, collectionName), [db, collectionName]);
-  const { data: items, isLoading: loadingList, error: listError } = useCollection<any>(listQuery);
+  const { data: realTimeItems, isLoading: loadingList, error: listError } = useCollection<any>(listQuery);
+
+  // Itens finais (preferência para manual se houver erro ou forçar)
+  const items = manualItems || realTimeItems;
 
   const resetForm = () => {
     setName("");
@@ -59,6 +65,21 @@ export function Registration({ type }: RegistrationProps) {
     setHasRequestAccess(false);
     setIdMotoboy("");
     setEditingId(null);
+  };
+
+  // Função para forçar carregamento no Android se o real-time falhar
+  const handleForceLoad = async () => {
+    setForceLoading(true);
+    try {
+      const querySnapshot = await getDocs(collection(db, collectionName));
+      const docs = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setManualItems(docs);
+      toast({ title: "Sincronizado", description: `${docs.length} registros encontrados via Busca Direta.` });
+    } catch (err) {
+      toast({ variant: "destructive", title: "Erro de Busca", description: "Falha ao forçar carregamento." });
+    } finally {
+      setForceLoading(false);
+    }
   };
 
   const handleEdit = (item: any) => {
@@ -84,6 +105,7 @@ export function Registration({ type }: RegistrationProps) {
     deleteDoc(docRef)
       .then(() => {
         toast({ title: "Removido", description: "Registro excluído com sucesso." });
+        if (manualItems) handleForceLoad(); // Atualiza manual se estiver em uso
       })
       .catch(async () => {
         errorEmitter.emit('permission-error', new FirestorePermissionError({ path: docRef.path, operation: 'delete' }));
@@ -123,6 +145,7 @@ export function Registration({ type }: RegistrationProps) {
         toast({ title: "Salvo", description: "Dados gravados com sucesso." });
         resetForm();
         setLoading(false);
+        if (manualItems) handleForceLoad(); // Atualiza manual se estiver em uso
       })
       .catch(async () => {
         errorEmitter.emit('permission-error', new FirestorePermissionError({ path: docRef.path, operation: 'write', requestResourceData: data }));
@@ -221,8 +244,23 @@ export function Registration({ type }: RegistrationProps) {
       <Card className="border-none shadow-sm overflow-hidden">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="text-xl">Registros Atuais</CardTitle>
-            {items && <span className="text-[10px] font-bold bg-primary/10 text-primary px-2 py-1 rounded-full">{items.length} itens</span>}
+            <div>
+              <CardTitle className="text-xl">Registros Atuais</CardTitle>
+              {type === 'couriers' && <p className="text-[10px] text-muted-foreground mt-1">Sincronizado com o Banco Antigo</p>}
+            </div>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleForceLoad} 
+                disabled={forceLoading}
+                className="h-8 gap-2 text-[10px] uppercase font-bold text-primary border-primary/20"
+              >
+                <RefreshCw className={cn("h-3 w-3", forceLoading && "animate-spin")} />
+                Forçar Busca
+              </Button>
+              {items && <span className="text-[10px] font-bold bg-primary/10 text-primary px-2 py-1 rounded-full flex items-center">{items.length} itens</span>}
+            </div>
           </div>
         </CardHeader>
         <CardContent className="p-0">
@@ -235,18 +273,25 @@ export function Registration({ type }: RegistrationProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {loadingList ? (
+              {(loadingList && !manualItems) ? (
                 <TableRow><TableCell colSpan={3} className="text-center py-8"><Loader2 className="animate-spin mx-auto" /></TableCell></TableRow>
-              ) : listError ? (
+              ) : listError && !manualItems ? (
                 <TableRow>
                   <TableCell colSpan={3} className="text-center py-8 text-destructive">
                     <AlertTriangle className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p className="text-[10px] font-bold uppercase">Erro de Sincronização Android</p>
-                    <p className="text-[9px] opacity-70">Verifique a conexão e as regras do servidor.</p>
+                    <p className="text-[10px] font-bold uppercase">Erro Android</p>
+                    <p className="text-[9px] opacity-70 mb-4">A conexão em tempo real falhou.</p>
+                    <Button size="sm" onClick={handleForceLoad} variant="destructive" className="h-7 text-[9px] font-bold">TENTAR BUSCA DIRETA</Button>
                   </TableCell>
                 </TableRow>
               ) : items?.length === 0 ? (
-                <TableRow><TableCell colSpan={3} className="text-center py-8 text-muted-foreground italic text-xs">Nenhum registro encontrado na coleção '{collectionName}'.</TableCell></TableRow>
+                <TableRow>
+                  <TableCell colSpan={3} className="text-center py-12 text-muted-foreground flex flex-col items-center">
+                    <Bike className="h-10 w-10 opacity-10 mb-2" />
+                    <p className="italic text-xs">Nenhum registro encontrado na coleção '{collectionName}'.</p>
+                    <Button variant="link" onClick={handleForceLoad} className="text-[10px] uppercase mt-2">Clique para buscar novamente</Button>
+                  </TableCell>
+                </TableRow>
               ) : items?.map((item) => (
                 <TableRow key={item.id}>
                   <TableCell>
