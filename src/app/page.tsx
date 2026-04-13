@@ -46,8 +46,8 @@ export default function Home() {
     setIsAuthenticating(true);
     
     try {
-      // Busca o perfil no Firestore pelo email para garantir que o ID seja o mesmo do cadastro
-      const q = query(collection(db, 'users'), where('email', '==', email));
+      // Busca o perfil no Firestore pelo email para sincronizar o ID
+      const q = query(collection(db, 'users'), where('email', '==', email.toLowerCase().trim()));
       const querySnapshot = await getDocs(q);
       
       let userData: User;
@@ -62,7 +62,7 @@ export default function Home() {
         userData = {
           id: firebaseUser?.uid || 'usr_' + Math.random().toString(36).substr(2, 5),
           name: isMaster ? 'Administrador Master' : 'Operador Logístico',
-          email: email,
+          email: email.toLowerCase().trim(),
           profile: isMaster ? 'master' : 'normal',
           notificationsEnabled: true,
           hasRequestAccess: isMaster
@@ -91,7 +91,7 @@ export default function Home() {
         <div className="flex flex-col items-center gap-4">
           <div className="h-12 w-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
           <div className="text-primary font-bold animate-pulse text-xs uppercase tracking-widest">
-            {isAuthenticating ? "Validando Acesso..." : "Iniciando Rappi Commander..."}
+            {isAuthenticating ? "Sincronizando Perfil..." : "Iniciando Rappi Commander..."}
           </div>
         </div>
       </div>

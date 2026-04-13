@@ -34,39 +34,48 @@ export function PushListener({ user }: { user: User }) {
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      // Pega a última notificação pendente
       if (!snapshot.empty) {
         const lastDoc = snapshot.docs[snapshot.docs.length - 1];
         const request = { id: lastDoc.id, ...lastDoc.data() } as OrderRequest;
-        setActiveRequest(request);
         
-        // Toca um som de alerta se possível (UX operacional)
-        try {
-          const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
-          audio.play().catch(() => {});
-        } catch (e) {}
+        // Evita duplicidade se já estiver aberto
+        if (activeRequest?.id !== request.id) {
+          setActiveRequest(request);
+          
+          // Alerta visual secundário
+          toast({
+            title: "NOVA SOLICITAÇÃO",
+            description: `De: ${request.senderName}`,
+          });
+
+          // Toca som de alerta
+          try {
+            const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+            audio.play().catch(() => {});
+          } catch (e) {}
+        }
       } else {
         setActiveRequest(null);
       }
+    }, (error) => {
+      console.error("Erro no Listener de Push:", error);
     });
 
     return () => unsubscribe();
-  }, [db, user]);
+  }, [db, user, activeRequest?.id, toast]);
 
   const handleAccept = () => {
     if (!activeRequest || !activeRequest.id) return;
     
-    // Abre o WhatsApp com o comando
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(activeRequest.command)}`;
     window.open(whatsappUrl, '_blank');
     
-    // Remove a solicitação para não aparecer novamente
     deleteDoc(doc(db, "requests", activeRequest.id));
     setActiveRequest(null);
 
     toast({
-      title: "Solicitação Aceita",
-      description: "O comando foi enviado para o WhatsApp.",
+      title: "Despachado",
+      description: "Comando enviado para o WhatsApp.",
     });
   };
 
