@@ -16,10 +16,10 @@ export default function Home() {
   useEffect(() => {
     setMounted(true);
     
-    // Configurar listener de estado de autenticação
+    // 1. Ouvir mudanças de autenticação
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
-        // Se já temos um usuário no localStorage, restauramos
+        // Se o usuário já estava logado no sistema do Rappi, restauramos a sessão local
         const saved = localStorage.getItem('rappi_commander_session');
         if (saved) {
           try {
@@ -29,17 +29,17 @@ export default function Home() {
           }
         }
       } else {
-        // Se não está autenticado, força login anônimo para segurança do Firestore
-        signInAnonymously(auth).catch(err => console.error("Auth Error:", err));
+        // 2. Se não houver ninguém, fazemos login anônimo para ganhar permissão no Firestore
+        signInAnonymously(auth).catch(err => console.error("Erro no Auth Silencioso:", err));
       }
-      // Consideramos inicializado apenas após o Firebase responder
       setAuthInitialized(true);
     });
 
     return () => unsubscribe();
   }, [auth]);
 
-  const handleLogin = async (email: string, pass: string) => {
+  const handleLogin = (email: string, pass: string) => {
+    // Simulação de regras de perfil baseada no email
     const isMaster = email.includes('master') || email === 'rik4rd0stream@gmail.com';
     const userData: User = {
       id: auth.currentUser?.uid || 'usr_' + Math.random().toString(36).substr(2, 5),
@@ -57,13 +57,13 @@ export default function Home() {
   const handleLogout = () => {
     setUser(null);
     localStorage.removeItem('rappi_commander_session');
-    auth.signOut();
+    // Mantemos a conexão anônima para que o app continue funcionando
   };
 
   if (!mounted || !authInitialized) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-pulse text-primary font-bold">Iniciando Rappi Commander...</div>
+        <div className="animate-pulse text-primary font-bold">Conectando ao Rappi Commander...</div>
       </div>
     );
   }

@@ -2,15 +2,12 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    /**
-     * Rappi Commander - Regras de Segurança Simplificadas para Operação
-     */
-
+    // Função para verificar se o app tem o "crachá" do Firebase (Anônimo ou Logado)
     function isSignedIn() {
       return request.auth != null;
     }
 
-    // Coleção de Usuários (Operadores)
+    // Coleção de Usuários Operadores
     match /users/{userId} {
       allow read, write: if isSignedIn();
     }
@@ -20,25 +17,14 @@ service cloud.firestore {
       allow read, write: if isSignedIn();
     }
 
-    // Coleção de Pedidos (Monitoramento)
-    // Nota: O monitoramento do Redash é via Server Action, mas se houver cache no Firestore:
-    match /orders/{orderId} {
-      allow read, write: if isSignedIn();
-    }
-
-    // Coleção de Solicitações (Push/Alertas)
+    // Coleção de Solicitações de Push
     match /requests/{requestId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow delete: if isSignedIn();
-      allow update: if isSignedIn();
+      allow read, create, delete, update: if isSignedIn();
     }
 
-    // Coleção de Papéis Administrativos
-    match /roles_master/{userId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow write: if false; // Gerenciado apenas via Admin
+    // Bloqueio padrão para qualquer outra coisa
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

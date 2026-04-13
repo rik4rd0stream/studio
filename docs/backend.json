@@ -27,8 +27,12 @@
       "type": "object",
       "properties": {
         "orderId": { "type": "string" },
+        "storeName": { "type": "string" },
+        "command": { "type": "string" },
         "targetUserId": { "type": "string" },
-        "status": { "type": "string" }
+        "senderName": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string" }
       }
     }
   },
