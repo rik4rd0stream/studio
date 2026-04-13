@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -18,22 +17,22 @@ export function ActiveOrders() {
   const [loading, setLoading] = useState(false);
   const [allOrders, setAllOrders] = useState<RedashOrder[]>([]);
   
-  // Busca entregadores do banco para mapear ID -> Nome
   const couriersQuery = useMemo(() => query(collection(db, 'entregadores')), [db]);
   const { data: couriers } = useCollection<any>(couriersQuery);
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = async (silent = false) => {
+    if (!silent) setLoading(true);
     const result = await fetchRedashOrders();
     if (result.success) {
       setAllOrders(result.data || []);
     }
-    setLoading(false);
+    if (!silent) setLoading(false);
   };
 
   useEffect(() => {
     loadData();
-    const interval = setInterval(loadData, 30000); // 30s
+    // Atualização automática a cada 10 segundos
+    const interval = setInterval(() => loadData(true), 10000); 
     return () => clearInterval(interval);
   }, []);
 
@@ -47,7 +46,6 @@ export function ActiveOrders() {
     });
   };
 
-  // Filtros de Monitoramento: Point 9944 E (GEO ou EXTERNO)
   const filteredOrders = useMemo(() => {
     return allOrders.filter(row => {
       const isPoint9944 = Object.values(row).some(val => String(val).includes('9944'));
@@ -61,7 +59,6 @@ export function ActiveOrders() {
     });
   }, [allOrders]);
 
-  // Agrupamento por Entregador
   const groupedOrders = useMemo(() => {
     const groups: { [key: string]: RedashOrder[] } = {};
     filteredOrders.forEach(order => {
@@ -87,12 +84,12 @@ export function ActiveOrders() {
         <Button 
           variant="ghost" 
           size="sm" 
-          onClick={loadData} 
+          onClick={() => loadData()} 
           disabled={loading} 
-          className="h-7 gap-1.5 text-blue-600 hover:bg-blue-50 text-[10px] font-bold"
+          className="h-7 gap-1.5 text-blue-600 hover:bg-blue-50 text-[11px] font-bold uppercase tracking-tight"
         >
           <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
-          Atualizar
+          ATUALIZAR
         </Button>
       </div>
 
@@ -106,7 +103,6 @@ export function ActiveOrders() {
           Object.entries(groupedOrders).map(([rtId, orders]) => (
             <Card key={rtId} className="border border-border/60 bg-card/80 shadow-sm overflow-hidden rounded-2xl">
               <CardContent className="p-0">
-                {/* Header do Entregador */}
                 <div className="p-4 bg-muted/30 flex items-center justify-between border-b border-border/40">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
@@ -121,7 +117,6 @@ export function ActiveOrders() {
                   </div>
                 </div>
 
-                {/* Lista de Pedidos do Entregador */}
                 <div className="p-3 space-y-2">
                   {orders.map((order, idx) => {
                     const isExterno = Object.values(order).some(val => String(val).includes('EXTERNO❌'));

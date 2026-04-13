@@ -39,7 +39,6 @@ export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
   const db = useFirestore();
   const [loading, setLoading] = useState(false);
   const [allOrders, setAllOrders] = useState<RedashOrder[]>([]);
-  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   
   const [selectedCommand, setSelectedCommand] = useState("!!bundleBR");
   const [selectedOrder, setSelectedOrder] = useState<RedashOrder | null>(null);
@@ -50,7 +49,6 @@ export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
   const couriersQuery = useMemo(() => query(collection(db, 'entregadores')), [db]);
   const { data: couriers, loading: loadingCouriers } = useCollection<any>(couriersQuery);
 
-  // Filtro específico para a tela de ENVIO: Point 9944 e Sin RT
   const redashOrders = useMemo(() => {
     return allOrders.filter(row => {
       const isPoint9944 = Object.values(row).some(val => 
@@ -71,25 +69,25 @@ export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
     );
   }, [couriers, searchCourier]);
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = async (silent = false) => {
+    if (!silent) setLoading(true);
     const result = await fetchRedashOrders();
     if (result.success) {
       setAllOrders(result.data || []);
-      setLastUpdate(new Date());
-    } else {
+    } else if (!silent) {
       toast({ 
         variant: "destructive", 
         title: "Erro no Redash", 
         description: "Não foi possível carregar os dados automáticos." 
       });
     }
-    setLoading(false);
+    if (!silent) setLoading(false);
   };
 
   useEffect(() => {
     loadData();
-    const interval = setInterval(loadData, 300000); // 5 min
+    // Atualização automática a cada 10 segundos
+    const interval = setInterval(() => loadData(true), 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -173,12 +171,12 @@ export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
           <Button 
             variant="ghost" 
             size="sm" 
-            onClick={loadData} 
+            onClick={() => loadData()} 
             disabled={loading} 
-            className="h-6 px-2 gap-1.5 text-blue-600 hover:bg-blue-50 text-[9px] font-bold uppercase"
+            className="h-6 px-2 gap-1.5 text-blue-600 hover:bg-blue-50 text-[11px] font-bold uppercase tracking-tight"
           >
-            <RefreshCw className={cn("h-3 w-3", loading && "animate-spin")} />
-            Atualizar
+            <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
+            ATUALIZAR
           </Button>
         </div>
       </div>
