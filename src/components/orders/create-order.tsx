@@ -201,9 +201,16 @@ export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
                   <h3 className="text-xs font-bold text-foreground leading-tight group-hover:text-primary transition-colors">
                     {order.store_name || "Loja s/ Nome"}
                   </h3>
-                  <span className="text-[9px] font-mono text-muted-foreground">
-                    #{order.order_id}
-                  </span>
+                  <div className="flex flex-col items-end">
+                    <span className="text-[9px] font-mono text-muted-foreground">
+                      #{order.order_id}
+                    </span>
+                    {order.estado_detallado_actual && (
+                      <span className="text-[8px] text-muted-foreground/60 font-bold uppercase tracking-tighter">
+                        {order.estado_detallado_actual}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 
                 <div className="flex items-start gap-1.5 text-muted-foreground">
@@ -224,7 +231,7 @@ export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
             placeholder="ID DO PEDIDO" 
             value={manualOrderId}
             onChange={(e) => setManualOrderId(e.target.value)}
-            className="h-12 text-center text-lg font-bold tracking-widest bg-card border border-border focus-visible:ring-primary focus-visible:border-primary transition-all rounded-xl shadow-sm uppercase placeholder:text-muted-foreground/40"
+            className="h-12 text-center text-lg font-bold tracking-widest bg-card border border-border focus-visible:ring-primary focus-visible:ring-primary transition-all rounded-xl shadow-sm uppercase placeholder:text-muted-foreground/40"
           />
 
           <div className="grid grid-cols-2 gap-2">
