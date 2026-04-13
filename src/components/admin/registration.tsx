@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -47,7 +46,8 @@ export function Registration({ type }: RegistrationProps) {
 
   const collectionName = type === 'users' ? 'userProfiles' : 'entregadores';
   
-  const listQuery = useMemoFirebase(() => query(collection(db, collectionName)), [db, collectionName]);
+  // Consulta simplificada para evitar erros no Android
+  const listQuery = useMemoFirebase(() => collection(db, collectionName), [db, collectionName]);
   const { data: items, isLoading: loadingList, error: listError } = useCollection<any>(listQuery);
 
   const resetForm = () => {
@@ -64,20 +64,22 @@ export function Registration({ type }: RegistrationProps) {
   const handleEdit = (item: any) => {
     setEditingId(item.id);
     if (type === 'users') {
-      setName(item.name || "");
+      setName(item.name || item.nome || "");
       setEmail(item.email || "");
       setPassword(item.password || "");
       setRole(item.role || "normal");
       setNotificationsEnabled(item.notificationsEnabled || false);
       setHasRequestAccess(item.hasRequestAccess || false);
     } else {
-      setName(item.nome || "");
-      setIdMotoboy(item.id_motoboy || "");
+      setName(item.nome || item.name || "");
+      setIdMotoboy(item.id_motoboy || item.id || "");
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleDelete = (id: string) => {
+    if (!confirm("Tem certeza que deseja remover este registro?")) return;
+    
     const docRef = doc(db, collectionName, id);
     deleteDoc(docRef)
       .then(() => {
@@ -204,21 +206,31 @@ export function Registration({ type }: RegistrationProps) {
               </div>
             )}
 
-            <Button type="submit" className="w-full h-12 text-lg" disabled={loading}>
-              {loading ? <Loader2 className="animate-spin" /> : editingId ? 'Salvar Alterações' : 'Cadastrar'}
-            </Button>
+            <div className="flex gap-2">
+              <Button type="submit" className="flex-1 h-12 text-lg" disabled={loading}>
+                {loading ? <Loader2 className="animate-spin" /> : editingId ? 'Salvar Alterações' : 'Cadastrar'}
+              </Button>
+              {editingId && (
+                <Button type="button" variant="outline" onClick={resetForm} className="h-12">Cancelar</Button>
+              )}
+            </div>
           </form>
         </CardContent>
       </Card>
 
       <Card className="border-none shadow-sm overflow-hidden">
-        <CardHeader><CardTitle className="text-xl">Registros Atuais</CardTitle></CardHeader>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-xl">Registros Atuais</CardTitle>
+            {items && <span className="text-[10px] font-bold bg-primary/10 text-primary px-2 py-1 rounded-full">{items.length} itens</span>}
+          </div>
+        </CardHeader>
         <CardContent className="p-0">
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
                 <TableHead>Identificação</TableHead>
-                <TableHead>Detalhes</TableHead>
+                <TableHead>Acesso / ID</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
@@ -229,19 +241,23 @@ export function Registration({ type }: RegistrationProps) {
                 <TableRow>
                   <TableCell colSpan={3} className="text-center py-8 text-destructive">
                     <AlertTriangle className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p className="text-[10px] font-bold uppercase">Erro de Permissão no Android</p>
-                    <p className="text-[9px] opacity-70">Verifique se as Regras de Segurança foram aplicadas.</p>
+                    <p className="text-[10px] font-bold uppercase">Erro de Sincronização Android</p>
+                    <p className="text-[9px] opacity-70">Verifique a conexão e as regras do servidor.</p>
                   </TableCell>
                 </TableRow>
               ) : items?.length === 0 ? (
-                <TableRow><TableCell colSpan={3} className="text-center py-8 text-muted-foreground italic text-xs">Nenhum registro encontrado.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={3} className="text-center py-8 text-muted-foreground italic text-xs">Nenhum registro encontrado na coleção '{collectionName}'.</TableCell></TableRow>
               ) : items?.map((item) => (
                 <TableRow key={item.id}>
                   <TableCell>
-                    <div className="font-medium">{type === 'users' ? item.name : item.nome}</div>
-                    <div className="text-[10px] font-bold text-primary uppercase">{type === 'users' ? item.role : `ID: ${item.id_motoboy}`}</div>
+                    <div className="font-medium">{type === 'users' ? (item.name || item.nome) : (item.nome || item.name || "Sem Nome")}</div>
+                    <div className="text-[10px] opacity-60">{type === 'users' ? item.email : ""}</div>
                   </TableCell>
-                  <TableCell className="text-xs">{type === 'users' ? item.email : ""}</TableCell>
+                  <TableCell>
+                    <div className="text-[10px] font-bold text-primary uppercase">
+                      {type === 'users' ? item.role : `RT: ${item.id_motoboy || item.id || 'N/A'}`}
+                    </div>
+                  </TableCell>
                   <TableCell className="text-right">
                     <Button variant="ghost" size="icon" onClick={() => handleEdit(item)}><Pencil className="h-4 w-4" /></Button>
                     <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDelete(item.id)}><Trash2 className="h-4 w-4" /></Button>

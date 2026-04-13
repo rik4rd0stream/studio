@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -18,8 +17,8 @@ export function ActiveOrders() {
   const [loading, setLoading] = useState(false);
   const [allOrders, setAllOrders] = useState<RedashOrder[]>([]);
   
-  // Usando a coleção antiga 'entregadores'
-  const couriersQuery = useMemoFirebase(() => query(collection(db, 'entregadores')), [db]);
+  // Usando a coleção antiga 'entregadores' com consulta direta para compatibilidade Android
+  const couriersQuery = useMemoFirebase(() => collection(db, 'entregadores'), [db]);
   const { data: couriers } = useCollection<any>(couriersQuery);
 
   const loadData = async (silent = false) => {
@@ -27,8 +26,6 @@ export function ActiveOrders() {
     const result = await redashService.fetchOrders();
     if (result.success) {
       setAllOrders(result.data || []);
-    } else {
-      console.error(result.error);
     }
     if (!silent) setLoading(false);
   };
@@ -73,8 +70,9 @@ export function ActiveOrders() {
   }, [filteredOrders]);
 
   const getCourierName = (id: string) => {
-    const courier = couriers?.find(c => String(c.id_motoboy) === String(id));
-    return courier ? courier.nome : "Motoboy não identificado";
+    // Busca flexível: id_motoboy ou id
+    const courier = couriers?.find(c => String(c.id_motoboy || c.id) === String(id));
+    return courier ? (courier.nome || courier.name) : "Motoboy não identificado";
   };
 
   return (
