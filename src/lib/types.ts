@@ -8,6 +8,7 @@ export interface User {
   profile: UserProfile;
   notificationsEnabled?: boolean;
   hasRequestAccess?: boolean;
+  fcmToken?: string;
 }
 
 export interface Courier {
@@ -28,16 +29,4 @@ export interface OrderRequest {
   createdAt: string;
 }
 
-export interface Order {
-  id: string;
-  items: string[];
-  status: 'pending' | 'accepted' | 'delivering' | 'completed';
-  deliveryAddress: string;
-  pickupAddress: string;
-  specialInstructions?: string;
-  courierId?: string;
-  createdAt: string;
-  categories?: string[];
-}
-
-export type AppView = 'home' | 'send-order' | 'request-order' | 'active-orders' | 'admin-users' | 'admin-couriers';
+export type AppView = 'send-order' | 'request-order' | 'active-orders' | 'admin-users' | 'admin-couriers';

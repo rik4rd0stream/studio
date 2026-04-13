@@ -1,162 +1,26 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    /**
-     * Rappi Commander Security Rules
-     * 
-     * Core Philosophy:
-     * This ruleset implements a robust, multi-role authorization model designed for a delivery platform. 
-     * It prioritizes "Authorization Independence" by ensuring all documents contain the necessary 
-     * metadata (like creatorId or assignedDriverId) to make access decisions without expensive lookups.
-     * 
-     * Data Structure:
-     * - /users/{userId}: Private user profiles, accessible by the owner or 'master' users.
-     * - /roles_master/{userId}: A restricted collection used for Database Access Control (DBAC). 
-     *   The presence of a document here grants global administrative privileges.
-     * - /deliveryDrivers/{driverId}: Profiles for drivers, managed by 'master' users.
-     * - /orders/{orderId}: Collaborative documents shared between creators, assigned drivers, and administrators.
-     * 
-     * Key Security Decisions:
-     * - Global Roles: The `isMaster()` check is centralized via the /roles_master collection.
-     * - Order Visibility: Drivers can list pending/unassigned orders to claim them, while users 
-     *   are restricted to orders they created.
-     * - Integrity: Relational fields like `creatorId` are enforced during creation and made immutable 
-     *   during updates to prevent ownership hijacking.
-     * - Denormalization: Fields like `creatorId` and `assignedDriverId` are required on the document 
-     *   itself to allow efficient, secure queries.
-     */
-
-    // --- Helper Functions ---
-
-    /** @description Checks if the request is from an authenticated user. */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /** @description Checks if the authenticated user's UID matches the provided ID. */
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
-
-    /** @description Checks if the document exists and the current user is the owner. */
-    function isExistingOwner(userId) {
-      return resource != null && isOwner(userId);
-    }
-
-    /** @description Checks if the authenticated user has the 'master' role via DBAC collection. */
-    function isMaster() {
-      return isSignedIn() && exists(/databases/$(database)/documents/roles_master/$(request.auth.uid));
-    }
-
-    // --- Collection Rules ---
-
-    /**
-     * @description Rules for the User profiles.
-     * @path /users/{userId}
-     * @allow (get) If the user is the owner or a master.
-     * @deny (list) If a user tries to browse all user profiles.
-     * @principle Path-based ownership and global admin overrides.
-     */
     match /users/{userId} {
-      allow get: if isOwner(userId) || isMaster();
-      allow list: if isMaster();
-      allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if (isExistingOwner(userId) || isMaster()) && request.resource.data.id == resource.data.id;
-      allow delete: if isMaster();
+      allow read, write: if isSignedIn();
     }
 
-    /**
-     * @description Rules for global 'master' role assignment.
-     * @path /roles_master/{userId}
-     * @allow (get) Any signed-in user can check existence for auth logic.
-     * @deny (write) Any non-master user trying to promote themselves.
-     * @principle DBAC (Database Access Control) pattern for global roles.
-     */
+    match /entregadores/{driverId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /requests/{requestId} {
+      allow read, write: if isSignedIn();
+    }
+
     match /roles_master/{userId} {
-      allow get: if isSignedIn();
-      allow list: if isMaster();
-      allow create, update, delete: if isMaster();
-    }
-
-    /**
-     * @description Rules for Delivery Driver profiles.
-     * @path /deliveryDrivers/{driverId}
-     * @allow (get) Master users or the driver themselves.
-     * @deny (create) Non-master users trying to register as drivers.
-     * @principle Restricted management with self-read access.
-     */
-    match /deliveryDrivers/{driverId} {
-      allow get: if isMaster() || isOwner(driverId);
-      allow list: if isMaster();
-      allow create, update, delete: if isMaster();
-    }
-
-    /**
-     * @description Rules for Delivery Orders.
-     * @path /orders/{orderId}
-     * @allow (list) Users for their own orders; Drivers for assigned or pending orders; Masters for all.
-     * @deny (update) If a driver tries to modify an order they are not assigned to.
-     * @principle Shared access based on denormalized relationship fields.
-     */
-    match /orders/{orderId} {
-      
-      // Helper for order-specific logic to keep 'allow' statements on one line
-      function canReadOrder() {
-        return isMaster() 
-          || (resource.data.creatorId == request.auth.uid) 
-          || (resource.data.assignedDriverId == request.auth.uid)
-          || (resource.data.status == 'pending' && resource.data.assignedDriverId == null);
-      }
-
-      function canUpdateOrder() {
-        return isMaster() 
-          || (resource.data.creatorId == request.auth.uid)
-          || (resource.data.assignedDriverId == request.auth.uid)
-          // Allows a driver to claim an unassigned pending order
-          || (resource.data.status == 'pending' && resource.data.assignedDriverId == null);
-      }
-
-      allow get, list: if isSignedIn() && canReadOrder();
-      
-      allow create: if isSignedIn() 
-        && request.resource.data.creatorId == request.auth.uid 
-        && request.resource.data.status == 'pending';
-      
-      allow update: if isSignedIn() && resource != null && canUpdateOrder()
-        && request.resource.data.creatorId == resource.data.creatorId; // Creator is immutable
-        
-      allow delete: if isMaster() || (resource != null && resource.data.creatorId == request.auth.uid);
+      allow read: if isSignedIn();
+      allow write: if false; // Only via Console
     }
   }
 }
-
-/**
- * PROTOTYPING MODE NOTICE:
- * These rules strictly enforce authorization (who can access what).
- * Data schema validation (field types, optional vs required) is omitted to allow for rapid frontend iteration.
- * Relational integrity (matching IDs and ownership fields) is enforced where critical for security.
- */
-
-/*
- * To the user asking about the "Create" button:
- * These rules allow any authenticated user to create an order as long as they set 
- * themselves as the 'creatorId' and the status to 'pending'. 
- * If the button is not appearing, ensure your frontend is correctly checking 
- * Firebase Auth state before rendering the UI.
- */
-
-/*
- * RELATIONAL INTEGRITY SUMMARY:
- * - /users/{userId}: data.id MUST match {userId}.
- * - /orders/{orderId}: data.creatorId MUST match request.auth.uid on create.
- * - /orders/{orderId}: data.creatorId is IMMUTABLE on update.
- */
-
-/*
- * QUERY SECURITY (LIST OPERATIONS):
- * The list rules are structured to support the following queries:
- * 1. .where("creatorId", "==", userUid)
- * 2. .where("assignedDriverId", "==", driverUid)
- * 3. .where("status", "==", "pending").where("assignedDriverId", "==", null)
- */
