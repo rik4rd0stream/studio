@@ -14,14 +14,14 @@ import {
   Bike, 
   UserPlus, 
   Fingerprint, 
-  ShieldAlert, 
   Loader2, 
   Pencil, 
   Trash2, 
   X, 
   Check,
   Bell,
-  PackageSearch
+  PackageSearch,
+  KeyRound
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { UserProfile } from "@/lib/types";
@@ -42,6 +42,7 @@ export function Registration({ type }: RegistrationProps) {
   
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [profile, setProfile] = useState<UserProfile>("normal");
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [hasRequestAccess, setHasRequestAccess] = useState(false);
@@ -54,6 +55,7 @@ export function Registration({ type }: RegistrationProps) {
   const resetForm = () => {
     setName("");
     setEmail("");
+    setPassword("");
     setProfile("normal");
     setNotificationsEnabled(false);
     setHasRequestAccess(false);
@@ -66,6 +68,7 @@ export function Registration({ type }: RegistrationProps) {
     if (type === 'users') {
       setName(item.name || "");
       setEmail(item.email || "");
+      setPassword(item.password || "");
       setProfile(item.profile || "normal");
       setNotificationsEnabled(item.notificationsEnabled || false);
       setHasRequestAccess(item.hasRequestAccess || false);
@@ -101,6 +104,7 @@ export function Registration({ type }: RegistrationProps) {
     const data: any = type === 'users' ? {
       name,
       email,
+      password,
       profile,
       notificationsEnabled,
       hasRequestAccess,
@@ -169,18 +173,36 @@ export function Registration({ type }: RegistrationProps) {
 
             {type === 'users' ? (
               <>
-                <div className="space-y-2">
-                  <Label htmlFor="reg-email">Email Corporativo</Label>
-                  <Input 
-                    id="reg-email" 
-                    type="email" 
-                    value={email} 
-                    onChange={(e) => setEmail(e.target.value)} 
-                    placeholder="exemplo@gmail.com" 
-                    required
-                    className="bg-muted border-none"
-                  />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="reg-email">Email Corporativo</Label>
+                    <Input 
+                      id="reg-email" 
+                      type="email" 
+                      value={email} 
+                      onChange={(e) => setEmail(e.target.value)} 
+                      placeholder="exemplo@gmail.com" 
+                      required
+                      className="bg-muted border-none"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="reg-password">Senha de Acesso</Label>
+                    <div className="relative">
+                      <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input 
+                        id="reg-password" 
+                        type="text" 
+                        value={password} 
+                        onChange={(e) => setPassword(e.target.value)} 
+                        placeholder="Defina uma senha" 
+                        required
+                        className="bg-muted border-none pl-10"
+                      />
+                    </div>
+                  </div>
                 </div>
+                
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Nível de Acesso</Label>

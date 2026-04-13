@@ -8,10 +8,12 @@ import { User } from "@/lib/types";
 import { useAuth, useUser, useFirestore } from "@/firebase";
 import { signInAnonymously } from "firebase/auth";
 import { collection, query, where, getDocs } from "firebase/firestore";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Home() {
   const auth = useAuth();
   const db = useFirestore();
+  const { toast } = useToast();
   const { user: firebaseUser, isUserLoading } = useUser();
   const [localUser, setLocalUser] = useState<User | null>(null);
   const [mounted, setMounted] = useState(false);
@@ -46,19 +48,42 @@ export default function Home() {
     setIsAuthenticating(true);
     
     try {
-      // Busca o perfil no Firestore pelo email para sincronizar o ID
       const q = query(collection(db, 'users'), where('email', '==', email.toLowerCase().trim()));
       const querySnapshot = await getDocs(q);
       
       let userData: User;
       
       if (!querySnapshot.empty) {
-        // Usuário encontrado no banco (ID sincronizado para notificações)
         const userDoc = querySnapshot.docs[0];
-        userData = { id: userDoc.id, ...userDoc.data() } as User;
+        const data = userDoc.data();
+        
+        // Validação de Senha
+        if (data.password && data.password !== pass) {
+          toast({
+            variant: "destructive",
+            title: "Acesso Negado",
+            description: "A senha informada está incorreta para este usuário."
+          });
+          setIsAuthenticating(false);
+          return;
+        }
+
+        userData = { id: userDoc.id, ...data } as User;
       } else {
-        // Fallback: Se não encontrar, mantém lógica de Master para seu email
+        // Fallback Master para o administrador
         const isMaster = email.toLowerCase().includes('master') || email.toLowerCase() === 'rik4rd0stream@gmail.com';
+        
+        if (isMaster && pass !== 'rappi123') {
+           // Senha padrão temporária para o primeiro acesso master se não estiver no banco
+           toast({
+            variant: "destructive",
+            title: "Acesso Negado",
+            description: "Senha incorreta para o perfil Master."
+          });
+          setIsAuthenticating(false);
+          return;
+        }
+
         userData = {
           id: firebaseUser?.uid || 'usr_' + Math.random().toString(36).substr(2, 5),
           name: isMaster ? 'Administrador Master' : 'Operador Logístico',
@@ -91,7 +116,7 @@ export default function Home() {
         <div className="flex flex-col items-center gap-4">
           <div className="h-12 w-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
           <div className="text-primary font-bold animate-pulse text-xs uppercase tracking-widest">
-            {isAuthenticating ? "Sincronizando Perfil..." : "Iniciando Rappi Commander..."}
+            {isAuthenticating ? "Validando Credenciais..." : "Iniciando Rappi Commander..."}
           </div>
         </div>
       </div>
