@@ -1,7 +1,9 @@
 
+'use server';
+
 /**
- * @fileOverview Funções para buscar dados do Redash.
- * Ajustado para rodar no cliente para compatibilidade com exportação estática (Capacitor/Android).
+ * @fileOverview Funções de servidor para buscar dados do Redash com segurança.
+ * Movido para o lado do servidor para evitar problemas de CORS e proteger a API Key.
  */
 
 export interface RedashOrder {
@@ -19,15 +21,23 @@ export async function fetchRedashOrders() {
   const url = `https://redash.rappi.com/api/queries/130603/results.json?api_key=VqwlaUY9wOLjhUJTvrfuKdFExSsJG8ktuzUXy4fR`;
 
   try {
-    const response = await fetch(url); 
-    if (!response.ok) throw new Error('Falha ao conectar com o Redash');
+    const response = await fetch(url, {
+      next: { revalidate: 10 } // Cache opcional de 10 segundos no servidor
+    }); 
+    
+    if (!response.ok) {
+      throw new Error(`Falha no Redash: ${response.status} ${response.statusText}`);
+    }
 
     const data = await response.json();
-    const rows: RedashOrder[] = data.query_result.data.rows;
+    
+    if (!data.query_result || !data.query_result.data || !data.query_result.data.rows) {
+      return { success: true, data: [] };
+    }
 
-    return { success: true, data: rows };
+    return { success: true, data: data.query_result.data.rows as RedashOrder[] };
   } catch (error: any) {
-    console.error('Redash Fetch Error:', error);
-    return { success: false, error: error.message };
+    console.error('Redash Server Fetch Error:', error.message);
+    return { success: false, error: 'Erro de conexão com o servidor de dados.' };
   }
 }
