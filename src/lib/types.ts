@@ -1,22 +1,21 @@
 
-export type UserProfile = 'normal' | 'master';
+export type UserRole = 'normal' | 'master';
 
 export interface User {
   id: string;
   name: string;
   email: string;
   password?: string;
-  profile: UserProfile;
+  role: UserRole;
   notificationsEnabled?: boolean;
   hasRequestAccess?: boolean;
-  fcmToken?: string;
 }
 
 export interface Courier {
   id: string;
   nome: string;
   id_motoboy: string;
-  createdAt?: string;
+  updatedAt: string;
 }
 
 export interface OrderRequest {

@@ -23,7 +23,6 @@ export default function Home() {
     setMounted(true);
   }, []);
 
-  // Garante que sempre haverá um usuário autenticado no Firebase (anônimo)
   useEffect(() => {
     if (mounted && !isUserLoading && !firebaseUser) {
       signInAnonymously(auth).catch((err) => {
@@ -32,7 +31,6 @@ export default function Home() {
     }
   }, [firebaseUser, isUserLoading, auth, mounted]);
 
-  // Recupera a sessão do perfil local
   useEffect(() => {
     const saved = localStorage.getItem('rappi_commander_session');
     if (saved) {
@@ -47,12 +45,12 @@ export default function Home() {
   const handleLogin = async (emailInput: string, passInput: string) => {
     setIsAuthenticating(true);
     
-    // Limpeza rigorosa para evitar erros de teclado mobile (espaços e maiúsculas)
     const email = emailInput.toLowerCase().trim();
     const password = passInput.trim();
     
     try {
-      const q = query(collection(db, 'users'), where('email', '==', email));
+      // Busca na NOVA coleção de perfis
+      const q = query(collection(db, 'userProfiles'), where('email', '==', email));
       const querySnapshot = await getDocs(q);
       
       let userData: User;
@@ -61,36 +59,42 @@ export default function Home() {
         const userDoc = querySnapshot.docs[0];
         const data = userDoc.data();
         
-        // Validação de Senha do Banco de Dados
         if (data.password && data.password !== password) {
           toast({
             variant: "destructive",
             title: "Acesso Negado",
-            description: "A senha informada está incorreta para este usuário."
+            description: "Senha incorreta."
           });
           setIsAuthenticating(false);
           return;
         }
 
-        userData = { id: userDoc.id, ...data } as User;
+        userData = { 
+          id: userDoc.id, 
+          name: data.name,
+          email: data.email,
+          role: data.role,
+          notificationsEnabled: data.notificationsEnabled,
+          hasRequestAccess: data.hasRequestAccess
+        } as User;
       } else {
-        // Se não encontrar no banco, mas for o Master, permite entrada para configuração inicial
-        const isMaster = email.includes('master') || email === 'rik4rd0stream@gmail.com';
+        // Regra de Ouro: Somente este e-mail entra como Master se não houver cadastro
+        const isMaster = email === 'rik4rd0stream@gmail.com';
         
         if (isMaster) {
            userData = {
-              id: firebaseUser?.uid || 'usr_' + Math.random().toString(36).substr(2, 5),
-              name: 'Administrador Master',
+              id: firebaseUser?.uid || 'master_init',
+              name: 'Ricardo (Master)',
               email: email,
-              profile: 'master',
+              role: 'master',
               notificationsEnabled: true,
               hasRequestAccess: true
             };
         } else {
           toast({
             variant: "destructive",
-            title: "Usuário não encontrado",
-            description: "Verifique o e-mail informado ou solicite cadastro."
+            title: "Não autorizado",
+            description: "Usuário não encontrado no novo banco de dados."
           });
           setIsAuthenticating(false);
           return;
@@ -100,11 +104,10 @@ export default function Home() {
       setLocalUser(userData);
       localStorage.setItem('rappi_commander_session', JSON.stringify(userData));
     } catch (err: any) {
-      console.error("Erro ao validar login:", err);
       toast({
         variant: "destructive",
         title: "Erro de Conexão",
-        description: "Não foi possível validar seu acesso. Verifique sua internet."
+        description: "Falha ao validar acesso."
       });
     } finally {
       setIsAuthenticating(false);
@@ -116,15 +119,13 @@ export default function Home() {
     localStorage.removeItem('rappi_commander_session');
   };
 
-  const currentUser = localUser || firebaseUser;
-
   if (!mounted || isUserLoading || isAuthenticating) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
           <div className="h-12 w-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
           <div className="text-primary font-bold animate-pulse text-xs uppercase tracking-widest">
-            {isAuthenticating ? "Validando Credenciais..." : "Iniciando Rappi Commander..."}
+            Iniciando Novo Banco...
           </div>
         </div>
       </div>
@@ -134,7 +135,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background">
       {localUser ? (
-        <MainDashboard user={currentUser as User} onLogout={handleLogout} />
+        <MainDashboard user={localUser} onLogout={handleLogout} />
       ) : (
         <LoginView onLogin={handleLogin} />
       )}
