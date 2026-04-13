@@ -1,13 +1,14 @@
+
 'use client';
 
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { initializeFirestore, getFirestore, Firestore, terminate } from 'firebase/firestore'
+import { initializeFirestore, getFirestore, Firestore } from 'firebase/firestore'
 
 /**
  * Inicialização robusta e única para Android e Web.
- * Garantimos que o Firestore não seja inicializado mais de uma vez.
+ * Forçamos as configurações de rede (Long Polling) para evitar bloqueios em APKs.
  */
 export function initializeFirebase() {
   let app: FirebaseApp;
@@ -18,15 +19,16 @@ export function initializeFirebase() {
     app = getApp();
   }
 
-  // No Firebase v10+, não podemos chamar initializeFirestore se ele já estiver ativo.
-  // Buscamos a instância existente ou criamos uma nova com as flags de Android.
+  // No Android, usamos initializeFirestore diretamente para garantir que as flags de rede
+  // sejam aplicadas na primeira tentativa de conexão.
   let firestore: Firestore;
   try {
-    firestore = getFirestore(app);
-  } catch (e) {
     firestore = initializeFirestore(app, {
       experimentalForceLongPolling: true,
     });
+  } catch (e) {
+    // Se já foi inicializado, pegamos a instância existente
+    firestore = getFirestore(app);
   }
 
   return {

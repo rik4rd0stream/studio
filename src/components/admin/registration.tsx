@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -17,7 +18,6 @@ import {
   KeyRound,
   Bell,
   PackageSearch,
-  AlertTriangle,
   RefreshCw,
   Database,
   CloudOff
@@ -75,7 +75,7 @@ export function Registration({ type }: RegistrationProps) {
   const handleForceLoad = async () => {
     setForceLoading(true);
     try {
-      // Usamos uma query simples com limite para garantir que o Android consiga baixar os dados
+      // Forçamos a busca ignorando o cache para ver o que realmente está na nuvem
       const q = query(collection(db, collectionName), limit(50));
       const querySnapshot = await getDocs(q);
       
@@ -169,7 +169,8 @@ export function Registration({ type }: RegistrationProps) {
         toast({ title: "Salvo", description: "Dados gravados na nuvem." });
         resetForm();
         setLoading(false);
-        setTimeout(() => handleForceLoad(), 500);
+        // Pequeno atraso para dar tempo do Firestore processar antes de forçar a recarga
+        setTimeout(() => handleForceLoad(), 1000);
       })
       .catch(async (err) => {
         console.error("Submit Error:", err);

@@ -6,15 +6,14 @@ const config: CapacitorConfig = {
   appName: 'Rappi Commander',
   webDir: 'out',
   server: {
-    // O APK carregará o site diretamente da Vercel.
-    // Isso garante que o app esteja sempre atualizado e resolva problemas de CORS e Server Actions.
     url: "https://studio-kappa-mocha.vercel.app",
     cleartext: true,
     androidScheme: 'https'
   },
   plugins: {
+    // Desativado CapacitorHttp para não interferir nas chamadas internas do SDK do Firebase
     CapacitorHttp: {
-      enabled: true,
+      enabled: false,
     },
     StatusBar: {
       overlay: false,
