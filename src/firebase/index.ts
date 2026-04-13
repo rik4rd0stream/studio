@@ -3,39 +3,38 @@
 
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { initializeFirestore, getFirestore, Firestore } from 'firebase/firestore'
+import { getAuth, Auth } from 'firebase/auth';
+import { initializeFirestore, getFirestore, Firestore } from 'firebase/firestore';
+
+let firebaseInstance: { firebaseApp: FirebaseApp; auth: Auth; firestore: Firestore } | null = null;
 
 /**
- * Inicialização robusta e única para Android e Web.
- * Forçamos as configurações de rede (Long Polling) para evitar bloqueios em APKs.
+ * Inicialização única e blindada para Android APK e Web.
+ * Forçamos Long Polling para evitar que o Android fique "rodando infinito" tentando conectar.
  */
 export function initializeFirebase() {
-  let app: FirebaseApp;
-  
-  if (!getApps().length) {
-    app = initializeApp(firebaseConfig);
-  } else {
-    app = getApp();
-  }
+  if (firebaseInstance) return firebaseInstance;
 
-  // No Android, usamos initializeFirestore diretamente para garantir que as flags de rede
-  // sejam aplicadas na primeira tentativa de conexão.
-  let firestore: Firestore;
+  const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+
+  // No Android, usamos initializeFirestore com configurações de compatibilidade total.
+  // Isso resolve o problema de conexões que nunca se completam (travamento infinito).
+  let db: Firestore;
   try {
-    firestore = initializeFirestore(app, {
+    db = initializeFirestore(app, {
       experimentalForceLongPolling: true,
     });
   } catch (e) {
-    // Se já foi inicializado, pegamos a instância existente
-    firestore = getFirestore(app);
+    db = getFirestore(app);
   }
 
-  return {
+  firebaseInstance = {
     firebaseApp: app,
     auth: getAuth(app),
-    firestore: firestore
+    firestore: db
   };
+
+  return firebaseInstance;
 }
 
 export * from './provider';

@@ -53,11 +53,9 @@ export function Registration({ type }: RegistrationProps) {
 
   const collectionName = type === 'users' ? 'userProfiles' : 'entregadores';
   
-  // Consulta em tempo real (onSnapshot)
   const listQuery = useMemoFirebase(() => collection(db, collectionName), [db, collectionName]);
   const { data: realTimeItems, isLoading: loadingList } = useCollection<any>(listQuery);
 
-  // Itens finais (preferência para manual se houver erro ou forçar)
   const items = manualItems || realTimeItems;
 
   const resetForm = () => {
@@ -71,11 +69,9 @@ export function Registration({ type }: RegistrationProps) {
     setEditingId(null);
   };
 
-  // Função para forçar carregamento no Android se o real-time falhar
   const handleForceLoad = async () => {
     setForceLoading(true);
     try {
-      // Forçamos a busca ignorando o cache para ver o que realmente está na nuvem
       const q = query(collection(db, collectionName), limit(50));
       const querySnapshot = await getDocs(q);
       
@@ -140,6 +136,16 @@ export function Registration({ type }: RegistrationProps) {
     e.preventDefault();
     setLoading(true);
     
+    // Timer de segurança para Android: se demorar mais de 10s, libera o botão
+    const safetyTimeout = setTimeout(() => {
+      setLoading(false);
+      toast({ 
+        variant: "destructive", 
+        title: "Atraso de Resposta", 
+        description: "O servidor está demorando. Verifique sua internet." 
+      });
+    }, 10000);
+
     const id = editingId || (type === 'users' ? 'usr_' : 'rt_') + Math.random().toString(36).substr(2, 9);
     const docRef = doc(db, collectionName, id);
 
@@ -166,15 +172,16 @@ export function Registration({ type }: RegistrationProps) {
 
     action
       .then(() => {
+        clearTimeout(safetyTimeout);
         toast({ title: "Salvo", description: "Dados gravados na nuvem." });
         resetForm();
         setLoading(false);
-        // Pequeno atraso para dar tempo do Firestore processar antes de forçar a recarga
         setTimeout(() => handleForceLoad(), 1000);
       })
       .catch(async (err) => {
+        clearTimeout(safetyTimeout);
         console.error("Submit Error:", err);
-        toast({ variant: "destructive", title: "Erro ao Salvar", description: "Verifique sua internet." });
+        toast({ variant: "destructive", title: "Erro ao Salvar", description: "Falha na conexão com a nuvem." });
         setLoading(false);
       });
   };
@@ -329,7 +336,6 @@ export function Registration({ type }: RegistrationProps) {
         </CardContent>
       </Card>
       
-      {/* Rodapé de Debug para o Android */}
       <div className="p-4 bg-muted/50 rounded-xl border border-dashed flex items-center justify-between">
          <div className="flex items-center gap-2">
             <Database className="h-3 w-3 text-muted-foreground" />
