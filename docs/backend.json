@@ -39,6 +39,21 @@
         "categories": { "type": "array", "items": { "type": "string" } }
       },
       "required": ["items", "status", "deliveryAddress", "pickupAddress", "createdAt"]
+    },
+    "OrderRequest": {
+      "title": "Order Request",
+      "description": "Solicitação de pedido enviada a um usuário interno",
+      "type": "object",
+      "properties": {
+        "orderId": { "type": "string" },
+        "storeName": { "type": "string" },
+        "command": { "type": "string" },
+        "targetUserId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "accepted"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["orderId", "command", "targetUserId", "status"]
     }
   },
   "auth": {
@@ -56,6 +71,10 @@
     "/orders/{orderId}": {
       "schema": "#/entities/Order",
       "description": "Histórico e monitoramento de pedidos"
+    },
+    "/requests/{requestId}": {
+      "schema": "#/entities/OrderRequest",
+      "description": "Fila de solicitações de pedidos push"
     }
   }
 }

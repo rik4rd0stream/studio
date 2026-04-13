@@ -9,7 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Send, Bell, Users, Activity, PackageSearch } from "lucide-react";
 import { CreateOrder } from "@/components/orders/create-order";
 import { ActiveOrders } from "@/components/orders/active-orders";
+import { RequestOrder } from "@/components/orders/request-order";
 import { Registration } from "@/components/admin/registration";
+import { PushListener } from "@/components/notifications/push-listener";
 
 interface MainDashboardProps {
   user: User;
@@ -25,21 +27,12 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
         return <CreateOrder onOrderCreated={() => setView('active-orders')} />;
       case 'active-orders':
         return <ActiveOrders />;
+      case 'request-order':
+        return <RequestOrder sender={user} />;
       case 'admin-users':
         return <Registration type="users" />;
       case 'admin-couriers':
         return <Registration type="couriers" />;
-      case 'request-order':
-        return (
-          <div className="space-y-6 text-center py-20 animate-slide-up">
-            <PackageSearch className="h-12 w-12 text-primary mx-auto mb-4 opacity-20" />
-            <h2 className="text-2xl font-bold">Solicitação de Pedidos</h2>
-            <p className="text-muted-foreground max-w-md mx-auto">
-              Nesta tela, os entregadores solicitam pedidos específicos.
-            </p>
-            <Button onClick={() => setView('active-orders')} className="mt-4">Ver Painel de Monitoramento</Button>
-          </div>
-        );
       default:
         return <CreateOrder onOrderCreated={() => setView('active-orders')} />;
     }
@@ -47,6 +40,8 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
+      <PushListener user={user} />
+      
       <div className="w-64 h-full hidden md:block">
         <SidebarNav currentView={currentView} setView={setView} user={user} onLogout={onLogout} />
       </div>

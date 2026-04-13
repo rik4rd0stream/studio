@@ -17,6 +17,17 @@ export interface Courier {
   createdAt?: string;
 }
 
+export interface OrderRequest {
+  id?: string;
+  orderId: string;
+  storeName: string;
+  command: string;
+  targetUserId: string;
+  senderName: string;
+  status: 'pending' | 'accepted';
+  createdAt: string;
+}
+
 export interface Order {
   id: string;
   items: string[];
