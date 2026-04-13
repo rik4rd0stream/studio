@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo } from "react";
@@ -5,13 +6,13 @@ import { AppView, User, Order, Courier } from "@/lib/types";
 import { SidebarNav } from "./sidebar-nav";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
-import { Send, PackageSearch, Bell, Users, Activity, Bike } from "lucide-react";
+import { Send, PackageSearch, Bell, Users, Activity } from "lucide-react";
 import { CreateOrder } from "@/components/orders/create-order";
 import { ActiveOrders } from "@/components/orders/active-orders";
 import { Registration } from "@/components/admin/registration";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useFirestore, useCollection } from "@/firebase";
-import { collection, query, orderBy } from "firebase/firestore";
+import { collection, query } from "firebase/firestore";
 import { Badge } from "@/components/ui/badge";
 
 interface MainDashboardProps {
@@ -23,9 +24,9 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
   const [currentView, setView] = useState<AppView>('home');
   const db = useFirestore();
 
-  const ordersQuery = useMemo(() => query(collection(db, 'orders'), orderBy('createdAt', 'desc')), [db]);
+  // Consultas sem ordenação para evitar que registros antigos sumam
+  const ordersQuery = useMemo(() => query(collection(db, 'orders')), [db]);
   const couriersQuery = useMemo(() => query(collection(db, 'entregadores')), [db]);
-  const usersQuery = useMemo(() => query(collection(db, 'users')), [db]);
 
   const { data: orders } = useCollection<Order>(ordersQuery);
   const { data: couriers } = useCollection<Courier>(couriersQuery);

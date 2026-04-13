@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo } from "react";
@@ -9,9 +10,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Users, Bike, UserPlus, Fingerprint, ShieldAlert, Loader2, Pencil, Trash2, X, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { User, Courier, UserProfile } from "@/lib/types";
+import { UserProfile } from "@/lib/types";
 import { useFirestore, useCollection } from "@/firebase";
-import { doc, setDoc, deleteDoc, updateDoc, collection, query, orderBy } from "firebase/firestore";
+import { doc, setDoc, deleteDoc, updateDoc, collection, query } from "firebase/firestore";
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
 
@@ -31,9 +32,9 @@ export function Registration({ type }: RegistrationProps) {
   const [profile, setProfile] = useState<UserProfile>("normal");
   const [idMotoboy, setIdMotoboy] = useState("");
 
-  // Fetch List
+  // Fetch List - Removida ordenação para garantir que registros sem 'createdAt' apareçam
   const collectionName = type === 'users' ? 'users' : 'entregadores';
-  const listQuery = useMemo(() => query(collection(db, collectionName), orderBy('createdAt', 'desc')), [db, collectionName]);
+  const listQuery = useMemo(() => query(collection(db, collectionName)), [db, collectionName]);
   const { data: items, loading: loadingList } = useCollection<any>(listQuery);
 
   const resetForm = () => {
