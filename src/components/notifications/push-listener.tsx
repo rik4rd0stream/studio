@@ -24,8 +24,9 @@ export function PushListener({ user }: { user: User }) {
   const [activeRequest, setActiveRequest] = useState<OrderRequest | null>(null);
 
   useEffect(() => {
-    if (!user || !user.notificationsEnabled) return;
+    if (!user || !user.id || !user.notificationsEnabled) return;
 
+    // Ouve solicitações onde o targetUserId coincide com o ID do usuário logado
     const q = query(
       collection(db, "requests"),
       where("targetUserId", "==", user.id),
@@ -33,12 +34,20 @@ export function PushListener({ user }: { user: User }) {
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      snapshot.docChanges().forEach((change) => {
-        if (change.type === "added") {
-          const request = { id: change.doc.id, ...change.doc.data() } as OrderRequest;
-          setActiveRequest(request);
-        }
-      });
+      // Pega a última notificação pendente
+      if (!snapshot.empty) {
+        const lastDoc = snapshot.docs[snapshot.docs.length - 1];
+        const request = { id: lastDoc.id, ...lastDoc.data() } as OrderRequest;
+        setActiveRequest(request);
+        
+        // Toca um som de alerta se possível (UX operacional)
+        try {
+          const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+          audio.play().catch(() => {});
+        } catch (e) {}
+      } else {
+        setActiveRequest(null);
+      }
     });
 
     return () => unsubscribe();
@@ -46,9 +55,19 @@ export function PushListener({ user }: { user: User }) {
 
   const handleAccept = () => {
     if (!activeRequest || !activeRequest.id) return;
-    window.open(`https://wa.me/?text=${encodeURIComponent(activeRequest.command)}`, '_blank');
+    
+    // Abre o WhatsApp com o comando
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(activeRequest.command)}`;
+    window.open(whatsappUrl, '_blank');
+    
+    // Remove a solicitação para não aparecer novamente
     deleteDoc(doc(db, "requests", activeRequest.id));
     setActiveRequest(null);
+
+    toast({
+      title: "Solicitação Aceita",
+      description: "O comando foi enviado para o WhatsApp.",
+    });
   };
 
   const handleReject = () => {
@@ -61,26 +80,32 @@ export function PushListener({ user }: { user: User }) {
 
   return (
     <AlertDialog open={!!activeRequest}>
-      <AlertDialogContent className="max-w-[320px] rounded-2xl border-none shadow-2xl">
+      <AlertDialogContent className="max-w-[320px] rounded-2xl border-none shadow-2xl animate-in zoom-in-95 duration-200">
         <AlertDialogHeader className="items-center text-center">
-          <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-2 animate-bounce">
-            <BellRing className="h-6 w-6 text-primary" />
+          <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-2 animate-bounce">
+            <BellRing className="h-8 w-8 text-primary" />
           </div>
-          <AlertDialogTitle className="text-lg font-bold">Solicitação de Envio</AlertDialogTitle>
-          <AlertDialogDescription className="text-xs">
-            <span className="font-bold text-foreground">{activeRequest.senderName}</span> solicita o envio de:
-            <div className="mt-2 p-3 bg-muted rounded-xl font-mono text-[10px] text-left">
-              <p className="font-bold text-primary mb-1">{activeRequest.storeName}</p>
-              <p className="opacity-70">Pedido: #{activeRequest.orderId}</p>
+          <AlertDialogTitle className="text-xl font-bold text-primary">Novo Pedido!</AlertDialogTitle>
+          <AlertDialogDescription className="text-sm">
+            <span className="font-bold text-foreground">{activeRequest.senderName}</span> enviou uma solicitação:
+            <div className="mt-4 p-4 bg-muted/50 rounded-2xl font-mono text-[11px] text-left border border-primary/10">
+              <p className="font-bold text-primary mb-1 uppercase">{activeRequest.storeName}</p>
+              <p className="opacity-70 font-bold">PEDIDO: #{activeRequest.orderId}</p>
             </div>
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <AlertDialogFooter className="flex-col gap-2">
-          <AlertDialogAction onClick={handleAccept} className="w-full h-11 bg-primary font-bold gap-2">
-            Aceitar e Despachar <ExternalLink className="h-4 w-4" />
+        <AlertDialogFooter className="flex-col gap-2 mt-4">
+          <AlertDialogAction 
+            onClick={handleAccept} 
+            className="w-full h-12 bg-primary hover:bg-primary/90 text-white font-bold gap-2 rounded-xl text-sm"
+          >
+            ACEITAR E DESPACHAR <ExternalLink className="h-4 w-4" />
           </AlertDialogAction>
-          <AlertDialogCancel onClick={handleReject} className="w-full h-11 bg-muted border-none text-xs">
-            Ignorar
+          <AlertDialogCancel 
+            onClick={handleReject} 
+            className="w-full h-10 bg-transparent border-none text-muted-foreground hover:text-foreground text-xs"
+          >
+            IGNORAR
           </AlertDialogCancel>
         </AlertDialogFooter>
       </AlertDialogContent>
