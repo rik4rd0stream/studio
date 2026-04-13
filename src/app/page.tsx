@@ -31,10 +31,9 @@ export default function Home() {
         }
         setAuthInitialized(true);
       } else {
-        // Se não houver ninguém, fazemos login anônimo
+        // Se não houver ninguém, fazemos login anônimo para ganhar o "crachá" de acesso ao banco
         signInAnonymously(auth).catch(err => {
           console.error("Erro no Auth Silencioso:", err);
-          // Mesmo com erro, marcamos como inicializado para não travar o app
           setAuthInitialized(true);
         });
       }
