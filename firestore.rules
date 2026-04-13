@@ -1,31 +1,142 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Funções auxiliares
+
+    /**
+     * RAPPI COMMANDER SECURITY RULES - PROTOTYPING MODE
+     * 
+     * Core Philosophy:
+     * This ruleset implements a robust, multi-role security model centered around Ownership, 
+     * Global Master Roles, and Shared Access for deliveries. It prioritizes Authorization 
+     * Independence by using denormalized ID fields and "Existence over Content" checks.
+     * 
+     * Data Structure:
+     * - /user_profiles/{userId}: Private profile data.
+     * - /deliverer_profiles/{delivererId}: Profile data for delivery personnel.
+     * - /master_roles/{masterId}: A sentinel collection for global administrators.
+     * - /orders/{orderId}: Shared documents containing order details and tracking.
+     * 
+     * Key Security Decisions:
+     * 1. Global Admin (Master): Validated via an atomic exists() check on the /master_roles collection.
+     * 2. Order Access: Managed via denormalized 'requesterUserId' and 'assignedDelivererId' fields 
+     *    on the order itself to ensure high performance and rule simplicity.
+     * 3. Pending Orders: Visible to any authenticated user who has a registered DelivererProfile.
+     * 4. Relational Integrity: On document creation, the system enforces that the user's UID 
+     *    matches the internal ownership fields (e.g., requesterUserId).
+     * 
+     * Denormalization for Authorization:
+     * This ruleset relies on 'requesterUserId' and 'assignedDelivererId' existing within the 
+     * Order document. This avoids recursive get() calls and allows for secure list queries.
+     */
+
+    // --- Helper Functions ---
+
+    /** @description Checks if the user is authenticated. */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    // Regras para usuários
-    match /users/{userId} {
-      allow get, list: if isSignedIn();
-      allow write: if isSignedIn() && (request.auth.uid == userId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.profileType == 'master');
+    /** @description Checks if the user's UID matches the provided ID. */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
     }
 
-    // Regras para entregadores (motoboys)
-    match /entregadores/{courierId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn(); // Permitir para prototipagem rápida
+    /** @description Checks if the user exists in the master_roles sentinel collection. */
+    function isMaster() {
+      return isSignedIn() && exists(/databases/$(database)/documents/master_roles/$(request.auth.uid));
     }
 
-    // Regras para solicitações push (requests)
-    match /requests/{requestId} {
-      allow read, write: if isSignedIn();
+    /** @description Checks if the user exists in the deliverer_profiles collection. */
+    function isDeliverer() {
+      return isSignedIn() && exists(/databases/$(database)/documents/deliverer_profiles/$(request.auth.uid));
     }
 
-    // Regras para pedidos (opcional, se usar coleção orders)
+    /** @description Checks if the document exists and the user is the owner. */
+    function isExistingOwner(userId) {
+      return resource != null && isOwner(userId);
+    }
+
+    /** @description Validates that an order's access is restricted to the requester, deliverer, or master. */
+    function canAccessOrder(orderData) {
+      return isOwner(orderData.requesterUserId) || isOwner(orderData.assignedDelivererId) || isMaster();
+    }
+
+    // --- Collection Rules ---
+
+    /**
+     * @description Rules for the master_roles sentinel collection.
+     * @path /master_roles/{masterId}
+     * @allow (get) Any signed-in user can check if a master role exists. (write) Only existing masters can modify master roles.
+     * @deny (create/update) Any user who is not already a master.
+     * @principle Uses "Existence over Content" for high-performance administrative checks.
+     */
+    match /master_roles/{masterId} {
+      allow get: if isSignedIn();
+      allow list: if isMaster();
+      allow create, update, delete: if isMaster();
+    }
+
+    /**
+     * @description Rules for personal user profiles.
+     * @path /user_profiles/{userId}
+     * @allow (get) The profile owner or a master admin.
+     * @deny (list) Regular users listing all profiles.
+     * @principle Enforces path-based ownership and relational integrity between UID and document data.
+     */
+    match /user_profiles/{userId} {
+      allow get: if isOwner(userId) || isMaster();
+      allow list: if isMaster() || isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if (isExistingOwner(userId) || isMaster()) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(userId) || isMaster();
+    }
+
+    /**
+     * @description Rules for deliverer profiles.
+     * @path /deliverer_profiles/{delivererId}
+     * @allow (create) An authenticated user creating their own deliverer identity.
+     * @deny (update) Changing the profile of another deliverer.
+     * @principle Separates deliverer data from standard user data for specific query patterns.
+     */
+    match /deliverer_profiles/{delivererId} {
+      allow get: if isOwner(delivererId) || isMaster();
+      allow list: if isMaster() || isOwner(delivererId);
+      allow create: if isOwner(delivererId) && request.resource.data.id == delivererId;
+      allow update: if (isExistingOwner(delivererId) || isMaster()) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(delivererId) || isMaster();
+    }
+
+    /**
+     * @description Rules for delivery orders.
+     * @path /orders/{orderId}
+     * @allow (list) Requesters for their orders, deliverers for pending or assigned orders, and masters for all.
+     * @deny (update) Users attempting to change the requesterUserId of an existing order.
+     * @principle Uses denormalized ID fields to authorize access to shared documents without parent lookups.
+     */
     match /orders/{orderId} {
-      allow read, write: if isSignedIn();
+      // Get: Allow if the user is the requester, the assigned deliverer, or a master admin.
+      allow get: if canAccessOrder(resource.data);
+
+      // List:
+      // 1. Masters can list all orders.
+      // 2. Requesters can list their own orders, ONLY if the query explicitly filters by requesterUserId == request.auth.uid.
+      // 3. Deliverers can list assigned orders, ONLY if the query explicitly filters by assignedDelivererId == request.auth.uid.
+      // 4. Deliverers can list 'pending' orders, ONLY if the query explicitly filters by status == 'pending'.
+      allow list: if isSignedIn() && (
+        isMaster() ||
+        (isOwner(request.auth.uid) && request.query.requesterUserId == request.auth.uid) ||
+        (isDeliverer() && (request.query.assignedDelivererId == request.auth.uid || request.query.status == 'pending'))
+      );
+
+      // Create: Allow if the creator sets themselves as the requester.
+      allow create: if isSignedIn() && (request.resource.data.requesterUserId == request.auth.uid || isMaster());
+
+      // Update: Allow if requester, assigned deliverer, or master.
+      // Protect integrity: requesterUserId must be immutable.
+      allow update: if resource != null && canAccessOrder(resource.data) && (request.resource.data.requesterUserId == resource.data.requesterUserId || isMaster());
+
+      // Delete: Restricted to the original requester or master.
+      allow delete: if resource != null && (isOwner(resource.data.requesterUserId) || isMaster());
     }
   }
 }
