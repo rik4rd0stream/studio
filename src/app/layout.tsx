@@ -21,15 +21,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" className="h-full">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
       </head>
-      <body className="font-body antialiased bg-slate-200 dark:bg-black">
+      <body className="font-body antialiased bg-slate-200 dark:bg-black m-0 p-0 h-full overflow-hidden">
         <FirebaseClientProvider>
-          <div className="tablet-container">
+          {/* O tablet-container agora gerencia os recuos das áreas seguras do Android */}
+          <div className="tablet-container h-full flex flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)]">
             {children}
           </div>
           <Toaster />

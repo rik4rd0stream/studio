@@ -6,17 +6,17 @@ const config: CapacitorConfig = {
   appName: 'Rappi Commander',
   webDir: 'out',
   server: {
+    // A URL da sua Vercel onde o app roda de verdade
     url: "https://studio-kappa-mocha.vercel.app",
     cleartext: true,
     androidScheme: 'https'
   },
   plugins: {
-    // Desativado CapacitorHttp para não interferir nas chamadas internas do SDK do Firebase
     CapacitorHttp: {
       enabled: false,
     },
     StatusBar: {
-      overlay: false,
+      overlay: true, // Permite que o app use o espaço atrás da barra de status
       backgroundColor: '#E65C1A',
       style: 'DARK'
     }
