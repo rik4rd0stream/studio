@@ -50,10 +50,10 @@ export function RequestOrder({ sender }: { sender: User }) {
   const [searchUser, setSearchUser] = useState("");
   const [manualOrderId, setManualOrderId] = useState("");
 
-  // Usando a coleção antiga 'entregadores'
   const couriersQuery = useMemoFirebase(() => query(collection(db, 'entregadores')), [db]);
   const { data: couriers, isLoading: loadingCouriers } = useCollection<any>(couriersQuery);
 
+  // Busca usuários que podem receber notificações
   const usersQuery = useMemoFirebase(() => query(
     collection(db, 'userProfiles'), 
     where('notificationsEnabled', '==', true)
@@ -80,7 +80,7 @@ export function RequestOrder({ sender }: { sender: User }) {
     if (!appUsers) return [];
     return appUsers.filter(u => 
       u.name?.toLowerCase().includes(searchUser.toLowerCase()) || 
-      u.email?.toLowerCase().includes(searchUser.toLowerCase())
+      (u.email || u.id)?.toLowerCase().includes(searchUser.toLowerCase())
     );
   }, [appUsers, searchUser]);
 
@@ -124,11 +124,14 @@ export function RequestOrder({ sender }: { sender: User }) {
     const requestId = Math.random().toString(36).substr(2, 9);
     const orderId = selectedOrder.order_id || "0";
     
+    // Usamos o E-mail do alvo como identificador de destino para o PushListener
+    const targetEmail = (targetUser.email || targetUser.id).toLowerCase().trim();
+
     const requestData = {
       orderId,
       storeName: selectedOrder.store_name || "Pedido",
       command: `${selectedCommand} ${orderId} ${selectedCourier.id_motoboy}`,
-      targetUserId: targetUser.id,
+      targetUserEmail: targetEmail,
       senderName: sender.name,
       status: 'pending',
       createdAt: new Date().toISOString()
@@ -141,6 +144,9 @@ export function RequestOrder({ sender }: { sender: User }) {
         setSelectedOrder(null);
         setSelectedCourier(null);
         setManualOrderId("");
+      })
+      .catch(err => {
+        toast({ variant: "destructive", title: "Erro", description: "Falha ao enviar solicitação." });
       });
   };
 
@@ -262,9 +268,6 @@ export function RequestOrder({ sender }: { sender: User }) {
                 <ArrowRight className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100" />
               </Button>
             ))}
-            {filteredCouriers.length === 0 && !loadingCouriers && (
-              <p className="text-center py-4 text-muted-foreground text-[10px] italic">Nenhum motoboy na coleção 'entregadores'.</p>
-            )}
           </div>
         </DialogContent>
       </Dialog>
@@ -294,7 +297,7 @@ export function RequestOrder({ sender }: { sender: User }) {
             {loadingUsers ? (
               <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
             ) : filteredUsers.length === 0 ? (
-              <p className="text-center py-4 text-muted-foreground text-xs italic">Nenhum usuário com notificações ativas.</p>
+              <p className="text-center py-4 text-muted-foreground text-xs italic">Nenhum usuário disponível.</p>
             ) : (
               filteredUsers.map((u) => (
                 <Button
@@ -309,7 +312,7 @@ export function RequestOrder({ sender }: { sender: User }) {
                     </div>
                     <div>
                       <p className="font-bold text-[11px] leading-none">{u.name}</p>
-                      <p className="text-[9px] text-muted-foreground mt-1">{u.email}</p>
+                      <p className="text-[9px] text-muted-foreground mt-1">{u.email || u.id}</p>
                     </div>
                   </div>
                   <SendHorizontal className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100" />

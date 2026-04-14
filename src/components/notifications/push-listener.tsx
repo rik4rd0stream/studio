@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -17,6 +18,11 @@ import {
 import { BellRing, ExternalLink } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
+/**
+ * Listener de notificações em tempo real.
+ * Usa o E-mail como identificador principal para garantir compatibilidade
+ * entre usuários criados manualmente e logados via Auth.
+ */
 export function PushListener({ user }: { user: User }) {
   const db = useFirestore();
   const { toast } = useToast();
@@ -24,18 +30,21 @@ export function PushListener({ user }: { user: User }) {
 
   useEffect(() => {
     // Só ativa se o usuário estiver logado e com notificações habilitadas
+    // Usamos o e-mail como identificador de destino (Target)
     if (!user || !user.email || !user.notificationsEnabled) return;
 
-    // Busca o ID do usuário no banco (que agora é persistente)
-    // O targetUserId deve coincidir com o ID que você usa no request-order.tsx
+    const userEmail = user.email.toLowerCase().trim();
+
+    // Busca solicitações pendentes para este e-mail
     const q = query(
       collection(db, "requests"),
-      where("targetUserId", "==", user.id),
+      where("targetUserEmail", "==", userEmail),
       where("status", "==", "pending")
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       if (!snapshot.empty) {
+        // Pega a solicitação mais recente
         const lastDoc = snapshot.docs[snapshot.docs.length - 1];
         const request = { id: lastDoc.id, ...lastDoc.data() } as OrderRequest;
         
@@ -47,16 +56,17 @@ export function PushListener({ user }: { user: User }) {
             description: `Enviado por: ${request.senderName}`,
           });
 
+          // Tenta tocar o som de alerta
           try {
             const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
-            audio.play().catch(() => {});
+            audio.play().catch(e => console.warn("Audio play blocked by browser policy"));
           } catch (e) {}
         }
       } else {
         setActiveRequest(null);
       }
     }, (error) => {
-      console.warn("Listener de Push aguardando sincronização...");
+      console.error("Firestore Listener Error:", error);
     });
 
     return () => unsubscribe();
@@ -68,12 +78,13 @@ export function PushListener({ user }: { user: User }) {
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(activeRequest.command)}`;
     window.open(whatsappUrl, '_blank');
     
+    // Remove a solicitação após aceitar para não repetir
     deleteDoc(doc(db, "requests", activeRequest.id));
     setActiveRequest(null);
 
     toast({
       title: "Despachado",
-      description: "Comando enviado para o WhatsApp com sucesso.",
+      description: "Comando enviado para o WhatsApp.",
     });
   };
 

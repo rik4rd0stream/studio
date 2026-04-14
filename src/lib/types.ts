@@ -23,7 +23,7 @@ export interface OrderRequest {
   orderId: string;
   storeName: string;
   command: string;
-  targetUserId: string;
+  targetUserEmail: string; // Mudado de targetUserId para targetUserEmail para maior precisão
   senderName: string;
   status: 'pending' | 'accepted';
   createdAt: string;
