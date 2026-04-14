@@ -6,11 +6,12 @@ import { AppView, User } from "@/lib/types";
 import { SidebarNav } from "./sidebar-nav";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
-import { Send, Bell, Users, Activity, PackageSearch, Menu } from "lucide-react";
+import { Send, Bell, Activity, PackageSearch, Menu, Database } from "lucide-react";
 import { CreateOrder } from "@/components/orders/create-order";
 import { ActiveOrders } from "@/components/orders/active-orders";
 import { RequestOrder } from "@/components/orders/request-order";
 import { Registration } from "@/components/admin/registration";
+import { RtRegistration } from "@/components/admin/rt-registration";
 import { PushListener } from "@/components/notifications/push-listener";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
@@ -40,6 +41,8 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
         return <Registration type="users" />;
       case 'admin-couriers':
         return <Registration type="couriers" />;
+      case 'admin-rt':
+        return <RtRegistration />;
       default:
         return <CreateOrder onOrderCreated={() => setView('active-orders')} />;
     }
@@ -49,7 +52,6 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
     <div className="flex h-screen overflow-hidden bg-background">
       <PushListener user={user} />
       
-      {/* Sidebar para Desktop */}
       <div className="w-64 h-full hidden md:block">
         <SidebarNav currentView={currentView} setView={setView} user={user} onLogout={onLogout} />
       </div>
@@ -57,7 +59,6 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
       <div className="flex-1 flex flex-col min-w-0">
         <header className="h-16 border-b flex items-center justify-between px-4 md:px-6 bg-card/50 backdrop-blur-sm z-10">
           <div className="flex items-center gap-2 md:gap-4">
-            {/* Botão de Menu para Mobile */}
             <div className="md:hidden">
               <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
                 <SheetTrigger asChild>
@@ -89,31 +90,16 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
               </Button>
               <Button 
                 size="sm" 
-                variant={currentView === 'active-orders' ? 'default' : 'outline'} 
+                variant={currentView === 'admin-rt' ? 'default' : 'outline'} 
                 className="rounded-full h-8 gap-1.5 text-[10px] px-3"
-                onClick={() => setView('active-orders')}
+                onClick={() => setView('admin-rt')}
               >
-                <Activity className="h-3.5 w-3.5" /> <span className="hidden xs:inline">Monitorar</span>
+                <Database className="h-3.5 w-3.5" /> <span className="hidden xs:inline">Cadastro RT</span>
               </Button>
-              {(user.hasRequestAccess || user.profile === 'master') && (
-                <Button 
-                  size="sm" 
-                  variant={currentView === 'request-order' ? 'default' : 'outline'} 
-                  className="rounded-full h-8 gap-1.5 text-[10px] px-3"
-                  onClick={() => setView('request-order')}
-                >
-                  <PackageSearch className="h-3.5 w-3.5" /> <span className="hidden xs:inline">Solicitação</span>
-                </Button>
-              )}
             </div>
           </div>
           
           <div className="flex items-center gap-1 md:gap-3">
-            <div className="hidden lg:flex items-center gap-2 mr-2 bg-muted/50 px-3 py-1 rounded-full border border-border">
-              <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-              <span className="text-[10px] font-bold text-muted-foreground uppercase">Sistema Ativo</span>
-            </div>
-            
             {user.notificationsEnabled && (
               <Button variant="ghost" size="icon" className="rounded-full relative h-9 w-9">
                 <Bell className="h-5 w-5" />

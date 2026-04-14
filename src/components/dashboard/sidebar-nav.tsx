@@ -9,7 +9,8 @@ import {
   Users, 
   Bike, 
   LogOut,
-  ChevronRight
+  ChevronRight,
+  Database
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -29,15 +30,15 @@ export function SidebarNav({ currentView, setView, user, onLogout }: SidebarNavP
   ];
 
   const adminItems = [
-    { id: 'admin-users', label: 'Cadastro de Usuários', icon: Users, masterOnly: true },
-    { id: 'admin-couriers', label: 'Cadastro de Entregadores', icon: Bike, masterOnly: false },
+    { id: 'admin-rt', label: 'Cadastro RT (Teste)', icon: Database, masterOnly: false },
+    { id: 'admin-users', label: 'Gestão de Usuários', icon: Users, masterOnly: true },
+    { id: 'admin-couriers', label: 'Gestão de Entregadores', icon: Bike, masterOnly: false },
   ];
 
   const userName = user?.name || "Usuário";
   const firstName = userName.split(' ')[0] || "Usuário";
 
   const renderItem = (item: any) => {
-    // Master vê tudo. Outros dependem de flags.
     const isMaster = user.role === 'master' || user.email === 'rik4rd0stream@gmail.com';
     
     if (item.masterOnly && !isMaster) return null;
