@@ -1,25 +1,30 @@
-
 'use client';
 
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
-import { getFirestore, Firestore } from 'firebase/firestore';
+import { initializeFirestore, Firestore } from 'firebase/firestore';
 
 let firebaseInstance: { firebaseApp: FirebaseApp; auth: Auth; firestore: Firestore } | null = null;
 
 /**
- * Inicialização padrão do Firebase para Web e Android.
+ * Inicialização do Firebase otimizada para Capacitor/Android.
+ * Força o uso de Long Polling para evitar falhas de conexão no WebView nativo.
  */
 export function initializeFirebase() {
   if (firebaseInstance) return firebaseInstance;
 
   const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
+  // No Capacitor/Android, o Firestore precisa de configurações experimentais de rede
+  const firestore = initializeFirestore(app, {
+    experimentalForceLongPolling: true,
+  });
+
   firebaseInstance = {
     firebaseApp: app,
     auth: getAuth(app),
-    firestore: getFirestore(app)
+    firestore: firestore
   };
 
   return firebaseInstance;
