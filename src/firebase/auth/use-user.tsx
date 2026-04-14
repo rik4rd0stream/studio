@@ -9,7 +9,7 @@ import { User } from '@/lib/types';
 
 /**
  * Hook para monitorar o usuário logado e seu perfil no Firestore.
- * Sincronizado para usar o E-mail como ID do documento, conforme o banco real.
+ * Sincronizado para usar o E-mail como ID do documento.
  */
 export function useUser() {
   const auth = useAuth();
@@ -20,20 +20,27 @@ export function useUser() {
   useEffect(() => {
     return onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser && firebaseUser.email) {
-        // O banco real usa o e-mail como ID do documento
-        const userEmail = firebaseUser.email.toLowerCase();
+        // Busca o documento pelo e-mail (ID do documento no seu Firebase)
+        const userEmail = firebaseUser.email.toLowerCase().trim();
         const userDocRef = doc(db, 'userProfiles', userEmail);
         
-        return onSnapshot(userDocRef, (snapshot) => {
+        const unsubscribe = onSnapshot(userDocRef, (snapshot) => {
           if (snapshot.exists()) {
-            setUser({ id: firebaseUser.uid, ...snapshot.data() } as User);
+            const data = snapshot.data();
+            setUser({ 
+              id: firebaseUser.uid, 
+              ...data,
+              name: data.name || data.nome || 'Operador',
+              role: data.role || 'normal',
+              notificationsEnabled: data.notificationsEnabled !== false,
+              hasRequestAccess: !!data.hasRequestAccess
+            } as User);
           } else {
-            // Perfil básico se ainda não existir no Firestore
+            // Perfil básico se não houver documento mas houver Auth
             const isMasterEmail = firebaseUser.email === 'rik4rd0stream@gmail.com';
-            
             setUser({
               id: firebaseUser.uid,
-              name: firebaseUser.displayName || (isMasterEmail ? 'Ricardo (Master)' : 'Operador'),
+              name: isMasterEmail ? 'Ricardo (Master)' : 'Operador',
               email: firebaseUser.email || '',
               role: isMasterEmail ? 'master' : 'normal',
               hasRequestAccess: isMasterEmail,
@@ -42,9 +49,11 @@ export function useUser() {
           }
           setLoading(false);
         }, (error) => {
-          console.warn("Aguardando permissão de leitura do perfil...");
+          console.error("Erro ao ler perfil no Firestore:", error);
           setLoading(false);
         });
+
+        return () => unsubscribe();
       } else {
         setUser(null);
         setLoading(false);

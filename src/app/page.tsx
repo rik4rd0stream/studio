@@ -6,7 +6,7 @@ import { LoginView } from "@/components/auth/login-view";
 import { MainDashboard } from "@/components/dashboard/main-dashboard";
 import { User } from "@/lib/types";
 import { useFirestore, useAuth } from "@/firebase";
-import { collection, query, where, getDocs, doc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
@@ -27,11 +27,9 @@ export default function Home() {
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
 
-  // Efeito de inicialização (executa apenas uma vez no mount)
   useEffect(() => {
     setMounted(true);
     
-    // 1. Verifica sessão salva no localStorage
     const savedSession = localStorage.getItem(SESSION_KEY);
     if (savedSession) {
       try {
@@ -42,25 +40,19 @@ export default function Home() {
           setLocalUser(user);
         } else {
           localStorage.removeItem(SESSION_KEY);
-          toast({ title: "Sessão Expirada", description: "Por favor, faça login novamente." });
         }
       } catch (e) {
         localStorage.removeItem(SESSION_KEY);
       }
     }
 
-    // 2. Monitora o estado real do Firebase Auth para garantir sincronia
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      // Se deslogou do Firebase, limpamos a sessão local por segurança
-      if (!firebaseUser) {
-        // setLocalUser(null); // Opcional: descomente se quiser forçar logout total
-      }
+      // Sincronização passiva
     });
 
     setIsInitializing(false);
     return () => unsubscribe();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [auth]); // localUser removido das dependências para evitar loop
+  }, [auth]);
 
   const handleLogin = async (emailInput: string, passInput: string) => {
     setIsAuthenticating(true);
@@ -69,12 +61,12 @@ export default function Home() {
     const password = passInput.trim();
     
     try {
-      // 1. Busca o perfil no Firestore
-      const q = query(collection(db, 'userProfiles'), where('email', '==', email));
-      const querySnapshot = await getDocs(q);
+      // BUSCA DIRETA PELO ID (E-MAIL) - Conforme seu print do Firebase
+      const userDocRef = doc(db, 'userProfiles', email);
+      const userSnap = await getDoc(userDocRef);
       
-      if (querySnapshot.empty) {
-        // Exceção especial para o seu e-mail mestre inicial
+      if (!userSnap.exists()) {
+        // Exceção especial para o mestre inicial
         if (email === 'rik4rd0stream@gmail.com') {
           await handleMasterFirstAccess(email, password);
           return;
@@ -83,48 +75,44 @@ export default function Home() {
         toast({
           variant: "destructive",
           title: "Acesso Negado",
-          description: "Usuário não encontrado no banco de dados."
+          description: "Usuário não encontrado. Verifique se o e-mail está cadastrado na Gestão de Usuários."
         });
         setIsAuthenticating(false);
         return;
       }
 
-      const userDoc = querySnapshot.docs[0];
-      const firestoreData = userDoc.data();
+      const firestoreData = userSnap.data();
 
-      // Validar senha do Firestore antes de tentar o Auth (Camada extra de controle Master)
+      // Validação de senha do Firestore
       if (firestoreData.password && firestoreData.password !== password) {
-         toast({ variant: "destructive", title: "Senha Incorreta", description: "Verifique seus dados cadastrados." });
+         toast({ variant: "destructive", title: "Senha Incorreta", description: "Verifique seus dados." });
          setIsAuthenticating(false);
          return;
       }
 
-      // 2. Tenta Logar no Firebase Authentication
       try {
         const authResult = await signInWithEmailAndPassword(auth, email, password);
         completeLogin(authResult.user.uid, firestoreData);
       } catch (authErr: any) {
-        // Se o erro for "user-not-found" ou "invalid-credential", e ele existe no Firestore, criamos no Auth
-        if (authErr.code === 'auth/user-not-found' || authErr.code === 'auth/invalid-credential') {
+        if (authErr.code === 'auth/user-not-found' || authErr.code === 'auth/invalid-credential' || authErr.code === 'auth/invalid-email') {
           try {
             const newAuth = await createUserWithEmailAndPassword(auth, email, password);
-            // Atualiza o documento no Firestore com o UID real do Auth para vínculo
-            await updateDoc(doc(db, 'userProfiles', userDoc.id), {
+            await updateDoc(userDocRef, {
               authUid: newAuth.user.uid,
               updatedAt: new Date().toISOString()
             });
             completeLogin(newAuth.user.uid, firestoreData);
           } catch (createErr: any) {
-            console.error("Erro ao criar vínculo Auth:", createErr);
-            toast({ variant: "destructive", title: "Erro de Segurança", description: "Verifique a força da senha." });
+            console.error("Erro Auth:", createErr);
+            toast({ variant: "destructive", title: "Erro de Segurança", description: "A senha deve ter no mínimo 6 caracteres." });
           }
         } else {
-          toast({ variant: "destructive", title: "Erro de Acesso", description: "Falha ao conectar com o servidor." });
+          toast({ variant: "destructive", title: "Erro de Acesso", description: "Falha ao conectar com o Firebase Auth." });
         }
       }
     } catch (err: any) {
       console.error("Login Error:", err);
-      toast({ variant: "destructive", title: "Erro de Conexão", description: "Falha na validação." });
+      toast({ variant: "destructive", title: "Erro de Conexão", description: "Falha na validação com o banco." });
     } finally {
       setIsAuthenticating(false);
     }
@@ -143,9 +131,7 @@ export default function Home() {
         createdAt: new Date().toISOString()
       };
       
-      setLocalUser(masterData as User);
-      const expiry = new Date().getTime() + SEVEN_DAYS_MS;
-      localStorage.setItem(SESSION_KEY, JSON.stringify({ user: masterData, expiry }));
+      completeLogin(result.user.uid, masterData);
       toast({ title: "Mestre Configurado", description: "Acesso root ativado." });
     } catch (e: any) {
       try {
@@ -163,11 +149,11 @@ export default function Home() {
   const completeLogin = (uid: string, data: any) => {
     const userData: User = { 
       id: uid, 
-      name: data.name,
+      name: data.name || data.nome || 'Operador',
       email: data.email,
       role: data.role || 'normal',
-      notificationsEnabled: data.notificationsEnabled,
-      hasRequestAccess: data.hasRequestAccess
+      notificationsEnabled: data.notificationsEnabled !== false,
+      hasRequestAccess: !!data.hasRequestAccess
     };
     setLocalUser(userData);
     const expiry = new Date().getTime() + SEVEN_DAYS_MS;
@@ -186,8 +172,8 @@ export default function Home() {
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
           <div className="h-10 w-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-          <p className="text-primary font-bold animate-pulse text-[10px] uppercase tracking-widest text-center px-4">
-            {isAuthenticating ? "Autenticando..." : "Carregando Rappi Commander..."}
+          <p className="text-primary font-bold animate-pulse text-[10px] uppercase tracking-widest">
+            {isAuthenticating ? "Validando Acesso..." : "Iniciando Rappi Commander..."}
           </p>
         </div>
       </div>
