@@ -23,7 +23,6 @@ import { useToast } from "@/hooks/use-toast";
 import { UserRole } from "@/lib/types";
 import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { doc, setDoc, deleteDoc, updateDoc, collection } from "firebase/firestore";
-import { cn } from "@/lib/utils";
 
 interface RegistrationProps {
   type: 'users' | 'couriers';
