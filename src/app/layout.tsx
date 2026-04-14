@@ -1,4 +1,3 @@
-
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
@@ -29,7 +28,7 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased bg-slate-200 dark:bg-black m-0 p-0 h-full overflow-hidden">
         <FirebaseClientProvider>
-          {/* O tablet-container agora gerencia os recuos das áreas seguras do Android */}
+          {/* Recuo global para evitar o relógio e barra de gestos */}
           <div className="tablet-container h-full flex flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)]">
             {children}
           </div>

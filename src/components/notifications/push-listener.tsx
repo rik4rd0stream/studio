@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -20,7 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 
 /**
  * Listener de notificações em tempo real.
- * Usa o E-mail como identificador principal para garantir compatibilidade.
+ * Usa o E-mail como identificador principal para garantir compatibilidade entre Auth e Firestore.
  */
 export function PushListener({ user }: { user: User }) {
   const db = useFirestore();
@@ -31,9 +30,10 @@ export function PushListener({ user }: { user: User }) {
     // Só ativa se o usuário estiver logado e com notificações habilitadas
     if (!user || !user.email || !user.notificationsEnabled) return;
 
+    // Normalizamos o e-mail para evitar erros de caixa alta/baixa
     const userEmail = user.email.toLowerCase().trim();
 
-    // Busca solicitações pendentes para este e-mail específico
+    // Busca solicitações pendentes para este e-mail específico na coleção 'requests'
     const q = query(
       collection(db, "requests"),
       where("targetUserEmail", "==", userEmail),
@@ -42,7 +42,7 @@ export function PushListener({ user }: { user: User }) {
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       if (!snapshot.empty) {
-        // Pega a solicitação mais recente
+        // Pega a solicitação mais recente do banco
         const lastDoc = snapshot.docs[snapshot.docs.length - 1];
         const request = { id: lastDoc.id, ...lastDoc.data() } as OrderRequest;
         
@@ -54,7 +54,7 @@ export function PushListener({ user }: { user: User }) {
             description: `Enviado por: ${request.senderName}`,
           });
 
-          // Toca som de alerta se o navegador permitir
+          // Toca som de alerta se o sistema permitir
           try {
             const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
             audio.play().catch(() => {});
@@ -64,7 +64,7 @@ export function PushListener({ user }: { user: User }) {
         setActiveRequest(null);
       }
     }, (error) => {
-      console.error("Erro no Listener de Push:", error);
+      console.error("Erro no Listener de Notificações:", error);
     });
 
     return () => unsubscribe();
@@ -76,7 +76,7 @@ export function PushListener({ user }: { user: User }) {
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(activeRequest.command)}`;
     window.open(whatsappUrl, '_blank');
     
-    // Remove do Firebase para evitar loops
+    // Remove do banco após o despacho para limpar a notificação
     deleteDoc(doc(db, "requests", activeRequest.id));
     setActiveRequest(null);
 

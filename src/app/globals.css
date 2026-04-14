@@ -25,7 +25,7 @@
     --ring: 19 81% 50%;
     --radius: 0.75rem;
 
-    /* Variáveis dinâmicas para áreas seguras do Android/iOS */
+    /* Variáveis dinâmicas para áreas seguras */
     --sat: env(safe-area-inset-top, 0px);
     --sab: env(safe-area-inset-bottom, 0px);
     --sar: env(safe-area-inset-right, 0px);
@@ -62,42 +62,16 @@
   
   body {
     @apply bg-background text-foreground antialiased;
-    /* Aplica o recuo global para o corpo do app */
-    padding-top: var(--sat);
-    padding-bottom: var(--sab);
-    padding-left: var(--sal);
-    padding-right: var(--sar);
     min-height: 100vh;
     overflow-x: hidden;
-    /* Garante que o fundo cubra a área da barra de status no Android */
     background-attachment: fixed;
   }
 }
 
-@layer components {
-  /* Use esta classe no seu Header ou Navbar fixo */
-  .safe-top {
-    padding-top: var(--sat);
-  }
-
-  /* Use esta classe no seu Menu Lateral ou Sidebar */
-  .safe-sidebar {
-    padding-top: calc(var(--sat) + 1rem);
-    padding-bottom: var(--sab);
-  }
-
-  /* Use esta classe se tiver algum botão fixo no rodapé */
-  .safe-bottom {
-    padding-bottom: var(--sab);
-  }
-}
-
-/* Container do Tablet/Mobile que centraliza e limita a largura */
 .tablet-container {
   @apply mx-auto min-h-screen w-full max-w-[1024px] shadow-2xl transition-all duration-300 relative bg-background;
 }
 
-/* Ocultar barra de rolagem mas manter funcionalidade */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
@@ -106,7 +80,6 @@
   scrollbar-width: none;
 }
 
-/* Animações suaves */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(5px); }
   to { opacity: 1; transform: translateY(0); }

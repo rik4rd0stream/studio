@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -33,7 +32,7 @@ export function Registration({ type }: RegistrationProps) {
   const isUser = type === 'users';
   const collectionName = isUser ? 'userProfiles' : 'entregadores';
   const title = isUser ? 'Gestão de Usuários' : 'Gestão de Entregadores';
-  const idLabel = isUser ? 'E-mail (ID)' : 'ID do Motoboy (Código RT)';
+  const idLabel = isUser ? 'E-mail (ID de Login)' : 'ID do Motoboy (Código RT)';
   const idPlaceholder = isUser ? 'exemplo@rappi.com' : 'Ex: 994400';
 
   const loadData = async () => {
@@ -141,7 +140,7 @@ export function Registration({ type }: RegistrationProps) {
         <CardHeader className="bg-primary/5 border-b border-primary/10">
           <CardTitle className="text-primary text-xl font-bold flex items-center gap-2">
             {isUser ? <UserPlus className="h-5 w-5" /> : <Bike className="h-5 w-5" />}
-            {editingId ? 'Editar Cadastro' : 'Novo Cadastro'}
+            {editingId ? 'Editar Cadastro' : title}
           </CardTitle>
         </CardHeader>
         <CardContent className="p-6">
