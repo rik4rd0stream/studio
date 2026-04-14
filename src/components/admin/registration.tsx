@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -134,7 +135,7 @@ export function Registration({ type }: RegistrationProps) {
             {editingId ? 'Editar Registro' : (type === 'users' ? 'Novo Usuário' : 'Novo Entregador')}
           </CardTitle>
           <CardDescription>
-            Gerenciamento de acesso e equipe operacional.
+            Preencha os dados abaixo para gerenciar o acesso ao sistema.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -212,8 +213,9 @@ export function Registration({ type }: RegistrationProps) {
       </Card>
 
       <Card className="border-none shadow-sm overflow-hidden">
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
           <CardTitle className="text-xl">Registros Ativos</CardTitle>
+          {items && <span className="text-[10px] font-bold bg-primary/10 text-primary px-2 py-1 rounded-full">{items.length} itens</span>}
         </CardHeader>
         <CardContent className="p-0">
           <Table>
