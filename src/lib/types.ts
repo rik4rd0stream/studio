@@ -29,4 +29,4 @@ export interface OrderRequest {
   createdAt: string;
 }
 
-export type AppView = 'send-order' | 'request-order' | 'active-orders' | 'admin-users' | 'admin-couriers' | 'admin-rt';
+export type AppView = 'send-order' | 'request-order' | 'active-orders' | 'admin-users' | 'admin-couriers';

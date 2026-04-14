@@ -6,12 +6,11 @@ import { AppView, User } from "@/lib/types";
 import { SidebarNav } from "./sidebar-nav";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
-import { Send, Bell, Activity, PackageSearch, Menu, Database } from "lucide-react";
+import { Send, Bell, Activity, PackageSearch, Menu } from "lucide-react";
 import { CreateOrder } from "@/components/orders/create-order";
 import { ActiveOrders } from "@/components/orders/active-orders";
 import { RequestOrder } from "@/components/orders/request-order";
 import { Registration } from "@/components/admin/registration";
-import { RtRegistration } from "@/components/admin/rt-registration";
 import { PushListener } from "@/components/notifications/push-listener";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
@@ -41,8 +40,6 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
         return <Registration type="users" />;
       case 'admin-couriers':
         return <Registration type="couriers" />;
-      case 'admin-rt':
-        return <RtRegistration />;
       default:
         return <CreateOrder onOrderCreated={() => setView('active-orders')} />;
     }
@@ -57,7 +54,7 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
       </div>
 
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-16 border-b flex items-center justify-between px-4 md:px-6 bg-card/50 backdrop-blur-sm z-10">
+        <header className="h-16 border-b flex items-center justify-between px-4 md:px-6 bg-card/50 backdrop-blur-sm z-10 pt-[env(safe-area-inset-top)]">
           <div className="flex items-center gap-2 md:gap-4">
             <div className="md:hidden">
               <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
@@ -90,11 +87,11 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
               </Button>
               <Button 
                 size="sm" 
-                variant={currentView === 'admin-rt' ? 'default' : 'outline'} 
+                variant={currentView === 'active-orders' ? 'default' : 'outline'} 
                 className="rounded-full h-8 gap-1.5 text-[10px] px-3"
-                onClick={() => setView('admin-rt')}
+                onClick={() => setView('active-orders')}
               >
-                <Database className="h-3.5 w-3.5" /> <span className="hidden xs:inline">Cadastro RT</span>
+                <Activity className="h-3.5 w-3.5" /> <span className="hidden xs:inline">Ativos</span>
               </Button>
             </div>
           </div>
@@ -110,7 +107,7 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 scroll-smooth">
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 scroll-smooth pb-[env(safe-area-inset-bottom)]">
           {renderContent()}
         </main>
       </div>

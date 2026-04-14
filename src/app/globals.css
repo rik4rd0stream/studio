@@ -54,15 +54,19 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground overflow-hidden;
+    /* Garante que o app não "atropele" as barras nativas */
     padding-top: env(safe-area-inset-top);
     padding-bottom: env(safe-area-inset-bottom);
-    padding-left: env(safe-area-inset-left);
-    padding-right: env(safe-area-inset-right);
   }
 }
 
 .tablet-container {
-  @apply mx-auto min-h-screen w-full max-w-[1024px] shadow-2xl transition-all duration-300;
+  @apply mx-auto min-h-screen w-full max-w-[1024px] shadow-2xl transition-all duration-300 relative;
   background-color: hsl(var(--background));
+}
+
+/* Ajuste específico para o menu lateral no celular */
+[data-sidebar="sidebar"] {
+  padding-top: env(safe-area-inset-top);
 }

@@ -9,8 +9,7 @@ import {
   Users, 
   Bike, 
   LogOut,
-  ChevronRight,
-  Database
+  ChevronRight
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -30,7 +29,6 @@ export function SidebarNav({ currentView, setView, user, onLogout }: SidebarNavP
   ];
 
   const adminItems = [
-    { id: 'admin-rt', label: 'Cadastro RT (Teste)', icon: Database, masterOnly: false },
     { id: 'admin-users', label: 'Gestão de Usuários', icon: Users, masterOnly: true },
     { id: 'admin-couriers', label: 'Gestão de Entregadores', icon: Bike, masterOnly: false },
   ];
@@ -64,7 +62,7 @@ export function SidebarNav({ currentView, setView, user, onLogout }: SidebarNavP
   };
 
   return (
-    <div className="flex flex-col h-full bg-card border-r">
+    <div className="flex flex-col h-full bg-card border-r" data-sidebar="sidebar">
       <div className="p-6">
         <h2 className="text-xl font-headline font-bold text-primary tracking-tight">Rappi Commander</h2>
         <p className="text-xs text-muted-foreground mt-1">Olá, {firstName}</p>
@@ -79,7 +77,7 @@ export function SidebarNav({ currentView, setView, user, onLogout }: SidebarNavP
           {adminItems.map(renderItem)}
         </div>
       </div>
-      <div className="p-4 border-t space-y-2">
+      <div className="p-4 border-t space-y-2 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
         <div className="flex items-center gap-3 px-4 py-2 bg-muted/30 rounded-lg">
           <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white font-bold text-xs">
             {userName.charAt(0)}
