@@ -5,15 +5,12 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack -p 9002",
-    "genkit:dev": "genkit start -- tsx src/ai/dev.ts",
-    "genkit:watch": "genkit start -- tsx --watch src/ai/dev.ts",
     "build": "next build",
     "postbuild": "node -e \"const fs = require('fs'); if (!fs.existsSync('out')) fs.mkdirSync('out'); fs.writeFileSync('out/index.html', '<!DOCTYPE html><html><head><meta http-equiv=\\\"refresh\\\" content=\\\"0; url=https://studio-kappa-mocha.vercel.app\\\"></head></html>');\"",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "static": "next build",
-    "cap:sync": "npx cap sync"
+    "cap:sync": "npx cap sync android"
   },
   "dependencies": {
     "@capacitor/android": "^7.0.0",

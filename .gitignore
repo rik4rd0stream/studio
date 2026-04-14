@@ -1,39 +1,26 @@
-
 # Dependências
-node_modules/
-.pnp
+node_modules
+/.pnp
 .pnp.js
 
-# Build do Next.js
+# Next.js build
 .next/
 out/
 
-# Produção
-build/
+# Capacitor / Android (Gerados localmente)
+/android
+/ios
+/out
+capacitor.config.ts.bak
 
-# Debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Variáveis de ambiente locais
+# Ambiente e Logs
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
-
-# Capacitor / Android / iOS
-# Nota: Geralmente a pasta 'android' é mantida no Git para projetos Capacitor
-# mas ignoramos as pastas de build geradas pelo Android Studio
-android/app/build/
-android/.gradle/
-android/local.properties
-android/captures/
-android/.idea/workspace.xml
-android/.idea/libraries/
-android/app/src/main/assets/public/
-
-# Outros
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 .DS_Store
-*.pem
+*.local

@@ -20,8 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 
 /**
  * Listener de notificações em tempo real.
- * Usa o E-mail como identificador principal para garantir compatibilidade
- * entre usuários criados manualmente e logados via Auth.
+ * Usa o E-mail como identificador principal para garantir compatibilidade.
  */
 export function PushListener({ user }: { user: User }) {
   const db = useFirestore();
@@ -30,12 +29,11 @@ export function PushListener({ user }: { user: User }) {
 
   useEffect(() => {
     // Só ativa se o usuário estiver logado e com notificações habilitadas
-    // Usamos o e-mail como identificador de destino (Target)
     if (!user || !user.email || !user.notificationsEnabled) return;
 
     const userEmail = user.email.toLowerCase().trim();
 
-    // Busca solicitações pendentes para este e-mail
+    // Busca solicitações pendentes para este e-mail específico
     const q = query(
       collection(db, "requests"),
       where("targetUserEmail", "==", userEmail),
@@ -56,17 +54,17 @@ export function PushListener({ user }: { user: User }) {
             description: `Enviado por: ${request.senderName}`,
           });
 
-          // Tenta tocar o som de alerta
+          // Toca som de alerta se o navegador permitir
           try {
             const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
-            audio.play().catch(e => console.warn("Audio play blocked by browser policy"));
+            audio.play().catch(() => {});
           } catch (e) {}
         }
       } else {
         setActiveRequest(null);
       }
     }, (error) => {
-      console.error("Firestore Listener Error:", error);
+      console.error("Erro no Listener de Push:", error);
     });
 
     return () => unsubscribe();
@@ -78,14 +76,11 @@ export function PushListener({ user }: { user: User }) {
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(activeRequest.command)}`;
     window.open(whatsappUrl, '_blank');
     
-    // Remove a solicitação após aceitar para não repetir
+    // Remove do Firebase para evitar loops
     deleteDoc(doc(db, "requests", activeRequest.id));
     setActiveRequest(null);
 
-    toast({
-      title: "Despachado",
-      description: "Comando enviado para o WhatsApp.",
-    });
+    toast({ title: "Despachado", description: "Comando enviado para o WhatsApp." });
   };
 
   const handleReject = () => {
@@ -103,7 +98,7 @@ export function PushListener({ user }: { user: User }) {
           <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-2 animate-bounce">
             <BellRing className="h-8 w-8 text-primary" />
           </div>
-          <AlertDialogTitle className="text-xl font-bold text-primary">Solicitação de Operação</AlertDialogTitle>
+          <AlertDialogTitle className="text-xl font-bold text-primary">Solicitação Push</AlertDialogTitle>
           <AlertDialogDescription className="text-sm">
             <span className="font-bold text-foreground">{activeRequest.senderName}</span> solicita sua ação:
             <div className="mt-4 p-4 bg-muted/50 rounded-2xl font-mono text-[11px] text-left border border-primary/10">
