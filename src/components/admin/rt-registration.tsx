@@ -6,16 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Trash2, Database, RefreshCw, AlertTriangle } from "lucide-react";
+import { Loader2, Trash2, Database, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useFirestore } from "@/firebase";
 import { firebaseConfig } from "@/firebase/config";
-import { doc, setDoc, deleteDoc, collection, getDocs } from "firebase/firestore";
+import { doc, setDoc, deleteDoc, collection, getDocsFromServer } from "firebase/firestore";
 
-/**
- * Componente de teste para nova coleção 'rt_registry'.
- * Inclui diagnósticos críticos para Android/Capacitor.
- */
 export function RtRegistration() {
   const { toast } = useToast();
   const db = useFirestore();
@@ -30,35 +26,39 @@ export function RtRegistration() {
 
   const collectionName = 'rt_registry';
 
-  // Alerta de diagnóstico ao montar o componente
-  useEffect(() => {
-    const isAndroid = /Android/i.test(navigator.userAgent);
-    if (isAndroid) {
-      alert(`DIAGNÓSTICO ANDROID:\n\nProjeto: ${firebaseConfig.projectId}\nURL Atual: ${window.location.href}\n\nSe o Projeto não for 'motoboy-13742', o APK está desatualizado!`);
-    }
-    loadData();
-  }, [db]);
-
   const loadData = async () => {
     setLoadingList(true);
     try {
-      const snapshot = await getDocs(collection(db, collectionName));
+      // DIAGNÓSTICO AMBIENTE
+      const isAndroid = /Android/i.test(navigator.userAgent);
+      if (isAndroid) {
+        alert(`INFO AMBIENTE:\nProjeto: ${firebaseConfig.projectId}\nURL: ${window.location.href}`);
+      }
+
+      // FORÇA busca do servidor ignorando qualquer cache
+      const snapshot = await getDocsFromServer(collection(db, collectionName));
+      
+      if (isAndroid) {
+        alert(`RESPOSTA NUVEM: Encontrados ${snapshot.size} registros.`);
+      }
+
       const docs = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }));
       setItems(docs);
     } catch (e: any) {
-      console.error("Erro ao carregar RTs:", e);
-      toast({ 
-        variant: "destructive", 
-        title: "Erro de Conexão", 
-        description: "O Android não conseguiu ler o banco." 
-      });
+      console.error("Erro Nuvem:", e);
+      toast({ variant: "destructive", title: "Erro de Rede", description: "O Android não alcançou o servidor." });
+      alert(`ERRO REDE: ${e.message}`);
     } finally {
       setLoadingList(false);
     }
   };
+
+  useEffect(() => {
+    loadData();
+  }, [db]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,27 +76,14 @@ export function RtRegistration() {
     };
 
     try {
-      // Timer de segurança para evitar o rodando infinito no Android
-      const savePromise = setDoc(docRef, data);
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error("Timeout de rede")), 10000)
-      );
-
-      await Promise.race([savePromise, timeoutPromise]);
-      
-      toast({ title: "Sucesso!", description: "Gravado no Firestore." });
+      await setDoc(docRef, data);
       setNome("");
       setTipoConta("");
       setIdRT("");
+      toast({ title: "Sucesso", description: "Gravado na nuvem!" });
       loadData();
     } catch (e: any) {
-      console.error("Erro ao gravar RT:", e);
-      alert(`ERRO DE GRAVAÇÃO:\n${e.message}\n\nVerifique se o domínio 'localhost' está autorizado no console.`);
-      toast({ 
-        variant: "destructive", 
-        title: "Falha na Rede", 
-        description: "O celular não alcançou o servidor." 
-      });
+      alert(`ERRO GRAVAÇÃO: ${e.message}`);
     } finally {
       setLoading(false);
     }
@@ -114,52 +101,25 @@ export function RtRegistration() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-20">
-      <Card className="border-primary/20 bg-primary/5 shadow-none">
-        <CardHeader className="py-4">
-          <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-tighter">
-            <AlertTriangle className="h-4 w-4" /> Status do Ambiente
-          </div>
-          <p className="text-[10px] opacity-70">
-            Projeto: <span className="font-mono font-bold">{firebaseConfig.projectId}</span><br />
-            Config: <span className="font-mono font-bold">Long Polling (Android Ready)</span>
-          </p>
-        </CardHeader>
-      </Card>
-
       <Card className="border-none shadow-sm">
         <CardHeader>
           <CardTitle className="text-primary flex items-center gap-2">
-            <Database className="h-5 w-5" /> Cadastro RT (Teste Android)
+            <Database className="h-5 w-5" /> Cadastro RT (Teste Direto)
           </CardTitle>
           <CardDescription>
-            Tente gravar um dado. Se o alerta de diagnóstico aparecer, saberemos a causa.
+            Este formulário usa 'getDocsFromServer' para forçar a conexão com a nuvem.
           </CardDescription>
         </CardHeader>
 
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Input
-                placeholder="Nome do RT"
-                value={nome}
-                onChange={(e) => setNome(e.target.value)}
-                required
-              />
-              <Input
-                placeholder="Tipo de Conta"
-                value={tipoConta}
-                onChange={(e) => setTipoConta(e.target.value)}
-                required
-              />
-              <Input
-                placeholder="ID do RT"
-                value={idRT}
-                onChange={(e) => setIdRT(e.target.value)}
-                required
-              />
+              <Input placeholder="Nome" value={nome} onChange={(e) => setNome(e.target.value)} required />
+              <Input placeholder="Tipo Conta" value={tipoConta} onChange={(e) => setTipoConta(e.target.value)} required />
+              <Input placeholder="ID RT" value={idRT} onChange={(e) => setIdRT(e.target.value)} required />
             </div>
-            <Button type="submit" disabled={loading} className="w-full md:w-auto h-11 font-bold">
-              {loading ? <Loader2 className="animate-spin h-4 w-4" /> : 'Gravar e Testar'}
+            <Button type="submit" disabled={loading} className="w-full md:w-auto">
+              {loading ? <Loader2 className="animate-spin h-4 w-4" /> : 'Gravar na Nuvem'}
             </Button>
           </form>
         </CardContent>
@@ -167,43 +127,31 @@ export function RtRegistration() {
 
       <Card className="border-none shadow-sm">
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-lg">RTs Sincronizados</CardTitle>
+          <CardTitle className="text-lg">Dados em Tempo Real (Sem Cache)</CardTitle>
           <Button variant="ghost" size="sm" onClick={loadData} disabled={loadingList}>
             <RefreshCw className={loadingList ? "animate-spin" : ""} size={14} />
           </Button>
         </CardHeader>
         <CardContent>
           {loadingList ? (
-            <div className="py-10 text-center text-muted-foreground">Buscando do servidor...</div>
+            <div className="py-10 text-center text-muted-foreground">Conectando ao servidor...</div>
           ) : items.length === 0 ? (
-            <div className="py-10 text-center text-muted-foreground">Nenhum dado encontrado no servidor para este projeto.</div>
+            <div className="py-10 text-center text-muted-foreground">Nenhum dado encontrado na nuvem.</div>
           ) : (
-            <div className="border rounded-lg overflow-hidden">
-              <Table>
-                <TableHeader className="bg-muted/50">
-                  <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>Conta</TableHead>
-                    <TableHead>ID</TableHead>
-                    <TableHead className="w-10"></TableHead>
+            <Table>
+              <TableHeader><TableRow><TableHead>Nome</TableHead><TableHead>ID</TableHead><TableHead></TableHead></TableRow></TableHeader>
+              <TableBody>
+                {items.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell className="font-medium">{item.nome}</TableCell>
+                    <TableCell className="font-mono text-xs">{item.idRT}</TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="ghost" size="icon" onClick={() => handleDelete(item.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {items.map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell className="font-medium">{item.nome}</TableCell>
-                      <TableCell>{item.tipoConta}</TableCell>
-                      <TableCell className="font-mono text-xs">{item.idRT}</TableCell>
-                      <TableCell>
-                        <Button variant="ghost" size="icon" onClick={() => handleDelete(item.id)}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                ))}
+              </TableBody>
+            </Table>
           )}
         </CardContent>
       </Card>
