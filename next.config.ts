@@ -3,9 +3,8 @@ import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
   /**
-   * Configuração padrão para Web e Live URL.
-   * Suporta Server Actions, Genkit e consulta ao Redash sem erros de CORS.
-   * NÃO use output: 'export' aqui para que as funções de servidor funcionem na Vercel.
+   * Configuração padrão para Web e Live URL no Capacitor.
+   * Não use output: 'export' para manter Server Actions funcionando.
    */
   images: {
     unoptimized: true, 

@@ -22,7 +22,7 @@ export function initializeFirebase() {
   if (!firestoreInstance) {
     try {
       // Tenta inicializar com configurações robustas para Capacitor/Android
-      // Nota: cacheSizeBytes removido para evitar erro de build se o valor for menor que 1MB
+      // experimentalAutoDetectLongPolling ajuda em redes com bloqueio de WebSocket
       firestoreInstance = initializeFirestore(appInstance, {
         experimentalAutoDetectLongPolling: true,
       });
