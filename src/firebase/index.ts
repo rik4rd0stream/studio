@@ -12,7 +12,7 @@ let appInstance: FirebaseApp | null = null;
 
 /**
  * Inicialização centralizada e segura (Singleton) do Firebase.
- * Configurada para compatibilidade máxima com Capacitor/Android.
+ * Configurada para evitar o erro de 'failed-precondition' e otimizar para Android/Capacitor.
  */
 export function initializeFirebase() {
   if (!appInstance) {
@@ -20,9 +20,11 @@ export function initializeFirebase() {
   }
 
   if (!firestoreInstance) {
-    // Configuração robusta: experimentalForceLongPolling resolve falhas de WebSocket no Android
+    // Configuração robusta para Android: experimentalAutoDetectLongPolling resolve falhas de WebSocket.
+    // O cache é mantido no padrão (pelo menos 1MB) para evitar erro de inicialização.
     firestoreInstance = initializeFirestore(appInstance, {
-      experimentalForceLongPolling: true,
+      experimentalAutoDetectLongPolling: true,
+      useFetchStreams: false,
     });
   }
 
@@ -37,7 +39,7 @@ export function initializeFirebase() {
   };
 }
 
-// Re-exportações explícitas dos hooks para evitar erro 'Export doesn't exist'
+// Re-exportações explícitas dos hooks para o app encontrar as referências
 export { 
   FirebaseProvider, 
   useFirebase, 
