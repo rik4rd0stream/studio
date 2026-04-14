@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -7,9 +8,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Loader2, Pencil, Trash2, RefreshCw, Database, UserPlus, Bike, ShieldCheck, Bell } from "lucide-react";
+import { Loader2, Pencil, Trash2, RefreshCw, Database, UserPlus, Bike, ShieldCheck, Bell, Lock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getCollectionBridge, setDocumentBridge, deleteDocumentBridge } from "@/app/actions/firestore-bridge";
+import { createAuthUserBridge } from "@/app/actions/auth-bridge";
 
 interface RegistrationProps {
   type: 'users' | 'couriers';
@@ -102,6 +104,22 @@ export function Registration({ type }: RegistrationProps) {
       return;
     }
 
+    // Se for usuário, primeiro tentamos criar no Auth se for novo
+    if (isUser && !editingId) {
+      if (password.length < 6) {
+        toast({ variant: "destructive", title: "Senha Curta", description: "A senha deve ter no mínimo 6 caracteres." });
+        setLoading(false);
+        return;
+      }
+      
+      const authResult = await createAuthUserBridge(docId, password);
+      if (!authResult.success) {
+        toast({ variant: "destructive", title: "Erro de Autenticação", description: authResult.error });
+        setLoading(false);
+        return;
+      }
+    }
+
     let data: any = isUser 
       ? { 
           name: name.trim(), 
@@ -121,7 +139,7 @@ export function Registration({ type }: RegistrationProps) {
     try {
       const result = await setDocumentBridge(collectionName, docId, data);
       if (result.success) {
-        toast({ title: "Sincronizado", description: "Dados salvos com sucesso." });
+        toast({ title: "Sincronizado", description: "Dados salvos no Firestore e Auth." });
         resetForm();
         loadData();
       } else {
@@ -171,15 +189,18 @@ export function Registration({ type }: RegistrationProps) {
               {isUser && (
                 <>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold uppercase text-muted-foreground ml-1 tracking-widest">Senha de Acesso</label>
-                    <Input 
-                      type="password"
-                      placeholder="Senha para login" 
-                      value={password} 
-                      onChange={(e) => setPassword(e.target.value)} 
-                      required={!editingId}
-                      className="h-12 bg-muted/30 border-none rounded-2xl focus-visible:ring-primary shadow-inner"
-                    />
+                    <label className="text-[10px] font-bold uppercase text-muted-foreground ml-1 tracking-widest">Senha de Acesso (Min 6)</label>
+                    <div className="relative">
+                      <Input 
+                        type="text"
+                        placeholder="Senha para login" 
+                        value={password} 
+                        onChange={(e) => setPassword(e.target.value)} 
+                        required={!editingId}
+                        className="h-12 bg-muted/30 border-none rounded-2xl focus-visible:ring-primary shadow-inner pr-10"
+                      />
+                      <Lock className="absolute right-3 top-3.5 h-5 w-5 text-muted-foreground/50" />
+                    </div>
                   </div>
                   <div className="flex items-center gap-6 pt-2">
                     <div className="flex items-center space-x-2">
@@ -209,7 +230,7 @@ export function Registration({ type }: RegistrationProps) {
             
             <div className="flex gap-3 pt-2">
               <Button type="submit" disabled={loading} className="h-12 px-8 font-bold uppercase rounded-2xl shadow-lg flex-1 md:flex-none">
-                {loading ? <Loader2 className="animate-spin h-5 w-5" /> : (editingId ? 'Atualizar Registro' : 'Salvar na Nuvem')}
+                {loading ? <Loader2 className="animate-spin h-5 w-5" /> : (editingId ? 'Atualizar Registro' : 'Cadastrar na Nuvem')}
               </Button>
               {editingId && (
                 <Button type="button" variant="ghost" onClick={resetForm} className="h-12 rounded-2xl text-muted-foreground hover:bg-muted font-bold px-6">
@@ -234,7 +255,7 @@ export function Registration({ type }: RegistrationProps) {
           {loadingList ? (
             <div className="py-20 text-center flex flex-col items-center gap-3">
               <Loader2 className="animate-spin h-8 w-8 text-primary opacity-20" />
-              <p className="text-[10px] font-bold text-muted-foreground animate-pulse">SINCRONIZANDO COM A VERCEL...</p>
+              <p className="text-[10px] font-bold text-muted-foreground animate-pulse">SINCRONIZANDO COM O FIREBASE...</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -250,7 +271,7 @@ export function Registration({ type }: RegistrationProps) {
                   {items.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={3} className="text-center py-16 text-muted-foreground italic text-xs">
-                        Nenhum registro encontrado nesta coleção.
+                        Nenhum registro encontrado.
                       </TableCell>
                     </TableRow>
                   ) : items.map((item) => (

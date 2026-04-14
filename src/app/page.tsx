@@ -9,7 +9,6 @@ import { useFirestore, useAuth } from "@/firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { 
   signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, 
   onAuthStateChanged 
 } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -61,21 +60,15 @@ export default function Home() {
     const password = passInput.trim();
     
     try {
-      // BUSCA DIRETA PELO ID (E-MAIL) - Conforme seu print do Firebase
+      // BUSCA DIRETA PELO ID (E-MAIL) - Prioridade total ao Firestore
       const userDocRef = doc(db, 'userProfiles', email);
       const userSnap = await getDoc(userDocRef);
       
       if (!userSnap.exists()) {
-        // Exceção especial para o mestre inicial
-        if (email === 'rik4rd0stream@gmail.com') {
-          await handleMasterFirstAccess(email, password);
-          return;
-        }
-
         toast({
           variant: "destructive",
           title: "Acesso Negado",
-          description: "Usuário não encontrado. Verifique se o e-mail está cadastrado na Gestão de Usuários."
+          description: "Usuário não encontrado no banco de dados. Solicite o cadastro."
         });
         setIsAuthenticating(false);
         return;
@@ -83,7 +76,7 @@ export default function Home() {
 
       const firestoreData = userSnap.data();
 
-      // Validação de senha do Firestore
+      // Validação de senha local (Firestore) antes de tentar o Auth
       if (firestoreData.password && firestoreData.password !== password) {
          toast({ variant: "destructive", title: "Senha Incorreta", description: "Verifique seus dados." });
          setIsAuthenticating(false);
@@ -91,56 +84,20 @@ export default function Home() {
       }
 
       try {
+        // Tenta o login oficial no Firebase Auth
         const authResult = await signInWithEmailAndPassword(auth, email, password);
         completeLogin(authResult.user.uid, firestoreData);
       } catch (authErr: any) {
-        if (authErr.code === 'auth/user-not-found' || authErr.code === 'auth/invalid-credential' || authErr.code === 'auth/invalid-email') {
-          try {
-            const newAuth = await createUserWithEmailAndPassword(auth, email, password);
-            await updateDoc(userDocRef, {
-              authUid: newAuth.user.uid,
-              updatedAt: new Date().toISOString()
-            });
-            completeLogin(newAuth.user.uid, firestoreData);
-          } catch (createErr: any) {
-            console.error("Erro Auth:", createErr);
-            toast({ variant: "destructive", title: "Erro de Segurança", description: "A senha deve ter no mínimo 6 caracteres." });
-          }
-        } else {
-          toast({ variant: "destructive", title: "Erro de Acesso", description: "Falha ao conectar com o Firebase Auth." });
-        }
+        console.error("Auth Login Error:", authErr.code);
+        toast({ 
+          variant: "destructive", 
+          title: "Erro de Autenticação", 
+          description: "O usuário não foi ativado no Auth ou a senha está divergente." 
+        });
       }
     } catch (err: any) {
-      console.error("Login Error:", err);
-      toast({ variant: "destructive", title: "Erro de Conexão", description: "Falha na validação com o banco." });
-    } finally {
-      setIsAuthenticating(false);
-    }
-  };
-
-  const handleMasterFirstAccess = async (email: string, pass: string) => {
-    try {
-      const result = await createUserWithEmailAndPassword(auth, email, pass);
-      const masterData = {
-        id: result.user.uid,
-        name: 'Ricardo (Master)',
-        email: email,
-        role: 'master',
-        notificationsEnabled: true,
-        hasRequestAccess: true,
-        createdAt: new Date().toISOString()
-      };
-      
-      completeLogin(result.user.uid, masterData);
-      toast({ title: "Mestre Configurado", description: "Acesso root ativado." });
-    } catch (e: any) {
-      try {
-        const login = await signInWithEmailAndPassword(auth, email, pass);
-        const masterData = { id: login.user.uid, name: 'Ricardo (Master)', email, role: 'master', hasRequestAccess: true, notificationsEnabled: true };
-        completeLogin(login.user.uid, masterData);
-      } catch (loginErr) {
-        toast({ variant: "destructive", title: "Acesso Negado", description: "Senha Master incorreta." });
-      }
+      console.error("Login Critical Error:", err);
+      toast({ variant: "destructive", title: "Erro de Conexão", description: "Falha na comunicação com o servidor." });
     } finally {
       setIsAuthenticating(false);
     }
@@ -173,7 +130,7 @@ export default function Home() {
         <div className="flex flex-col items-center gap-4">
           <div className="h-10 w-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
           <p className="text-primary font-bold animate-pulse text-[10px] uppercase tracking-widest">
-            {isAuthenticating ? "Validando Acesso..." : "Iniciando Rappi Commander..."}
+            {isAuthenticating ? "Autenticando..." : "Carregando Rappi Commander..."}
           </p>
         </div>
       </div>
