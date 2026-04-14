@@ -1,10 +1,9 @@
-
 'use server';
 
 /**
  * @fileOverview Ponte de Dados (Data Bridge) via Server Actions.
- * Resolve o problema do Android não conseguir ler o Firestore diretamente.
- * Como o servidor NextJS sempre consegue ler o Firebase, ele serve de ponte para o app.
+ * O Android faz uma chamada HTTP simples para este servidor (Vercel),
+ * e o servidor busca os dados no Firestore. Isso resolve o bloqueio de rede do Android.
  */
 
 import { initializeApp, getApps, getApp } from 'firebase/app';
@@ -15,21 +14,21 @@ import {
   addDoc, 
   deleteDoc, 
   doc, 
-  updateDoc,
   query,
   orderBy,
-  serverTimestamp
+  getDocsFromServer
 } from 'firebase/firestore';
 import { firebaseConfig } from '@/firebase/config';
 
-// Inicialização interna para o servidor
+// Inicialização interna para o servidor NextJS
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 export async function getCollectionBridge(collectionName: string) {
   try {
+    // No servidor, forçamos a busca direto do Firebase (sem cache)
     const q = query(collection(db, collectionName), orderBy('updatedAt', 'desc'));
-    const snapshot = await getDocs(q);
+    const snapshot = await getDocsFromServer(q);
     const data = snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()

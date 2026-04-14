@@ -1,4 +1,3 @@
-
 'use client';
 
 import { firebaseConfig } from '@/firebase/config';
@@ -8,42 +7,31 @@ import { initializeFirestore, Firestore } from 'firebase/firestore';
 
 /**
  * Inicialização centralizada do Firebase.
- * Configuração limpa e estável.
+ * Configurada para compatibilidade máxima com Capacitor/Android.
  */
-let firebaseInstance: {
-  firebaseApp: FirebaseApp;
-  auth: any;
-  firestore: Firestore;
-} | null = null;
-
 export function initializeFirebase() {
-  if (firebaseInstance) return firebaseInstance;
-
   const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
-  // Firestore com configuração básica de compatibilidade
+  // Firestore configurado com Long Polling para evitar falhas de WebSocket no Android
   const firestore = initializeFirestore(app, {
     experimentalForceLongPolling: true
   });
 
-  firebaseInstance = {
+  return {
     firebaseApp: app,
     auth: getAuth(app),
     firestore
   };
-
-  return firebaseInstance;
 }
 
-// Re-exportações explícitas para evitar erros de importação
+// Re-exportações explícitas para garantir que os hooks estejam disponíveis em src/app/page.tsx
 export { 
   FirebaseProvider, 
   useFirebase, 
   useFirestore, 
   useAuth, 
   useFirebaseApp, 
-  useMemoFirebase,
-  useUser as useAuthUser
+  useMemoFirebase
 } from './provider';
 
 export { FirebaseClientProvider } from './client-provider';
