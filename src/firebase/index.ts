@@ -9,19 +9,18 @@ let firebaseInstance: { firebaseApp: FirebaseApp; auth: Auth; firestore: Firesto
 
 /**
  * Inicialização do Firebase otimizada para Capacitor/Android.
- * Força o uso de Long Polling e desativa streams de busca para evitar falhas 
- * de conexão no protocolo capacitor:// ou em conexões remotas de WebView.
+ * Força o uso de Long Polling para evitar falhas de conexão no protocolo capacitor://
  */
 export function initializeFirebase() {
   if (firebaseInstance) return firebaseInstance;
 
   const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
-  // Configuração recomendada para evitar erros de conexão no Android/Capacitor:
-  // experimentalForceLongPolling e experimentalAutoDetectLongPolling não podem ser usados juntos.
+  // Configuração recomendada para compatibilidade máxima com Capacitor:
+  // experimentalForceLongPolling resolve a maioria dos problemas de conexão em Android nativo.
   const firestore = initializeFirestore(app, {
-    experimentalForceLongPolling: true, // Força o Long Polling para compatibilidade máxima com Capacitor
-    useFetchStreams: false,             // Desativa streams que costumam falhar em WebViews Android
+    experimentalForceLongPolling: true,
+    useFetchStreams: false,
   });
 
   firebaseInstance = {
