@@ -3,7 +3,7 @@
 
 /**
  * @fileOverview Ponte de Dados (Data Bridge) via Server Actions.
- * Usa a inicialização centralizada para evitar conflitos de instância.
+ * O Android chama estas funções que rodam na Vercel, ignorando bloqueios locais.
  */
 
 import { 
@@ -12,12 +12,13 @@ import {
   deleteDoc, 
   doc, 
   query,
+  getDocs,
   orderBy,
-  getDocsFromServer
+  serverTimestamp,
+  updateDoc
 } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
 
-// Função auxiliar para obter o DB de forma segura no servidor
 const getDb = () => {
   const { firestore } = initializeFirebase();
   return firestore;
@@ -27,15 +28,16 @@ export async function getCollectionBridge(collectionName: string) {
   try {
     const db = getDb();
     const q = query(collection(db, collectionName), orderBy('updatedAt', 'desc'));
-    const snapshot = await getDocsFromServer(q);
+    const snapshot = await getDocs(q);
     
     const data = snapshot.docs.map(doc => {
       const docData = doc.data();
       return {
         id: doc.id,
         ...docData,
-        createdAt: docData.createdAt || new Date().toISOString(),
-        updatedAt: docData.updatedAt || new Date().toISOString()
+        // Garante que datas sejam strings para o transporte JSON
+        createdAt: docData.createdAt?.toDate?.()?.toISOString() || docData.createdAt || new Date().toISOString(),
+        updatedAt: docData.updatedAt?.toDate?.()?.toISOString() || docData.updatedAt || new Date().toISOString()
       };
     });
     
