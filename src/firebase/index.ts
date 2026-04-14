@@ -4,7 +4,7 @@
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
-import { initializeFirestore, Firestore } from 'firebase/firestore';
+import { getFirestore, initializeFirestore, Firestore } from 'firebase/firestore';
 
 let firestoreInstance: Firestore | null = null;
 let authInstance: Auth | null = null;
@@ -12,7 +12,7 @@ let appInstance: FirebaseApp | null = null;
 
 /**
  * Inicialização centralizada e segura (Singleton) do Firebase.
- * Configurada para evitar o erro de 'failed-precondition' e otimizar para Android/Capacitor.
+ * Usa try-catch para evitar o erro de 'already initialized with different options'.
  */
 export function initializeFirebase() {
   if (!appInstance) {
@@ -20,12 +20,15 @@ export function initializeFirebase() {
   }
 
   if (!firestoreInstance) {
-    // Configuração robusta para Android: experimentalAutoDetectLongPolling resolve falhas de WebSocket.
-    // O cache é mantido no padrão (pelo menos 1MB) para evitar erro de inicialização.
-    firestoreInstance = initializeFirestore(appInstance, {
-      experimentalAutoDetectLongPolling: true,
-      useFetchStreams: false,
-    });
+    try {
+      // Tenta inicializar com configurações robustas para Capacitor/Android
+      firestoreInstance = initializeFirestore(appInstance, {
+        experimentalAutoDetectLongPolling: true,
+      });
+    } catch (e) {
+      // Se já foi inicializado (ex: via getFirestore padrão), recupera a instância existente
+      firestoreInstance = getFirestore(appInstance);
+    }
   }
 
   if (!authInstance) {
@@ -39,7 +42,7 @@ export function initializeFirebase() {
   };
 }
 
-// Re-exportações explícitas dos hooks para o app encontrar as referências
+// Re-exportações dos hooks
 export { 
   FirebaseProvider, 
   useFirebase, 

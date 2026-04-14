@@ -3,15 +3,11 @@
 
 /**
  * @fileOverview Ponte de Dados (Data Bridge) via Server Actions.
- * O Android faz uma chamada HTTP simples para este servidor (Vercel),
- * e o servidor busca os dados no Firestore. Isso resolve o bloqueio de rede do Android.
+ * Usa a inicialização centralizada para evitar conflitos de instância.
  */
 
-import { initializeApp, getApps, getApp } from 'firebase/app';
 import { 
-  getFirestore, 
   collection, 
-  getDocs, 
   addDoc, 
   deleteDoc, 
   doc, 
@@ -19,18 +15,17 @@ import {
   orderBy,
   getDocsFromServer
 } from 'firebase/firestore';
-import { firebaseConfig } from '@/firebase/config';
+import { initializeFirebase } from '@/firebase';
 
-// Inicialização interna para o servidor NextJS (Singleton no lado do servidor)
+// Função auxiliar para obter o DB de forma segura no servidor
 const getDb = () => {
-  const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-  return getFirestore(app);
+  const { firestore } = initializeFirebase();
+  return firestore;
 };
 
 export async function getCollectionBridge(collectionName: string) {
   try {
     const db = getDb();
-    // No servidor, forçamos a busca direto do Firebase (sem cache local do servidor)
     const q = query(collection(db, collectionName), orderBy('updatedAt', 'desc'));
     const snapshot = await getDocsFromServer(q);
     
@@ -39,7 +34,6 @@ export async function getCollectionBridge(collectionName: string) {
       return {
         id: doc.id,
         ...docData,
-        // Converte timestamps se necessário para o JSON
         createdAt: docData.createdAt || new Date().toISOString(),
         updatedAt: docData.updatedAt || new Date().toISOString()
       };
