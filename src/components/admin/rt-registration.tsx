@@ -6,14 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Pencil, Trash2, Database, RefreshCw } from "lucide-react";
+import { Loader2, Trash2, Database, RefreshCw, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useFirestore } from "@/firebase";
+import { firebaseConfig } from "@/firebase/config";
 import { doc, setDoc, deleteDoc, collection, getDocs } from "firebase/firestore";
 
 /**
  * Componente de teste para nova coleção 'rt_registry'.
- * Focado em validar a sincronização no ambiente Android.
+ * Inclui diagnósticos críticos para Android/Capacitor.
  */
 export function RtRegistration() {
   const { toast } = useToast();
@@ -29,6 +30,15 @@ export function RtRegistration() {
 
   const collectionName = 'rt_registry';
 
+  // Alerta de diagnóstico ao montar o componente
+  useEffect(() => {
+    const isAndroid = /Android/i.test(navigator.userAgent);
+    if (isAndroid) {
+      alert(`DIAGNÓSTICO ANDROID:\n\nProjeto: ${firebaseConfig.projectId}\nURL Atual: ${window.location.href}\n\nSe o Projeto não for 'motoboy-13742', o APK está desatualizado!`);
+    }
+    loadData();
+  }, [db]);
+
   const loadData = async () => {
     setLoadingList(true);
     try {
@@ -43,22 +53,17 @@ export function RtRegistration() {
       toast({ 
         variant: "destructive", 
         title: "Erro de Conexão", 
-        description: "Não foi possível ler a coleção 'rt_registry'." 
+        description: "O Android não conseguiu ler o banco." 
       });
     } finally {
       setLoadingList(false);
     }
   };
 
-  useEffect(() => {
-    loadData();
-  }, [db]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    // Gera um ID único para o teste
     const docId = 'rt_' + Math.random().toString(36).substr(2, 9);
     const docRef = doc(db, collectionName, docId);
 
@@ -71,20 +76,26 @@ export function RtRegistration() {
     };
 
     try {
-      // Gravação direta para testar o Long Polling
-      await setDoc(docRef, data);
+      // Timer de segurança para evitar o rodando infinito no Android
+      const savePromise = setDoc(docRef, data);
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error("Timeout de rede")), 10000)
+      );
+
+      await Promise.race([savePromise, timeoutPromise]);
       
-      toast({ title: "Sucesso!", description: "Dados gravados na coleção 'rt_registry'." });
+      toast({ title: "Sucesso!", description: "Gravado no Firestore." });
       setNome("");
       setTipoConta("");
       setIdRT("");
       loadData();
     } catch (e: any) {
       console.error("Erro ao gravar RT:", e);
+      alert(`ERRO DE GRAVAÇÃO:\n${e.message}\n\nVerifique se o domínio 'localhost' está autorizado no console.`);
       toast({ 
         variant: "destructive", 
-        title: "Falha na Gravação", 
-        description: "O Android não conseguiu enviar os dados ao servidor." 
+        title: "Falha na Rede", 
+        description: "O celular não alcançou o servidor." 
       });
     } finally {
       setLoading(false);
@@ -92,7 +103,7 @@ export function RtRegistration() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Remover este RT de teste?")) return;
+    if (!confirm("Remover este RT?")) return;
     try {
       await deleteDoc(doc(db, collectionName, id));
       loadData();
@@ -103,13 +114,25 @@ export function RtRegistration() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-20">
+      <Card className="border-primary/20 bg-primary/5 shadow-none">
+        <CardHeader className="py-4">
+          <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-tighter">
+            <AlertTriangle className="h-4 w-4" /> Status do Ambiente
+          </div>
+          <p className="text-[10px] opacity-70">
+            Projeto: <span className="font-mono font-bold">{firebaseConfig.projectId}</span><br />
+            Config: <span className="font-mono font-bold">Long Polling (Android Ready)</span>
+          </p>
+        </CardHeader>
+      </Card>
+
       <Card className="border-none shadow-sm">
         <CardHeader>
           <CardTitle className="text-primary flex items-center gap-2">
             <Database className="h-5 w-5" /> Cadastro RT (Teste Android)
           </CardTitle>
           <CardDescription>
-            Use esta aba para validar se o seu celular consegue gravar dados.
+            Tente gravar um dado. Se o alerta de diagnóstico aparecer, saberemos a causa.
           </CardDescription>
         </CardHeader>
 
@@ -136,7 +159,7 @@ export function RtRegistration() {
               />
             </div>
             <Button type="submit" disabled={loading} className="w-full md:w-auto h-11 font-bold">
-              {loading ? <Loader2 className="animate-spin h-4 w-4" /> : 'Gravar RT'}
+              {loading ? <Loader2 className="animate-spin h-4 w-4" /> : 'Gravar e Testar'}
             </Button>
           </form>
         </CardContent>
@@ -151,9 +174,9 @@ export function RtRegistration() {
         </CardHeader>
         <CardContent>
           {loadingList ? (
-            <div className="py-10 text-center text-muted-foreground">Sincronizando...</div>
+            <div className="py-10 text-center text-muted-foreground">Buscando do servidor...</div>
           ) : items.length === 0 ? (
-            <div className="py-10 text-center text-muted-foreground">Nenhum dado encontrado no Android.</div>
+            <div className="py-10 text-center text-muted-foreground">Nenhum dado encontrado no servidor para este projeto.</div>
           ) : (
             <div className="border rounded-lg overflow-hidden">
               <Table>
