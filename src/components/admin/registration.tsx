@@ -24,11 +24,8 @@ export function Registration({ type }: RegistrationProps) {
   const [loading, setLoading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  // Campos Comuns
   const [name, setName] = useState("");
   const [customId, setCustomId] = useState("");
-  
-  // Campos Específicos de Usuário
   const [password, setPassword] = useState("");
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [hasRequestAccess, setHasRequestAccess] = useState(false);
@@ -82,7 +79,7 @@ export function Registration({ type }: RegistrationProps) {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Remover este registro permanentemente da nuvem?")) return;
+    if (!confirm("Remover este registro permanentemente?")) return;
     try {
       const result = await deleteDocumentBridge(collectionName, id);
       if (result.success) {
@@ -266,7 +263,7 @@ export function Registration({ type }: RegistrationProps) {
                         )}
                       </TableCell>
                       <TableCell className="font-mono text-[11px] text-muted-foreground">
-                        {item.id || item.id_motoboy || item.email}
+                        {item.id_motoboy || item.email || item.id}
                       </TableCell>
                       <TableCell className="px-4">
                         <div className="flex gap-1 justify-end">

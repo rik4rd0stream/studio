@@ -12,8 +12,6 @@ import {
   deleteDoc, 
   doc, 
   getDocs,
-  orderBy,
-  query,
 } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
 
@@ -26,8 +24,9 @@ export async function getCollectionBridge(collectionName: string) {
   try {
     const db = getDb();
     const colRef = collection(db, collectionName);
-    const q = query(colRef, orderBy('updatedAt', 'desc'));
-    const snapshot = await getDocs(q);
+    
+    // Removido o orderBy fixo para evitar que documentos sem o campo 'updatedAt' sejam ocultados
+    const snapshot = await getDocs(colRef);
     
     const data = snapshot.docs.map(doc => {
       const docData = doc.data();
@@ -37,6 +36,11 @@ export async function getCollectionBridge(collectionName: string) {
         createdAt: docData.createdAt || new Date().toISOString(),
         updatedAt: docData.updatedAt || new Date().toISOString()
       };
+    });
+    
+    // Ordenação manual para garantir que os mais novos apareçam primeiro sem quebrar a consulta
+    data.sort((a: any, b: any) => {
+      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
     });
     
     return { success: true, data };
