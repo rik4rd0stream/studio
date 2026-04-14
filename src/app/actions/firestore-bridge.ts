@@ -3,19 +3,17 @@
 
 /**
  * @fileOverview Ponte de Dados (Data Bridge) via Server Actions.
- * O Android chama estas funções que rodam na Vercel, ignorando bloqueios locais.
+ * Garante que o Android consiga ler e gravar dados ignorando bloqueios locais.
  */
 
 import { 
   collection, 
-  addDoc, 
+  setDoc,
   deleteDoc, 
   doc, 
   query,
   getDocs,
   orderBy,
-  serverTimestamp,
-  updateDoc
 } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
 
@@ -35,9 +33,8 @@ export async function getCollectionBridge(collectionName: string) {
       return {
         id: doc.id,
         ...docData,
-        // Garante que datas sejam strings para o transporte JSON
-        createdAt: docData.createdAt?.toDate?.()?.toISOString() || docData.createdAt || new Date().toISOString(),
-        updatedAt: docData.updatedAt?.toDate?.()?.toISOString() || docData.updatedAt || new Date().toISOString()
+        createdAt: docData.createdAt || new Date().toISOString(),
+        updatedAt: docData.updatedAt || new Date().toISOString()
       };
     });
     
@@ -48,15 +45,16 @@ export async function getCollectionBridge(collectionName: string) {
   }
 }
 
-export async function addDocumentBridge(collectionName: string, data: any) {
+export async function setDocumentBridge(collectionName: string, docId: string, data: any) {
   try {
     const db = getDb();
-    const docRef = await addDoc(collection(db, collectionName), {
+    const docRef = doc(db, collectionName, docId);
+    await setDoc(docRef, {
       ...data,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    });
-    return { success: true, id: docRef.id };
+      updatedAt: new Date().toISOString(),
+      createdAt: data.createdAt || new Date().toISOString()
+    }, { merge: true });
+    return { success: true, id: docId };
   } catch (error: any) {
     console.error(`Bridge Write Error (${collectionName}):`, error.message);
     return { success: false, error: error.message };

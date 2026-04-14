@@ -4,16 +4,11 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { 
-  Loader2, 
-  Pencil, 
-  Trash2
-} from "lucide-react";
+import { Loader2, Pencil, Trash2, RefreshCw, Database } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useFirestore } from "@/firebase";
-import { doc, setDoc, deleteDoc, updateDoc, collection, getDocsFromServer } from "firebase/firestore";
+import { getCollectionBridge, setDocumentBridge, deleteDocumentBridge } from "@/app/actions/firestore-bridge";
 
 interface RegistrationProps {
   type: 'users' | 'couriers';
@@ -21,30 +16,29 @@ interface RegistrationProps {
 
 export function Registration({ type }: RegistrationProps) {
   const { toast } = useToast();
-  const db = useFirestore();
-
+  
   const [items, setItems] = useState<any[]>([]);
   const [loadingList, setLoadingList] = useState(true);
   const [loading, setLoading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const [name, setName] = useState("");
-  const [idMotoboy, setIdMotoboy] = useState("");
+  const [customId, setCustomId] = useState("");
 
   const collectionName = type === 'users' ? 'userProfiles' : 'entregadores';
+  const title = type === 'users' ? 'Usuários' : 'Entregadores';
 
   const loadData = async () => {
     setLoadingList(true);
     try {
-      // FORÇA busca do servidor ignorando cache
-      const snapshot = await getDocsFromServer(collection(db, collectionName));
-      const docs = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setItems(docs);
+      const result = await getCollectionBridge(collectionName);
+      if (result.success) {
+        setItems(result.data || []);
+      } else {
+        toast({ variant: "destructive", title: "Erro na Ponte", description: result.error });
+      }
     } catch (e) {
-      toast({ variant: "destructive", title: "Erro de Conexão", description: "Não foi possível buscar dados da nuvem." });
+      toast({ variant: "destructive", title: "Erro de Conexão", description: "Falha ao acessar servidor." });
     } finally {
       setLoadingList(false);
     }
@@ -52,25 +46,28 @@ export function Registration({ type }: RegistrationProps) {
 
   useEffect(() => {
     loadData();
-  }, [db, collectionName]);
-
-  const resetForm = () => {
-    setName("");
-    setIdMotoboy("");
-    setEditingId(null);
-  };
+  }, [type]);
 
   const handleEdit = (item: any) => {
     setEditingId(item.id);
     setName(item.nome || item.name || "");
-    setIdMotoboy(item.id_motoboy || item.id || "");
+    setCustomId(item.id_motoboy || item.id || "");
+  };
+
+  const resetForm = () => {
+    setName("");
+    setCustomId("");
+    setEditingId(null);
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Remover registro?")) return;
+    if (!confirm("Remover registro da nuvem?")) return;
     try {
-      await deleteDoc(doc(db, collectionName, id));
-      loadData();
+      const result = await deleteDocumentBridge(collectionName, id);
+      if (result.success) {
+        toast({ title: "Removido" });
+        loadData();
+      }
     } catch (e) {
       toast({ variant: "destructive", title: "Erro ao excluir" });
     }
@@ -80,73 +77,113 @@ export function Registration({ type }: RegistrationProps) {
     e.preventDefault();
     setLoading(true);
 
-    const id = editingId || 'id_' + Math.random().toString(36).substr(2, 9);
-    const docRef = doc(db, collectionName, id);
+    const docId = editingId || customId.trim();
+    
+    if (!docId) {
+      toast({ variant: "destructive", title: "Erro", description: "O campo ID é obrigatório." });
+      setLoading(false);
+      return;
+    }
 
     const data = {
-      nome: name.trim(),
-      ...(type === 'couriers' ? { id_motoboy: idMotoboy.trim() } : {}),
-      updatedAt: new Date().toISOString(),
-      ...(editingId ? {} : { createdAt: new Date().toISOString(), id })
+      ...(type === 'users' ? { name: name.trim() } : { nome: name.trim() }),
+      ...(type === 'couriers' ? { id_motoboy: customId.trim() } : { email: customId.trim() }),
+      updatedAt: new Date().toISOString()
     };
 
     try {
-      if (editingId) {
-        await updateDoc(docRef, data);
+      const result = await setDocumentBridge(collectionName, docId, data);
+      if (result.success) {
+        toast({ title: "Sucesso", description: "Gravado via Ponte de Dados!" });
+        resetForm();
+        loadData();
       } else {
-        await setDoc(docRef, data);
+        toast({ variant: "destructive", title: "Falha na Gravação", description: result.error });
       }
-      resetForm();
-      loadData();
     } catch (e) {
-      toast({ variant: "destructive", title: "Falha na Gravação" });
+      toast({ variant: "destructive", title: "Erro Crítico" });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 pb-32">
-      <Card className="border-none shadow-sm">
+    <div className="max-w-4xl mx-auto space-y-6 pb-32 animate-fade-in">
+      <Card className="border-none shadow-sm bg-card/80 backdrop-blur-sm">
         <CardHeader>
-          <CardTitle className="text-primary">
-            {type === 'users' ? 'Usuários' : 'Entregadores'}
-          </CardTitle>
+          <CardTitle className="text-primary text-2xl font-bold">{title}</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input placeholder="Nome" value={name} onChange={(e) => setName(e.target.value)} required />
-              {type === 'couriers' && (
-                <Input placeholder="ID RT" value={idMotoboy} onChange={(e) => setIdMotoboy(e.target.value)} required />
-              )}
+              <div className="space-y-1">
+                <p className="text-[10px] font-bold uppercase text-muted-foreground px-1">Nome Completo</p>
+                <Input 
+                  placeholder="Ex: Ricardo Silva" 
+                  value={name} 
+                  onChange={(e) => setName(e.target.value)} 
+                  required 
+                  className="h-12 bg-muted/50 border-none rounded-xl"
+                />
+              </div>
+              <div className="space-y-1">
+                <p className="text-[10px] font-bold uppercase text-muted-foreground px-1">{type === 'users' ? 'Email (ID)' : 'ID RT / Motoboy'}</p>
+                <Input 
+                  placeholder={type === 'users' ? "email@exemplo.com" : "Ex: usr_12345"} 
+                  value={customId} 
+                  onChange={(e) => setCustomId(e.target.value)} 
+                  required 
+                  disabled={!!editingId}
+                  className="h-12 bg-muted/50 border-none rounded-xl font-mono"
+                />
+              </div>
             </div>
-            <div className="flex gap-2">
-              <Button type="submit" disabled={loading}>
-                {loading ? <Loader2 className="animate-spin h-4 w-4" /> : (editingId ? 'Atualizar' : 'Salvar')}
+            <div className="flex gap-2 pt-2">
+              <Button type="submit" disabled={loading} className="h-12 px-8 font-bold uppercase rounded-xl shadow-lg">
+                {loading ? <Loader2 className="animate-spin h-5 w-5" /> : (editingId ? 'Atualizar Dados' : 'Cadastrar na Nuvem')}
               </Button>
-              {editingId && <Button type="button" variant="outline" onClick={resetForm}>Cancelar</Button>}
+              {editingId && (
+                <Button type="button" variant="outline" onClick={resetForm} className="h-12 rounded-xl border-none bg-muted hover:bg-muted/80">
+                  Cancelar
+                </Button>
+              )}
             </div>
           </form>
         </CardContent>
       </Card>
 
-      <Card className="border-none shadow-sm">
-        <CardContent className="pt-6">
+      <Card className="border-none shadow-sm bg-card/80 backdrop-blur-sm">
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardTitle className="text-sm flex items-center gap-2 text-muted-foreground">
+            <Database className="h-4 w-4" /> Registros Ativos
+          </CardTitle>
+          <Button variant="ghost" size="sm" onClick={loadData} disabled={loadingList} className="h-8 text-[10px] font-bold uppercase tracking-tight text-blue-600">
+            <RefreshCw className={loadingList ? "animate-spin h-3.5 w-3.5 mr-1" : "h-3.5 w-3.5 mr-1"} /> Atualizar
+          </Button>
+        </CardHeader>
+        <CardContent>
           {loadingList ? (
-            <div className="text-center py-10"><Loader2 className="animate-spin h-6 w-6 mx-auto text-primary" /></div>
+            <div className="py-20 text-center"><Loader2 className="animate-spin h-8 w-8 mx-auto text-primary opacity-20" /></div>
           ) : (
             <Table>
-              <TableHeader><TableRow><TableHead>Nome</TableHead><TableHead>ID</TableHead><TableHead></TableHead></TableRow></TableHeader>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent border-muted">
+                  <TableHead className="text-[10px] font-bold uppercase">Nome</TableHead>
+                  <TableHead className="text-[10px] font-bold uppercase">ID / Identificador</TableHead>
+                  <TableHead className="w-24"></TableHead>
+                </TableRow>
+              </TableHeader>
               <TableBody>
-                {items.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell>{item.nome || item.name}</TableCell>
-                    <TableCell>{item.id_motoboy || item.id}</TableCell>
+                {items.length === 0 ? (
+                  <TableRow><TableCell colSpan={3} className="text-center py-10 text-muted-foreground italic text-xs">Nenhum registro encontrado.</TableCell></TableRow>
+                ) : items.map((item) => (
+                  <TableRow key={item.id} className="border-muted/50 hover:bg-muted/30">
+                    <TableCell className="font-semibold text-sm">{item.nome || item.name}</TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">{item.id_motoboy || item.id}</TableCell>
                     <TableCell>
-                      <div className="flex gap-2">
-                        <Button variant="ghost" size="icon" onClick={() => handleEdit(item)}><Pencil size={14} /></Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDelete(item.id)}><Trash2 size={14} /></Button>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="icon" onClick={() => handleEdit(item)} className="h-8 w-8 text-blue-600 hover:bg-blue-50"><Pencil size={14} /></Button>
+                        <Button variant="ghost" size="icon" onClick={() => handleDelete(item.id)} className="h-8 w-8 text-destructive hover:bg-red-50"><Trash2 size={14} /></Button>
                       </div>
                     </TableCell>
                   </TableRow>
