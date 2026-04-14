@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -8,7 +9,7 @@ import { User } from '@/lib/types';
 
 /**
  * Hook para monitorar o usuário logado e seu perfil no Firestore.
- * Sincronizado para usar a coleção 'userProfiles'.
+ * Sincronizado para usar o E-mail como ID do documento, conforme o banco real.
  */
 export function useUser() {
   const auth = useAuth();
@@ -18,9 +19,10 @@ export function useUser() {
 
   useEffect(() => {
     return onAuthStateChanged(auth, (firebaseUser) => {
-      if (firebaseUser) {
-        // Mudança crítica: de 'users' para 'userProfiles'
-        const userDocRef = doc(db, 'userProfiles', firebaseUser.uid);
+      if (firebaseUser && firebaseUser.email) {
+        // O banco real usa o e-mail como ID do documento
+        const userEmail = firebaseUser.email.toLowerCase();
+        const userDocRef = doc(db, 'userProfiles', userEmail);
         
         return onSnapshot(userDocRef, (snapshot) => {
           if (snapshot.exists()) {

@@ -1,3 +1,4 @@
+
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
@@ -29,7 +30,6 @@ export default function RootLayout({
 
       <body className="font-body antialiased bg-slate-200 dark:bg-black m-0 p-0 min-h-screen">
         <FirebaseClientProvider>
-          {/* Recuo global para evitar o relógio e barra de gestos no Android/iOS */}
           <div className="tablet-container min-h-screen flex flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)]">
             {children}
           </div>
