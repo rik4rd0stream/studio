@@ -11,9 +11,9 @@ import {
   setDoc,
   deleteDoc, 
   doc, 
-  query,
   getDocs,
   orderBy,
+  query,
 } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
 
@@ -25,7 +25,8 @@ const getDb = () => {
 export async function getCollectionBridge(collectionName: string) {
   try {
     const db = getDb();
-    const q = query(collection(db, collectionName), orderBy('updatedAt', 'desc'));
+    const colRef = collection(db, collectionName);
+    const q = query(colRef, orderBy('updatedAt', 'desc'));
     const snapshot = await getDocs(q);
     
     const data = snapshot.docs.map(doc => {

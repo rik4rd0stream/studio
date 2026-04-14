@@ -1,6 +1,4 @@
 
-'use client';
-
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
@@ -15,8 +13,9 @@ let authInstance: Auth | null = null;
 let appInstance: FirebaseApp | null = null;
 
 /**
- * Inicialização Singleton do Firebase.
- * No Capacitor/Android, usamos Long Polling para evitar bloqueios de rede.
+ * Inicialização Singleton do Firebase Isomórfica (Client + Server).
+ * No lado do servidor (Vercel), usamos a conexão padrão.
+ * No lado do cliente (Android), usamos Long Polling para estabilidade.
  */
 export function initializeFirebase() {
   if (!appInstance) {
@@ -24,14 +23,18 @@ export function initializeFirebase() {
   }
 
   if (!firestoreInstance) {
-    try {
-      // Configuração otimizada para ambientes restritos (Android WebView)
-      firestoreInstance = initializeFirestore(appInstance, {
-        experimentalAutoDetectLongPolling: true,
-      });
-    } catch (e) {
-      // Recupera a instância se já houver uma inicializada
+    const isServer = typeof window === 'undefined';
+    
+    if (isServer) {
       firestoreInstance = getFirestoreInstance(appInstance);
+    } else {
+      try {
+        firestoreInstance = initializeFirestore(appInstance, {
+          experimentalAutoDetectLongPolling: true,
+        });
+      } catch (e) {
+        firestoreInstance = getFirestoreInstance(appInstance);
+      }
     }
   }
 
@@ -46,7 +49,7 @@ export function initializeFirebase() {
   };
 }
 
-// Re-exportações dos hooks para o restante do app
+// Re-exportações dos hooks (somente para Client Components)
 export { 
   FirebaseProvider, 
   useFirebase, 
