@@ -8,9 +8,7 @@ import { initializeFirestore, Firestore } from 'firebase/firestore';
 
 /**
  * Inicialização centralizada do Firebase.
- * Otimizado para Capacitor/Android:
- * 1. Força Long Polling (evita falha de WebSocket)
- * 2. Removemos a restrição de cacheSizeBytes para evitar erro de boot
+ * Configuração limpa e estável.
  */
 let firebaseInstance: {
   firebaseApp: FirebaseApp;
@@ -23,9 +21,9 @@ export function initializeFirebase() {
 
   const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
+  // Firestore com configuração básica de compatibilidade
   const firestore = initializeFirestore(app, {
-    experimentalForceLongPolling: true,
-    // Deixamos o cache padrão (memória), mas usaremos getDocsFromServer para forçar a nuvem
+    experimentalForceLongPolling: true
   });
 
   firebaseInstance = {
@@ -37,7 +35,7 @@ export function initializeFirebase() {
   return firebaseInstance;
 }
 
-// Re-exportações explícitas para evitar erros de importação no build
+// Re-exportações explícitas para evitar erros de importação
 export { 
   FirebaseProvider, 
   useFirebase, 
