@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Pencil, Trash2, RefreshCw, Database } from "lucide-react";
+import { Loader2, Pencil, Trash2, RefreshCw, Database, UserPlus, Bike } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getCollectionBridge, setDocumentBridge, deleteDocumentBridge } from "@/app/actions/firestore-bridge";
 
@@ -26,7 +26,9 @@ export function Registration({ type }: RegistrationProps) {
   const [customId, setCustomId] = useState("");
 
   const collectionName = type === 'users' ? 'userProfiles' : 'entregadores';
-  const title = type === 'users' ? 'Usuários' : 'Entregadores';
+  const title = type === 'users' ? 'Gestão de Usuários' : 'Gestão de Entregadores';
+  const idLabel = type === 'users' ? 'E-mail (ID de Acesso)' : 'ID do Motoboy (Código RT)';
+  const idPlaceholder = type === 'users' ? 'exemplo@rappi.com' : 'Ex: 994400';
 
   const loadData = async () => {
     setLoadingList(true);
@@ -46,12 +48,13 @@ export function Registration({ type }: RegistrationProps) {
 
   useEffect(() => {
     loadData();
+    resetForm();
   }, [type]);
 
   const handleEdit = (item: any) => {
     setEditingId(item.id);
-    setName(item.nome || item.name || "");
-    setCustomId(item.id_motoboy || item.id || "");
+    setName(item.name || item.nome || "");
+    setCustomId(item.id || item.id_motoboy || "");
   };
 
   const resetForm = () => {
@@ -61,11 +64,11 @@ export function Registration({ type }: RegistrationProps) {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Remover registro da nuvem?")) return;
+    if (!confirm("Remover este registro permanentemente da nuvem?")) return;
     try {
       const result = await deleteDocumentBridge(collectionName, id);
       if (result.success) {
-        toast({ title: "Removido" });
+        toast({ title: "Removido com sucesso" });
         loadData();
       }
     } catch (e) {
@@ -77,31 +80,40 @@ export function Registration({ type }: RegistrationProps) {
     e.preventDefault();
     setLoading(true);
 
-    const docId = editingId || customId.trim();
+    const docId = customId.trim().toLowerCase();
     
-    if (!docId) {
-      toast({ variant: "destructive", title: "Erro", description: "O campo ID é obrigatório." });
+    if (!docId || !name.trim()) {
+      toast({ variant: "destructive", title: "Campos Obrigatórios", description: "Preencha Nome e ID para continuar." });
       setLoading(false);
       return;
     }
 
-    const data = {
-      ...(type === 'users' ? { name: name.trim() } : { nome: name.trim() }),
-      ...(type === 'couriers' ? { id_motoboy: customId.trim() } : { email: customId.trim() }),
-      updatedAt: new Date().toISOString()
-    };
+    // Estrutura de dados conforme o tipo de coleção
+    const data = type === 'users' 
+      ? { 
+          name: name.trim(), 
+          email: docId, 
+          role: 'normal',
+          notificationsEnabled: true,
+          updatedAt: new Date().toISOString()
+        }
+      : { 
+          nome: name.trim(), 
+          id_motoboy: docId,
+          updatedAt: new Date().toISOString()
+        };
 
     try {
       const result = await setDocumentBridge(collectionName, docId, data);
       if (result.success) {
-        toast({ title: "Sucesso", description: "Gravado via Ponte de Dados!" });
+        toast({ title: "Sincronizado", description: "Dados gravados via servidor com sucesso." });
         resetForm();
         loadData();
       } else {
         toast({ variant: "destructive", title: "Falha na Gravação", description: result.error });
       }
     } catch (e) {
-      toast({ variant: "destructive", title: "Erro Crítico" });
+      toast({ variant: "destructive", title: "Erro Crítico", description: "O servidor não respondeu." });
     } finally {
       setLoading(false);
     }
@@ -109,41 +121,44 @@ export function Registration({ type }: RegistrationProps) {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-32 animate-fade-in">
-      <Card className="border-none shadow-sm bg-card/80 backdrop-blur-sm">
-        <CardHeader>
-          <CardTitle className="text-primary text-2xl font-bold">{title}</CardTitle>
+      <Card className="border-none shadow-sm bg-card/50 backdrop-blur-md rounded-3xl overflow-hidden">
+        <CardHeader className="bg-primary/5 border-b border-primary/10">
+          <CardTitle className="text-primary text-xl font-bold flex items-center gap-2">
+            {type === 'users' ? <UserPlus className="h-5 w-5" /> : <Bike className="h-5 w-5" />}
+            {editingId ? 'Editar Cadastro' : 'Novo Cadastro'}
+          </CardTitle>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <p className="text-[10px] font-bold uppercase text-muted-foreground px-1">Nome Completo</p>
+        <CardContent className="p-6">
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold uppercase text-muted-foreground ml-1 tracking-widest">Nome Completo</label>
                 <Input 
                   placeholder="Ex: Ricardo Silva" 
                   value={name} 
                   onChange={(e) => setName(e.target.value)} 
                   required 
-                  className="h-12 bg-muted/50 border-none rounded-xl"
+                  className="h-12 bg-muted/30 border-none rounded-2xl focus-visible:ring-primary shadow-inner"
                 />
               </div>
-              <div className="space-y-1">
-                <p className="text-[10px] font-bold uppercase text-muted-foreground px-1">{type === 'users' ? 'Email (ID)' : 'ID RT / Motoboy'}</p>
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold uppercase text-muted-foreground ml-1 tracking-widest">{idLabel}</label>
                 <Input 
-                  placeholder={type === 'users' ? "email@exemplo.com" : "Ex: usr_12345"} 
+                  placeholder={idPlaceholder} 
                   value={customId} 
                   onChange={(e) => setCustomId(e.target.value)} 
                   required 
                   disabled={!!editingId}
-                  className="h-12 bg-muted/50 border-none rounded-xl font-mono"
+                  className="h-12 bg-muted/30 border-none rounded-2xl font-mono text-sm focus-visible:ring-primary shadow-inner"
                 />
               </div>
             </div>
-            <div className="flex gap-2 pt-2">
-              <Button type="submit" disabled={loading} className="h-12 px-8 font-bold uppercase rounded-xl shadow-lg">
-                {loading ? <Loader2 className="animate-spin h-5 w-5" /> : (editingId ? 'Atualizar Dados' : 'Cadastrar na Nuvem')}
+            <div className="flex gap-3 pt-2">
+              <Button type="submit" disabled={loading} className="h-12 px-8 font-bold uppercase rounded-2xl shadow-lg flex-1 md:flex-none">
+                {loading ? <Loader2 className="animate-spin h-5 w-5" /> : (editingId ? 'Atualizar Registro' : 'Salvar na Nuvem')}
               </Button>
               {editingId && (
-                <Button type="button" variant="outline" onClick={resetForm} className="h-12 rounded-xl border-none bg-muted hover:bg-muted/80">
+                <Button type="button" variant="ghost" onClick={resetForm} className="h-12 rounded-2xl text-muted-foreground hover:bg-muted font-bold px-6">
                   Cancelar
                 </Button>
               )}
@@ -152,44 +167,61 @@ export function Registration({ type }: RegistrationProps) {
         </CardContent>
       </Card>
 
-      <Card className="border-none shadow-sm bg-card/80 backdrop-blur-sm">
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="text-sm flex items-center gap-2 text-muted-foreground">
-            <Database className="h-4 w-4" /> Registros Ativos
+      <Card className="border-none shadow-sm bg-card/30 backdrop-blur-sm rounded-3xl">
+        <CardHeader className="flex flex-row items-center justify-between py-4 px-6">
+          <CardTitle className="text-sm flex items-center gap-2 text-muted-foreground font-bold uppercase tracking-tight">
+            <Database className="h-4 w-4" /> Registros no Servidor
           </CardTitle>
-          <Button variant="ghost" size="sm" onClick={loadData} disabled={loadingList} className="h-8 text-[10px] font-bold uppercase tracking-tight text-blue-600">
+          <Button variant="ghost" size="sm" onClick={loadData} disabled={loadingList} className="h-8 text-[10px] font-bold uppercase tracking-tight text-blue-600 hover:bg-blue-50 rounded-full">
             <RefreshCw className={loadingList ? "animate-spin h-3.5 w-3.5 mr-1" : "h-3.5 w-3.5 mr-1"} /> Atualizar
           </Button>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-2">
           {loadingList ? (
-            <div className="py-20 text-center"><Loader2 className="animate-spin h-8 w-8 mx-auto text-primary opacity-20" /></div>
+            <div className="py-20 text-center flex flex-col items-center gap-3">
+              <Loader2 className="animate-spin h-8 w-8 text-primary opacity-20" />
+              <p className="text-[10px] font-bold text-muted-foreground animate-pulse">SINCRONIZANDO COM A VERCEL...</p>
+            </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent border-muted">
-                  <TableHead className="text-[10px] font-bold uppercase">Nome</TableHead>
-                  <TableHead className="text-[10px] font-bold uppercase">ID / Identificador</TableHead>
-                  <TableHead className="w-24"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {items.length === 0 ? (
-                  <TableRow><TableCell colSpan={3} className="text-center py-10 text-muted-foreground italic text-xs">Nenhum registro encontrado.</TableCell></TableRow>
-                ) : items.map((item) => (
-                  <TableRow key={item.id} className="border-muted/50 hover:bg-muted/30">
-                    <TableCell className="font-semibold text-sm">{item.nome || item.name}</TableCell>
-                    <TableCell className="font-mono text-xs text-muted-foreground">{item.id_motoboy || item.id}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => handleEdit(item)} className="h-8 w-8 text-blue-600 hover:bg-blue-50"><Pencil size={14} /></Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDelete(item.id)} className="h-8 w-8 text-destructive hover:bg-red-50"><Trash2 size={14} /></Button>
-                      </div>
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent border-muted/30">
+                    <TableHead className="text-[10px] font-bold uppercase px-4">Nome</TableHead>
+                    <TableHead className="text-[10px] font-bold uppercase">Identificador (ID)</TableHead>
+                    <TableHead className="w-24"></TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {items.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={3} className="text-center py-16 text-muted-foreground italic text-xs">
+                        Nenhum registro encontrado nesta coleção.
+                      </TableCell>
+                    </TableRow>
+                  ) : items.map((item) => (
+                    <TableRow key={item.id} className="border-muted/20 hover:bg-primary/5 transition-colors">
+                      <TableCell className="font-bold text-sm px-4">
+                        {item.name || item.nome}
+                      </TableCell>
+                      <TableCell className="font-mono text-[11px] text-muted-foreground">
+                        {item.id || item.id_motoboy}
+                      </TableCell>
+                      <TableCell className="px-4">
+                        <div className="flex gap-1 justify-end">
+                          <Button variant="ghost" size="icon" onClick={() => handleEdit(item)} className="h-9 w-9 text-blue-600 hover:bg-blue-100 rounded-full">
+                            <Pencil size={14} />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleDelete(item.id)} className="h-9 w-9 text-destructive hover:bg-red-100 rounded-full">
+                            <Trash2 size={14} />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>
