@@ -134,7 +134,7 @@ export function Registration({ type }: RegistrationProps) {
             {editingId ? 'Editar Registro' : (type === 'users' ? 'Novo Usuário' : 'Novo Entregador')}
           </CardTitle>
           <CardDescription>
-            Preencha os dados abaixo para gerenciar o acesso ao sistema.
+            Gerenciamento de acesso e equipe operacional.
           </CardDescription>
         </CardHeader>
         <CardContent>

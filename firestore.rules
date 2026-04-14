@@ -3,8 +3,8 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     /**
-     * REGRAS SIMPLIFICADAS
-     * Permissão total para facilitar o desenvolvimento e testes em equipe reduzida.
+     * REGRAS DE ACESSO SIMPLIFICADAS
+     * Permissão total para desenvolvimento e testes rápidos.
      */
     match /{document=**} {
       allow read, write: if true;

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { firebaseConfig } from '@/firebase/config';
@@ -16,8 +17,8 @@ export function initializeFirebase() {
 
   const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
-  // Configuração recomendada para compatibilidade máxima com Capacitor:
-  // experimentalForceLongPolling resolve a maioria dos problemas de conexão em Android nativo.
+  // Configuração definitiva para Android + Capacitor:
+  // experimentalForceLongPolling garante que a conexão use HTTP padrão em vez de WebSockets.
   const firestore = initializeFirestore(app, {
     experimentalForceLongPolling: true,
     useFetchStreams: false,
