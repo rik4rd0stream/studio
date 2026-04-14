@@ -1,40 +1,53 @@
+
 'use client';
 
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { initializeFirestore, Firestore } from 'firebase/firestore';
+import { getAuth, Auth } from 'firebase/auth';
+import { initializeFirestore, Firestore, terminate } from 'firebase/firestore';
+
+let firestoreInstance: Firestore | null = null;
+let authInstance: Auth | null = null;
+let appInstance: FirebaseApp | null = null;
 
 /**
- * Inicialização centralizada do Firebase.
- * Configurada para compatibilidade máxima com Capacitor/Android.
+ * Inicialização centralizada e segura (Singleton) do Firebase.
+ * Evita o erro 'failed-precondition' e 'already initialized'.
  */
 export function initializeFirebase() {
-  const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+  if (!appInstance) {
+    appInstance = getApps().length ? getApp() : initializeApp(firebaseConfig);
+  }
 
-  // Firestore configurado com Long Polling para evitar falhas de WebSocket no Android
-  const firestore = initializeFirestore(app, {
-    experimentalForceLongPolling: true
-  });
+  if (!firestoreInstance) {
+    // Configuração robusta para Capacitor: Long Polling é essencial
+    firestoreInstance = initializeFirestore(appInstance, {
+      experimentalForceLongPolling: true,
+    });
+  }
+
+  if (!authInstance) {
+    authInstance = getAuth(appInstance);
+  }
 
   return {
-    firebaseApp: app,
-    auth: getAuth(app),
-    firestore
+    firebaseApp: appInstance,
+    auth: authInstance,
+    firestore: firestoreInstance
   };
 }
 
-// Re-exportações explícitas para garantir que os hooks estejam disponíveis em src/app/page.tsx
+// Re-exportações dos hooks para uso em todo o app
 export { 
   FirebaseProvider, 
   useFirebase, 
   useFirestore, 
   useAuth, 
   useFirebaseApp, 
-  useMemoFirebase
+  useMemoFirebase,
+  useUser 
 } from './provider';
 
 export { FirebaseClientProvider } from './client-provider';
 export { useCollection } from './firestore/use-collection';
 export { useDoc } from './firestore/use-doc';
-export { useUser } from './auth/use-user';
