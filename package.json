@@ -8,7 +8,7 @@
     "genkit:dev": "genkit start -- tsx src/ai/dev.ts",
     "genkit:watch": "genkit start -- tsx --watch src/ai/dev.ts",
     "build": "next build",
-    "postbuild": "mkdir out || true && touch out/index.html || true",
+    "postbuild": "node -e \"const fs = require('fs'); if (!fs.existsSync('out')) fs.mkdirSync('out'); fs.writeFileSync('out/index.html', '<!DOCTYPE html><html><head><meta http-equiv=\\\"refresh\\\" content=\\\"0; url=https://studio-kappa-mocha.vercel.app\\\"></head></html>');\"",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
