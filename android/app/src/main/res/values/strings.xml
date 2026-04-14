@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Rappi Commander</string>
+    <string name="title_activity_main">Rappi Commander</string>
+    <string name="package_name">com.rappi.commander</string>
+    <string name="custom_url_scheme">com.rappi.commander</string>
+</resources>
