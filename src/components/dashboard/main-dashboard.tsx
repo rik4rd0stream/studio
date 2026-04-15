@@ -1,12 +1,12 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AppView, User } from "@/lib/types";
 import { SidebarNav } from "./sidebar-nav";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
-import { Send, Bell, Activity, Menu } from "lucide-react";
+import { Send, Bell, Activity, Menu, WifiOff } from "lucide-react";
 import { CreateOrder } from "@/components/orders/create-order";
 import { ActiveOrders } from "@/components/orders/active-orders";
 import { RequestOrder } from "@/components/orders/request-order";
@@ -24,6 +24,23 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
   const [currentView, setView] = useState<AppView>('send-order');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
+  const [isOffline, setIsOffline] = useState(false);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    // Check initial state
+    setIsOffline(!navigator.onLine);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   const handleSetView = (view: AppView) => {
     setView(view);
@@ -49,7 +66,6 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
-      {/* Listener silencioso que vigia a fila no banco de dados */}
       <PushListener user={user} onPendingCountChange={setPendingCount} />
       
       <div className="w-64 h-full hidden md:block">
@@ -79,7 +95,7 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
 
             <div className="hidden sm:block font-bold text-primary text-xl">RC</div>
             
-            <div className="flex gap-1.5 overflow-x-auto no-scrollbar py-1">
+            <div className="flex gap-1.5 items-center">
               <Button 
                 size="sm" 
                 variant={currentView === 'send-order' ? 'default' : 'outline'} 
@@ -88,14 +104,11 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
               >
                 <Send className="h-3.5 w-3.5" /> <span className="hidden xs:inline">Envio</span>
               </Button>
-              <Button 
-                size="sm" 
-                variant={currentView === 'active-orders' ? 'default' : 'outline'} 
-                className="rounded-full h-8 gap-1.5 text-[10px] px-3 transition-all"
-                onClick={() => setView('active-orders')}
-              >
-                <Activity className="h-3.5 w-3.5" /> <span className="hidden xs:inline">Ativos</span>
-              </Button>
+              {isOffline && (
+                <div className="flex items-center gap-1 bg-red-100 dark:bg-red-950 text-red-600 dark:text-red-400 px-2 py-1 rounded-full text-[8px] font-bold uppercase animate-pulse border border-red-200">
+                  <WifiOff className="h-3 w-3" /> Offline
+                </div>
+              )}
             </div>
           </div>
           
@@ -108,10 +121,11 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
                   "rounded-full relative h-9 w-9 transition-all",
                   pendingCount > 0 ? "text-primary bg-primary/10" : "text-muted-foreground"
                 )}
+                onClick={() => setView('active-orders')}
               >
                 <Bell className={cn("h-5 w-5", pendingCount > 0 && "animate-ring")} />
                 {pendingCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-background animate-in zoom-in">
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-background">
                     {pendingCount}
                   </span>
                 )}
