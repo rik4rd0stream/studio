@@ -13,7 +13,8 @@ import {
   Package,
   ArrowRight,
   BellRing,
-  User as UserIcon
+  User as UserIcon,
+  X
 } from "lucide-react";
 import { redashService, RedashOrder } from "@/lib/api/redash-service";
 import { useToast } from "@/hooks/use-toast";
@@ -214,12 +215,25 @@ export function RequestOrder({ sender }: { sender: User }) {
       </div>
 
       <form onSubmit={handleManualSubmit} className="pt-6 space-y-3">
-        <Input 
-          placeholder="ID DO PEDIDO MANUAL" 
-          value={manualOrderId}
-          onChange={(e) => setManualOrderId(e.target.value)}
-          className="h-12 text-center text-lg font-bold tracking-widest rounded-xl shadow-sm uppercase"
-        />
+        <div className="relative group">
+          <Input 
+            placeholder="ID DO PEDIDO MANUAL" 
+            value={manualOrderId}
+            onChange={(e) => setManualOrderId(e.target.value)}
+            className="h-12 text-center text-lg font-bold tracking-widest rounded-xl shadow-sm uppercase pr-12"
+          />
+          {manualOrderId.trim() !== "" && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={() => setManualOrderId("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full text-muted-foreground hover:text-destructive transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
         <Button type="submit" className="w-full h-11 font-bold text-[10px] uppercase rounded-xl">
           Solicitar Manualmente <ArrowRight className="h-3.5 w-3.5 ml-2" />
         </Button>

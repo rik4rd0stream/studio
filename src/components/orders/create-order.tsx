@@ -12,7 +12,8 @@ import {
   Package,
   ClipboardPaste,
   ArrowRight,
-  AlertCircle
+  AlertCircle,
+  X
 } from "lucide-react";
 import { redashService, RedashOrder } from "@/lib/api/redash-service";
 import { useToast } from "@/hooks/use-toast";
@@ -123,6 +124,11 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
     } catch (err) {}
   };
 
+  const handleClearManualId = () => {
+    setManualOrderId("");
+    if (onClearInitialId) onClearInitialId();
+  };
+
   const handleGenerateCommand = (courierId: string) => {
     if (!selectedOrder) return;
     const fullCommand = `${selectedCommand} ${selectedOrder.order_id} ${courierId}`;
@@ -218,12 +224,25 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
       </div>
 
       <form onSubmit={handleManualSubmit} className="pt-6 space-y-3">
-        <Input 
-          placeholder="ID DO PEDIDO" 
-          value={manualOrderId}
-          onChange={(e) => setManualOrderId(e.target.value)}
-          className="h-12 text-center text-lg font-bold tracking-widest rounded-xl shadow-sm uppercase"
-        />
+        <div className="relative group">
+          <Input 
+            placeholder="ID DO PEDIDO" 
+            value={manualOrderId}
+            onChange={(e) => setManualOrderId(e.target.value)}
+            className="h-12 text-center text-lg font-bold tracking-widest rounded-xl shadow-sm uppercase pr-12"
+          />
+          {String(manualOrderId || "").trim() !== "" && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={handleClearManualId}
+              className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full text-muted-foreground hover:text-destructive transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
         <div className="grid grid-cols-2 gap-2">
           <Button type="button" variant="outline" onClick={handlePaste} className="h-11 font-bold text-[10px] uppercase text-primary border-primary/20 rounded-xl">
             <ClipboardPaste className="h-3.5 w-3.5 mr-2" /> Colar Manual
