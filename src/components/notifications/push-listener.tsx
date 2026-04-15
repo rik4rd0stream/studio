@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 
 /**
  * Listener de notificações em tempo real com Fila Persistente e Modo Soneca.
+ * O botão flutuante agora fica no topo, afastado dos outros comandos.
  */
 export function PushListener({ 
   user, 
@@ -90,8 +91,6 @@ export function PushListener({
   };
 
   const activeRequest = pendingRequests[0];
-
-  // Se não houver pedido ou estiver minimizado, não mostra o Alert
   const showPopup = !!activeRequest && !isMinimized;
 
   return (
@@ -117,15 +116,6 @@ export function PushListener({
                 <p className="font-bold text-primary mb-1 uppercase truncate">{activeRequest?.storeName}</p>
                 <p className="opacity-70 font-bold">ORDEM: #{activeRequest?.orderId}</p>
               </div>
-              
-              {pendingRequests.length > 1 && (
-                <div className="mt-4 py-1.5 px-3 bg-blue-50 dark:bg-blue-900/30 rounded-full inline-flex items-center gap-2">
-                  <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
-                  <p className="text-[10px] text-blue-600 dark:text-blue-300 font-bold uppercase">
-                    + {pendingRequests.length - 1} na fila de espera
-                  </p>
-                </div>
-              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col gap-2 mt-6">
@@ -155,20 +145,22 @@ export function PushListener({
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Botão Flutuante quando minimizado ou quando há pendências */}
+      {/* Botão Flutuante quando há pendências - Agora no TOPO DIREITO */}
       {pendingRequests.length > 0 && (
         <Button
           onClick={() => setIsMinimized(false)}
           className={cn(
-            "fixed bottom-24 right-6 h-16 w-16 rounded-full shadow-2xl z-50 transition-all duration-500 hover:scale-110 active:scale-95 flex flex-col items-center justify-center p-0",
-            isMinimized ? "bg-primary animate-pulse" : "bg-muted-foreground/20 text-muted-foreground opacity-50"
+            "fixed top-24 right-8 h-14 w-14 rounded-full shadow-2xl z-50 transition-all duration-500 hover:scale-110 active:scale-95 flex flex-col items-center justify-center p-0",
+            isMinimized ? "bg-primary animate-pulse border-4 border-background" : "bg-muted-foreground/20 text-muted-foreground opacity-30 grayscale"
           )}
         >
-          <MessageSquareQuote className="h-6 w-6" />
-          <span className="text-[10px] font-bold mt-0.5">{pendingRequests.length}</span>
-          <div className="absolute -top-1 -right-1 h-6 w-6 bg-red-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-background">
-            {pendingRequests.length}
-          </div>
+          <MessageSquareQuote className="h-5 w-5" />
+          <span className="text-[10px] font-bold">{pendingRequests.length}</span>
+          {isMinimized && (
+            <div className="absolute -top-1 -right-1 h-6 w-6 bg-red-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-background animate-bounce">
+              {pendingRequests.length}
+            </div>
+          )}
         </Button>
       )}
     </>
