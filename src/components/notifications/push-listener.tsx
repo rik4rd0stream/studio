@@ -34,17 +34,30 @@ export function PushListener({
   const [pendingRequests, setPendingRequests] = useState<OrderRequest[]>([]);
   const [isMinimized, setIsMinimized] = useState(false);
 
-  // Solicitar permissão nativa e web de forma robusta
+  // Solicitar permissão nativa e web de forma robusta e configurar canais do Android
   useEffect(() => {
-    const checkPermissions = async () => {
+    const setupNotifications = async () => {
       if (Capacitor.isNativePlatform()) {
         try {
+          // 1. Checar e Pedir Permissão
           const permStatus = await LocalNotifications.checkPermissions();
           if (permStatus.display === 'prompt' || permStatus.display === 'default') {
             await LocalNotifications.requestPermissions();
           }
+
+          // 2. CRIAR CANAL (Obrigatório para Android aparecer na barra)
+          // IMPORTANTE: Se o canal não for criado, a notificação não aparece na barra superior.
+          await LocalNotifications.createChannel({
+            id: 'orders-channel-v1', // ID do canal
+            name: 'Novos Pedidos Rappi',
+            description: 'Alertas críticos para novos despachos de pedidos',
+            importance: 5, // IMPORTANCE_HIGH: Faz barulho, vibra e aparece no topo
+            visibility: 1, // VISIBILITY_PUBLIC: Aparece na tela de bloqueio
+            vibration: true,
+            sound: 'default'
+          });
         } catch (e) {
-          console.error("Erro ao checar permissões nativas:", e);
+          console.error("Erro ao configurar notificações nativas:", e);
         }
       } else if (typeof window !== 'undefined' && "Notification" in window) {
         if (Notification.permission === "default") {
@@ -52,7 +65,7 @@ export function PushListener({
         }
       }
     };
-    checkPermissions();
+    setupNotifications();
   }, []);
 
   const sendSystemNotification = useCallback(async (title: string, body: string) => {
@@ -64,8 +77,8 @@ export function PushListener({
             {
               title,
               body,
-              id: Math.floor(Math.random() * 1000000),
-              schedule: { at: new Date(Date.now() + 500) },
+              id: Date.now(), // ID único baseado no tempo para não sobrepor
+              channelId: 'orders-channel-v1', // Deve ser o mesmo ID criado no setupNotifications
               sound: 'default',
               actionTypeId: "",
               extra: null
@@ -76,7 +89,7 @@ export function PushListener({
         console.error("Falha na notificação nativa:", e);
       }
     } 
-    // 2. Backup: Notificação Web (Caso esteja no navegador)
+    // 2. Backup: Notificação Web (Caso esteja no navegador fora do app)
     else if (typeof window !== 'undefined' && "Notification" in window && Notification.permission === "granted") {
       new Notification(title, {
         body,
@@ -119,7 +132,7 @@ export function PushListener({
       if (snapshot.docChanges().some(change => change.type === "added")) {
         setIsMinimized(false);
         
-        // Som local
+        // Som local para feedback imediato
         try {
           const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
           audio.play().catch(() => {});
