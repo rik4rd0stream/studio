@@ -53,7 +53,6 @@ export function RequestOrder({ sender }: { sender: User }) {
   const couriersQuery = useMemoFirebase(() => query(collection(db, 'entregadores')), [db]);
   const { data: couriers, isLoading: loadingCouriers } = useCollection<any>(couriersQuery);
 
-  // Busca usuários que podem receber notificações
   const usersQuery = useMemoFirebase(() => query(
     collection(db, 'userProfiles'), 
     where('notificationsEnabled', '==', true)
@@ -70,10 +69,12 @@ export function RequestOrder({ sender }: { sender: User }) {
 
   const filteredCouriers = useMemo(() => {
     if (!couriers) return [];
-    return couriers.filter(c => 
-      c.nome?.toLowerCase().includes(searchCourier.toLowerCase()) || 
-      c.id_motoboy?.includes(searchCourier)
-    );
+    return [...couriers]
+      .filter(c => 
+        (c.nome || c.name)?.toLowerCase().includes(searchCourier.toLowerCase()) || 
+        c.id_motoboy?.includes(searchCourier)
+      )
+      .sort((a, b) => (a.nome || a.name || "").localeCompare(b.nome || b.name || ""));
   }, [couriers, searchCourier]);
 
   const filteredUsers = useMemo(() => {
@@ -123,8 +124,6 @@ export function RequestOrder({ sender }: { sender: User }) {
 
     const requestId = Math.random().toString(36).substr(2, 9);
     const orderId = selectedOrder.order_id || "0";
-    
-    // Usamos o E-mail do alvo como identificador de destino para o PushListener
     const targetEmail = (targetUser.email || targetUser.id).toLowerCase().trim();
 
     const requestData = {
@@ -228,7 +227,7 @@ export function RequestOrder({ sender }: { sender: User }) {
       </form>
 
       <Dialog open={isCourierDialogOpen} onOpenChange={setIsCourierDialogOpen}>
-        <DialogContent className="max-w-sm p-0 border-none shadow-2xl rounded-2xl overflow-hidden">
+        <DialogContent className="max-w-md p-0 border-none shadow-2xl rounded-2xl overflow-hidden">
           <DialogHeader className="p-5 pb-2">
             <DialogTitle className="text-lg">Etapa 1: Selecione o Motoboy</DialogTitle>
             <DialogDescription className="text-xs">
@@ -246,28 +245,29 @@ export function RequestOrder({ sender }: { sender: User }) {
               />
             </div>
           </div>
-          <div className="flex-1 overflow-y-auto px-5 py-2 space-y-1.5 pb-5 max-h-[40vh]">
+          <div className="flex-1 overflow-y-auto px-5 py-4 max-h-[50vh]">
             {loadingCouriers ? (
               <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
-            ) : filteredCouriers.map((c) => (
-              <Button
-                key={c.id}
-                variant="ghost"
-                className="w-full h-auto py-2.5 px-3 justify-between hover:bg-primary/5 hover:text-primary border border-transparent hover:border-primary/10 rounded-lg group"
-                onClick={() => handleCourierSelect(c)}
-              >
-                <div className="text-left flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center group-hover:bg-primary/10">
-                    <Bike className="h-3.5 w-3.5" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-[11px] leading-none">{c.nome}</p>
-                    <p className="text-[9px] text-muted-foreground mt-1">ID: {c.id_motoboy}</p>
-                  </div>
-                </div>
-                <ArrowRight className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100" />
-              </Button>
-            ))}
+            ) : (
+              <div className="grid grid-cols-3 gap-2">
+                {filteredCouriers.map((c) => (
+                  <Button
+                    key={c.id}
+                    variant="ghost"
+                    className="flex flex-col items-center justify-center h-24 p-2 hover:bg-primary/5 group border border-transparent hover:border-primary/10 rounded-xl transition-all"
+                    onClick={() => handleCourierSelect(c)}
+                  >
+                    <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center mb-1.5 group-hover:bg-primary/10 transition-colors">
+                      <Bike className="h-5 w-5 text-muted-foreground group-hover:text-primary" />
+                    </div>
+                    <p className="font-bold text-[9px] leading-tight text-center truncate w-full group-hover:text-primary">
+                      {(c.nome || c.name)?.split(' ')[0]}
+                    </p>
+                    <p className="text-[7px] text-muted-foreground font-mono mt-0.5">{c.id_motoboy}</p>
+                  </Button>
+                ))}
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>

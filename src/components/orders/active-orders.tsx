@@ -1,23 +1,27 @@
+
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
 import { redashService, RedashOrder } from "@/lib/api/redash-service";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { RefreshCw, Loader2, Package, User, Copy } from "lucide-react";
+import { RefreshCw, Loader2, Package, User, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, query } from "firebase/firestore";
+import { collection } from "firebase/firestore";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
-export function ActiveOrders() {
+interface ActiveOrdersProps {
+  onSelectOrder?: (orderId: string) => void;
+}
+
+export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
   const { toast } = useToast();
   const db = useFirestore();
   const [loading, setLoading] = useState(false);
   const [allOrders, setAllOrders] = useState<RedashOrder[]>([]);
   
-  // Usando a coleção antiga 'entregadores' com consulta direta para compatibilidade Android
   const couriersQuery = useMemoFirebase(() => collection(db, 'entregadores'), [db]);
   const { data: couriers } = useCollection<any>(couriersQuery);
 
@@ -36,13 +40,16 @@ export function ActiveOrders() {
     return () => clearInterval(interval);
   }, []);
 
-  const handleCopyId = (id: string) => {
+  const handleCopyAndGo = (id: string) => {
     navigator.clipboard.writeText(id).then(() => {
       toast({
         title: "ID Copiado",
-        description: `O código #${id} foi salvo na área de transferência.`,
+        description: `Código #${id} preparado para despacho.`,
         duration: 2000,
       });
+      if (onSelectOrder) {
+        onSelectOrder(id);
+      }
     });
   };
 
@@ -70,7 +77,6 @@ export function ActiveOrders() {
   }, [filteredOrders]);
 
   const getCourierName = (id: string) => {
-    // Busca flexível: id_motoboy ou id
     const courier = couriers?.find(c => String(c.id_motoboy || c.id) === String(id));
     return courier ? (courier.nome || courier.name) : "Motoboy não identificado";
   };
@@ -148,13 +154,13 @@ export function ActiveOrders() {
                             </span>
                           </div>
                           <Button
-                            variant="ghost"
+                            variant="default"
                             size="icon"
-                            className="h-6 w-6 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-full"
-                            onClick={() => handleCopyId(order.order_id)}
-                            title="Copiar ID"
+                            className="h-8 w-8 bg-primary text-white hover:bg-primary/90 rounded-full shadow-sm animate-pulse"
+                            onClick={() => handleCopyAndGo(order.order_id)}
+                            title="Despachar"
                           >
-                            <Copy className="h-3 w-3" />
+                            <Send className="h-3.5 w-3.5" />
                           </Button>
                         </div>
                       </div>

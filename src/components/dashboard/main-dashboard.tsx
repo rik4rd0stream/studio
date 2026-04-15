@@ -6,7 +6,7 @@ import { AppView, User } from "@/lib/types";
 import { SidebarNav } from "./sidebar-nav";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
-import { Send, Bell, Activity, Menu, WifiOff, Package } from "lucide-react";
+import { Send, Bell, Activity, Menu, WifiOff } from "lucide-react";
 import { CreateOrder } from "@/components/orders/create-order";
 import { ActiveOrders } from "@/components/orders/active-orders";
 import { RequestOrder } from "@/components/orders/request-order";
@@ -25,6 +25,7 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const [isOffline, setIsOffline] = useState(false);
+  const [prefilledOrderId, setPrefilledOrderId] = useState("");
 
   useEffect(() => {
     const handleOnline = () => setIsOffline(false);
@@ -33,7 +34,6 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
     
-    // Check initial state
     setIsOffline(!navigator.onLine);
 
     return () => {
@@ -47,12 +47,23 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
     setIsMobileMenuOpen(false);
   };
 
+  const handleSelectOrderFromActive = (orderId: string) => {
+    setPrefilledOrderId(orderId);
+    setView('send-order');
+  };
+
   const renderContent = () => {
     switch (currentView) {
       case 'send-order':
-        return <CreateOrder onOrderCreated={() => setView('active-orders')} />;
+        return (
+          <CreateOrder 
+            onOrderCreated={() => setView('active-orders')} 
+            initialOrderId={prefilledOrderId}
+            onClearInitialId={() => setPrefilledOrderId("")}
+          />
+        );
       case 'active-orders':
-        return <ActiveOrders />;
+        return <ActiveOrders onSelectOrder={handleSelectOrderFromActive} />;
       case 'request-order':
         return <RequestOrder sender={user} />;
       case 'admin-users':
@@ -100,7 +111,7 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
                 size="sm" 
                 variant={currentView === 'send-order' ? 'default' : 'outline'} 
                 className="rounded-full h-8 gap-1.5 text-[10px] px-3 transition-all"
-                onClick={() => setView('send-order')}
+                onClick={() => handleSetView('send-order')}
               >
                 <Send className="h-3.5 w-3.5" /> <span className="hidden xs:inline">Envio</span>
               </Button>
@@ -109,7 +120,7 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
                 size="sm" 
                 variant={currentView === 'active-orders' ? 'default' : 'outline'} 
                 className="rounded-full h-8 gap-1.5 text-[10px] px-3 transition-all"
-                onClick={() => setView('active-orders')}
+                onClick={() => handleSetView('active-orders')}
               >
                 <Activity className="h-3.5 w-3.5" /> <span className="hidden xs:inline">Ativos</span>
               </Button>
@@ -131,7 +142,7 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
                   "rounded-full relative h-9 w-9 transition-all",
                   pendingCount > 0 ? "text-primary bg-primary/10" : "text-muted-foreground"
                 )}
-                onClick={() => setView('active-orders')}
+                onClick={() => handleSetView('active-orders')}
               >
                 <Bell className={cn("h-5 w-5", pendingCount > 0 && "animate-ring")} />
                 {pendingCount > 0 && (

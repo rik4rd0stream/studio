@@ -6,14 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { 
   Loader2, 
-  SendHorizontal, 
   MapPin, 
   RefreshCw, 
   Search,
   Package,
   ClipboardPaste,
   ArrowRight,
-  AlertCircle
+  AlertCircle,
+  Bike
 } from "lucide-react";
 import { redashService, RedashOrder } from "@/lib/api/redash-service";
 import { useToast } from "@/hooks/use-toast";
@@ -33,9 +33,11 @@ const COMMANDS = ["!!bundleBR", "!!rebr", "!!Br", "!!forzabr"];
 
 interface CreateOrderProps {
   onOrderCreated: (order: any) => void;
+  initialOrderId?: string;
+  onClearInitialId?: () => void;
 }
 
-export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
+export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }: CreateOrderProps) {
   const { toast } = useToast();
   const db = useFirestore();
   const [loading, setLoading] = useState(false);
@@ -46,9 +48,14 @@ export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
   const [selectedOrder, setSelectedOrder] = useState<RedashOrder | null>(null);
   const [isCourierDialogOpen, setIsCourierDialogOpen] = useState(false);
   const [searchCourier, setSearchCourier] = useState("");
-  const [manualOrderId, setManualOrderId] = useState("");
+  const [manualOrderId, setManualOrderId] = useState(initialOrderId || "");
 
-  // Usando a coleção antiga 'entregadores'
+  useEffect(() => {
+    if (initialOrderId) {
+      setManualOrderId(initialOrderId);
+    }
+  }, [initialOrderId]);
+
   const couriersQuery = useMemoFirebase(() => query(collection(db, 'entregadores')), [db]);
   const { data: couriers, isLoading: loadingCouriers } = useCollection<any>(couriersQuery);
 
@@ -66,10 +73,12 @@ export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
 
   const filteredCouriers = useMemo(() => {
     if (!couriers) return [];
-    return couriers.filter(c => 
-      c.nome?.toLowerCase().includes(searchCourier.toLowerCase()) || 
-      c.id_motoboy?.includes(searchCourier)
-    );
+    return [...couriers]
+      .filter(c => 
+        (c.nome || c.name)?.toLowerCase().includes(searchCourier.toLowerCase()) || 
+        c.id_motoboy?.includes(searchCourier)
+      )
+      .sort((a, b) => (a.nome || a.name || "").localeCompare(b.nome || b.name || ""));
   }, [couriers, searchCourier]);
 
   const loadData = async (silent = false) => {
@@ -121,6 +130,7 @@ export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
     setIsCourierDialogOpen(false);
     setSelectedOrder(null);
     setManualOrderId(""); 
+    if (onClearInitialId) onClearInitialId();
   };
 
   return (
@@ -225,9 +235,9 @@ export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
       </form>
 
       <Dialog open={isCourierDialogOpen} onOpenChange={setIsCourierDialogOpen}>
-        <DialogContent className="max-w-sm rounded-2xl overflow-hidden p-0 border-none shadow-2xl">
+        <DialogContent className="max-w-md rounded-2xl overflow-hidden p-0 border-none shadow-2xl">
           <DialogHeader className="p-5 pb-2">
-            <DialogTitle>Enviar para:</DialogTitle>
+            <DialogTitle>Despachar para:</DialogTitle>
             <DialogTitle className="text-xs">Pedido <span className="font-bold">#{selectedOrder?.order_id}</span></DialogTitle>
           </DialogHeader>
           <div className="px-5 py-2">
@@ -236,18 +246,31 @@ export function CreateOrder({ onOrderCreated }: CreateOrderProps) {
               <Input placeholder="Buscar motoboy..." className="pl-9 h-9 text-sm" value={searchCourier} onChange={(e) => setSearchCourier(e.target.value)} />
             </div>
           </div>
-          <div className="flex-1 overflow-y-auto px-5 py-2 space-y-1.5 pb-5 max-h-[40vh]">
-            {loadingCouriers ? <Loader2 className="h-5 w-5 animate-spin mx-auto my-4 text-primary" /> : filteredCouriers.map((c) => (
-              <Button key={c.id} variant="ghost" className="w-full justify-between h-auto py-2.5 px-3 hover:bg-primary/5 group" onClick={() => handleGenerateCommand(c.id_motoboy)}>
-                <div className="text-left">
-                  <p className="font-bold text-[11px] leading-none group-hover:text-primary">{c.nome}</p>
-                  <p className="text-[9px] text-muted-foreground mt-1">ID: {c.id_motoboy}</p>
-                </div>
-                <SendHorizontal className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-primary" />
-              </Button>
-            ))}
+          <div className="flex-1 overflow-y-auto px-5 py-4 max-h-[50vh]">
+            {loadingCouriers ? (
+              <Loader2 className="h-8 w-8 animate-spin mx-auto my-4 text-primary opacity-30" />
+            ) : (
+              <div className="grid grid-cols-3 gap-2">
+                {filteredCouriers.map((c) => (
+                  <Button 
+                    key={c.id} 
+                    variant="ghost" 
+                    className="flex flex-col items-center justify-center h-24 p-2 hover:bg-primary/5 group border border-transparent hover:border-primary/10 rounded-xl transition-all" 
+                    onClick={() => handleGenerateCommand(c.id_motoboy)}
+                  >
+                    <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center mb-1.5 group-hover:bg-primary/10 transition-colors">
+                      <Bike className="h-5 w-5 text-muted-foreground group-hover:text-primary" />
+                    </div>
+                    <p className="font-bold text-[9px] leading-tight text-center truncate w-full group-hover:text-primary">
+                      {(c.nome || c.name)?.split(' ')[0]}
+                    </p>
+                    <p className="text-[7px] text-muted-foreground font-mono mt-0.5">{c.id_motoboy}</p>
+                  </Button>
+                ))}
+              </div>
+            )}
             {filteredCouriers.length === 0 && !loadingCouriers && (
-              <p className="text-center py-4 text-muted-foreground text-[10px] italic">Nenhum motoboy encontrado na coleção 'entregadores'.</p>
+              <p className="text-center py-4 text-muted-foreground text-[10px] italic">Nenhum motoboy encontrado.</p>
             )}
           </div>
         </DialogContent>
