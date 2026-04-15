@@ -6,7 +6,7 @@ import { AppView, User } from "@/lib/types";
 import { SidebarNav } from "./sidebar-nav";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
-import { Send, Bell, Activity, PackageSearch, Menu } from "lucide-react";
+import { Send, Bell, Activity, Menu } from "lucide-react";
 import { CreateOrder } from "@/components/orders/create-order";
 import { ActiveOrders } from "@/components/orders/active-orders";
 import { RequestOrder } from "@/components/orders/request-order";
@@ -49,6 +49,7 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
+      {/* Listener silencioso que vigia a fila no banco de dados */}
       <PushListener user={user} onPendingCountChange={setPendingCount} />
       
       <div className="w-64 h-full hidden md:block">
@@ -82,7 +83,7 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
               <Button 
                 size="sm" 
                 variant={currentView === 'send-order' ? 'default' : 'outline'} 
-                className="rounded-full h-8 gap-1.5 text-[10px] px-3"
+                className="rounded-full h-8 gap-1.5 text-[10px] px-3 transition-all"
                 onClick={() => setView('send-order')}
               >
                 <Send className="h-3.5 w-3.5" /> <span className="hidden xs:inline">Envio</span>
@@ -90,7 +91,7 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
               <Button 
                 size="sm" 
                 variant={currentView === 'active-orders' ? 'default' : 'outline'} 
-                className="rounded-full h-8 gap-1.5 text-[10px] px-3"
+                className="rounded-full h-8 gap-1.5 text-[10px] px-3 transition-all"
                 onClick={() => setView('active-orders')}
               >
                 <Activity className="h-3.5 w-3.5" /> <span className="hidden xs:inline">Ativos</span>
@@ -110,7 +111,7 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
               >
                 <Bell className={cn("h-5 w-5", pendingCount > 0 && "animate-ring")} />
                 {pendingCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-primary text-white text-[9px] font-bold rounded-full flex items-center justify-center border-2 border-background animate-in zoom-in">
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-background animate-in zoom-in">
                     {pendingCount}
                   </span>
                 )}

@@ -33,7 +33,8 @@ export function initializeFirebase() {
           experimentalAutoDetectLongPolling: true,
         });
         
-        // Ativa persistência offline (Cache local)
+        // Ativa persistência offline (Cache local do celular)
+        // Isso garante que o app "lembre" dos pedidos mesmo se a rede cair
         enableIndexedDbPersistence(firestoreInstance).catch((err) => {
           if (err.code === 'failed-precondition') {
             console.warn("Múltiplas abas abertas, persistência offline desativada.");
