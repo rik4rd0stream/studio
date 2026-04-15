@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -14,26 +15,29 @@ import {
   AlertDialogHeader, 
   AlertDialogTitle 
 } from "@/components/ui/alert-dialog";
-import { BellRing, ExternalLink } from "lucide-react";
+import { BellRing, ExternalLink, ListChecks } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
 
 /**
- * Listener de notificações em tempo real.
- * Usa o E-mail como identificador principal para garantir compatibilidade entre Auth e Firestore.
+ * Listener de notificações em tempo real com Fila Persistente.
  */
-export function PushListener({ user }: { user: User }) {
+export function PushListener({ 
+  user, 
+  onPendingCountChange 
+}: { 
+  user: User; 
+  onPendingCountChange?: (count: number) => void 
+}) {
   const db = useFirestore();
   const { toast } = useToast();
-  const [activeRequest, setActiveRequest] = useState<OrderRequest | null>(null);
+  const [pendingRequests, setPendingRequests] = useState<OrderRequest[]>([]);
+  const [isQueueOpen, setIsQueueOpen] = useState(false);
 
   useEffect(() => {
-    // Só ativa se o usuário estiver logado e com notificações habilitadas
     if (!user || !user.email || !user.notificationsEnabled) return;
 
-    // Normalizamos o e-mail para evitar erros de caixa alta/baixa
     const userEmail = user.email.toLowerCase().trim();
-
-    // Busca solicitações pendentes para este e-mail específico na coleção 'requests'
     const q = query(
       collection(db, "requests"),
       where("targetUserEmail", "==", userEmail),
@@ -41,82 +45,77 @@ export function PushListener({ user }: { user: User }) {
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      if (!snapshot.empty) {
-        // Pega a solicitação mais recente do banco
-        const lastDoc = snapshot.docs[snapshot.docs.length - 1];
-        const request = { id: lastDoc.id, ...lastDoc.data() } as OrderRequest;
-        
-        if (activeRequest?.id !== request.id) {
-          setActiveRequest(request);
-          
-          toast({
-            title: "NOVO PEDIDO RECEBIDO",
-            description: `Enviado por: ${request.senderName}`,
-          });
-
-          // Toca som de alerta se o sistema permitir
-          try {
-            const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
-            audio.play().catch(() => {});
-          } catch (e) {}
-        }
-      } else {
-        setActiveRequest(null);
+      const requests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as OrderRequest));
+      setPendingRequests(requests);
+      
+      if (onPendingCountChange) {
+        onPendingCountChange(requests.length);
       }
-    }, (error) => {
-      console.error("Erro no Listener de Notificações:", error);
+
+      // Alerta sonoro apenas para novos itens
+      if (snapshot.docChanges().some(change => change.type === "added")) {
+        try {
+          const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+          audio.play().catch(() => {});
+        } catch (e) {}
+        
+        toast({
+          title: "NOVA SOLICITAÇÃO",
+          description: `Você tem ${requests.length} pedido(s) pendente(s).`,
+        });
+      }
     });
 
     return () => unsubscribe();
-  }, [db, user, activeRequest?.id, toast]);
+  }, [db, user, toast, onPendingCountChange]);
 
-  const handleAccept = () => {
-    if (!activeRequest || !activeRequest.id) return;
-    
-    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(activeRequest.command)}`;
+  const handleAccept = (request: OrderRequest) => {
+    if (!request.id) return;
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(request.command)}`;
     window.open(whatsappUrl, '_blank');
-    
-    // Remove do banco após o despacho para limpar a notificação
-    deleteDoc(doc(db, "requests", activeRequest.id));
-    setActiveRequest(null);
-
+    deleteDoc(doc(db, "requests", request.id));
     toast({ title: "Despachado", description: "Comando enviado para o WhatsApp." });
   };
 
-  const handleReject = () => {
-    if (!activeRequest || !activeRequest.id) return;
-    deleteDoc(doc(db, "requests", activeRequest.id));
-    setActiveRequest(null);
+  const handleReject = (id: string) => {
+    deleteDoc(doc(db, "requests", id));
   };
+
+  const activeRequest = pendingRequests[0];
 
   if (!activeRequest) return null;
 
   return (
-    <AlertDialog open={!!activeRequest}>
-      <AlertDialogContent className="max-w-[320px] rounded-2xl border-none shadow-2xl animate-in zoom-in-95 duration-200">
+    <AlertDialog open={!!activeRequest && !isQueueOpen}>
+      <AlertDialogContent className="max-w-[320px] rounded-2xl border-none shadow-2xl">
         <AlertDialogHeader className="items-center text-center">
           <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-2 animate-bounce">
             <BellRing className="h-8 w-8 text-primary" />
           </div>
-          <AlertDialogTitle className="text-xl font-bold text-primary">Solicitação Push</AlertDialogTitle>
+          <AlertDialogTitle className="text-xl font-bold text-primary">Novo Pedido!</AlertDialogTitle>
           <AlertDialogDescription className="text-sm">
-            <span className="font-bold text-foreground">{activeRequest.senderName}</span> solicita sua ação:
+            <span className="font-bold text-foreground">{activeRequest.senderName}</span> solicita:
             <div className="mt-4 p-4 bg-muted/50 rounded-2xl font-mono text-[11px] text-left border border-primary/10">
               <p className="font-bold text-primary mb-1 uppercase">{activeRequest.storeName}</p>
               <p className="opacity-70 font-bold">ORDEM: #{activeRequest.orderId}</p>
             </div>
+            {pendingRequests.length > 1 && (
+              <p className="mt-3 text-[10px] text-blue-600 font-bold uppercase animate-pulse">
+                + {pendingRequests.length - 1} outros pedidos na fila
+              </p>
+            )}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter className="flex-col gap-2 mt-4">
           <AlertDialogAction 
-            onClick={handleAccept} 
-            className="w-full h-12 bg-primary hover:bg-primary/90 text-white font-bold gap-2 rounded-xl text-sm"
+            onClick={() => handleAccept(activeRequest)} 
+            className="w-full h-12 bg-primary font-bold gap-2 rounded-xl"
           >
-            ACEITAR E DESPACHAR <ExternalLink className="h-4 w-4" />
+            DESPACHAR <ExternalLink className="h-4 w-4" />
           </AlertDialogAction>
           <AlertDialogCancel 
-            onClick={handleReject} 
-            className="w-full h-10 bg-transparent border-none text-muted-foreground hover:text-foreground text-xs"
+            onClick={() => handleReject(activeRequest.id!)} 
+            className="w-full h-10 border-none text-muted-foreground text-xs"
           >
             RECUSAR
           </AlertDialogCancel>

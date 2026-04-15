@@ -1,10 +1,12 @@
+
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
 import { 
   initializeFirestore, 
   Firestore, 
-  getFirestore as getFirestoreInstance 
+  getFirestore as getFirestoreInstance,
+  enableIndexedDbPersistence
 } from 'firebase/firestore';
 
 let firestoreInstance: Firestore | null = null;
@@ -13,8 +15,7 @@ let appInstance: FirebaseApp | null = null;
 
 /**
  * Inicialização Singleton do Firebase Isomórfica (Client + Server).
- * No lado do servidor (Vercel), usamos a conexão padrão.
- * No lado do cliente (Android), usamos Long Polling para estabilidade.
+ * Ativa persistência offline para garantir que notificações não se percam.
  */
 export function initializeFirebase() {
   if (!appInstance) {
@@ -30,6 +31,15 @@ export function initializeFirebase() {
       try {
         firestoreInstance = initializeFirestore(appInstance, {
           experimentalAutoDetectLongPolling: true,
+        });
+        
+        // Ativa persistência offline (Cache local)
+        enableIndexedDbPersistence(firestoreInstance).catch((err) => {
+          if (err.code === 'failed-precondition') {
+            console.warn("Múltiplas abas abertas, persistência offline desativada.");
+          } else if (err.code === 'unimplemented') {
+            console.warn("O navegador não suporta persistência offline.");
+          }
         });
       } catch (e) {
         firestoreInstance = getFirestoreInstance(appInstance);
@@ -48,7 +58,6 @@ export function initializeFirebase() {
   };
 }
 
-// Re-exportações dos hooks (somente para Client Components)
 export { 
   FirebaseProvider, 
   useFirebase, 

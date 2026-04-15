@@ -13,6 +13,7 @@ import { RequestOrder } from "@/components/orders/request-order";
 import { Registration } from "@/components/admin/registration";
 import { PushListener } from "@/components/notifications/push-listener";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { cn } from "@/lib/utils";
 
 interface MainDashboardProps {
   user: User;
@@ -22,6 +23,7 @@ interface MainDashboardProps {
 export function MainDashboard({ user, onLogout }: MainDashboardProps) {
   const [currentView, setView] = useState<AppView>('send-order');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
 
   const handleSetView = (view: AppView) => {
     setView(view);
@@ -47,7 +49,7 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
-      <PushListener user={user} />
+      <PushListener user={user} onPendingCountChange={setPendingCount} />
       
       <div className="w-64 h-full hidden md:block">
         <SidebarNav currentView={currentView} setView={setView} user={user} onLogout={onLogout} />
@@ -98,9 +100,20 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
           
           <div className="flex items-center gap-1 md:gap-3">
             {user.notificationsEnabled && (
-              <Button variant="ghost" size="icon" className="rounded-full relative h-9 w-9">
-                <Bell className="h-5 w-5" />
-                <span className="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full" />
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className={cn(
+                  "rounded-full relative h-9 w-9 transition-all",
+                  pendingCount > 0 ? "text-primary bg-primary/10" : "text-muted-foreground"
+                )}
+              >
+                <Bell className={cn("h-5 w-5", pendingCount > 0 && "animate-ring")} />
+                {pendingCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-primary text-white text-[9px] font-bold rounded-full flex items-center justify-center border-2 border-background animate-in zoom-in">
+                    {pendingCount}
+                  </span>
+                )}
               </Button>
             )}
             <ThemeToggle />
