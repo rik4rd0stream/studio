@@ -23,10 +23,12 @@ export interface OrderRequest {
   orderId: string;
   storeName: string;
   command: string;
-  targetUserEmail: string; // Mudado de targetUserId para targetUserEmail para maior precisão
+  targetUserEmail: string;
   senderName: string;
-  status: 'pending' | 'accepted';
+  senderEmail?: string; 
+  status: 'pending' | 'accepted' | 'rejected';
   createdAt: string;
+  updatedAt?: string;
 }
 
 export type AppView = 'send-order' | 'request-order' | 'active-orders' | 'admin-users' | 'admin-couriers';

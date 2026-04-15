@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useFirestore } from "@/firebase";
-import { collection, query, where, onSnapshot, doc, deleteDoc } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, updateDoc } from "firebase/firestore";
 import { User, OrderRequest } from "@/lib/types";
 import { 
   AlertDialog, 
@@ -32,7 +32,6 @@ export function PushListener({
   const [pendingRequests, setPendingRequests] = useState<OrderRequest[]>([]);
   const [isMinimized, setIsMinimized] = useState(false);
 
-  // Solicita permissão para notificações do sistema (Barra de Status)
   useEffect(() => {
     if (typeof window !== 'undefined' && "Notification" in window) {
       if (Notification.permission === "default") {
@@ -45,7 +44,7 @@ export function PushListener({
     if (typeof window !== 'undefined' && "Notification" in window && Notification.permission === "granted") {
       new Notification(title, {
         body,
-        icon: "/favicon.ico", // Tenta usar o ícone do app
+        icon: "/favicon.ico",
         badge: "/favicon.ico",
         vibrate: [200, 100, 200]
       });
@@ -69,24 +68,19 @@ export function PushListener({
         ...doc.data() 
       } as OrderRequest));
       
-      const prevCount = pendingRequests.length;
       setPendingRequests(requests);
       
       if (onPendingCountChange) {
         onPendingCountChange(requests.length);
       }
 
-      // Se entrou um NOVO pedido (mesmo com app em background)
       if (snapshot.docChanges().some(change => change.type === "added")) {
         setIsMinimized(false);
-        
-        // Alerta sonoro
         try {
           const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
           audio.play().catch(() => {});
         } catch (e) {}
 
-        // Notificação de Sistema (Barra de Status do Android)
         const lastRequest = requests[requests.length - 1];
         if (lastRequest) {
           sendSystemNotification(
@@ -105,18 +99,29 @@ export function PushListener({
     });
 
     return () => unsubscribe();
-  }, [db, user, toast, onPendingCountChange, sendSystemNotification, pendingRequests.length]);
+  }, [db, user, toast, onPendingCountChange, sendSystemNotification]);
 
   const handleAccept = (request: OrderRequest) => {
     if (!request.id) return;
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(request.command)}`;
     window.open(whatsappUrl, '_blank');
-    deleteDoc(doc(db, "requests", request.id));
+    
+    // Agora atualiza em vez de deletar
+    updateDoc(doc(db, "requests", request.id), {
+      status: 'accepted',
+      updatedAt: new Date().toISOString()
+    });
+    
     toast({ title: "Despachado", description: "Comando enviado para o WhatsApp." });
   };
 
   const handleReject = (id: string) => {
-    deleteDoc(doc(db, "requests", id));
+    // Agora atualiza em vez de deletar
+    updateDoc(doc(db, "requests", id), {
+      status: 'rejected',
+      updatedAt: new Date().toISOString()
+    });
+    
     toast({ title: "Removido", description: "Solicitação excluída da fila." });
   };
 

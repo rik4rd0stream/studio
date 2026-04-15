@@ -14,7 +14,10 @@ import {
   ArrowRight,
   BellRing,
   User as UserIcon,
-  X
+  X,
+  Clock,
+  CheckCircle2,
+  XCircle
 } from "lucide-react";
 import { redashService, RedashOrder } from "@/lib/api/redash-service";
 import { useToast } from "@/hooks/use-toast";
@@ -27,9 +30,10 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, query, where, doc, setDoc } from "firebase/firestore";
+import { collection, query, where, doc, setDoc, orderBy, limit } from "firebase/firestore";
 import { cn } from "@/lib/utils";
-import { User } from "@/lib/types";
+import { User, OrderRequest } from "@/lib/types";
+import { Badge } from "@/components/ui/badge";
 
 const COMMANDS = ["!!bundleBR", "!!rebr", "!!Br", "!!forzabr"];
 
@@ -49,6 +53,15 @@ export function RequestOrder({ sender }: { sender: User }) {
   const [searchCourier, setSearchCourier] = useState("");
   const [searchUser, setSearchUser] = useState("");
   const [manualOrderId, setManualOrderId] = useState("");
+
+  // Listener para o histórico de solicitações do remetente
+  const historyQuery = useMemoFirebase(() => query(
+    collection(db, 'requests'),
+    where('senderEmail', '==', sender.email.toLowerCase().trim()),
+    orderBy('createdAt', 'desc'),
+    limit(5)
+  ), [db, sender.email]);
+  const { data: history } = useCollection<OrderRequest>(historyQuery);
 
   const couriersQuery = useMemoFirebase(() => query(collection(db, 'entregadores')), [db]);
   const { data: couriers, isLoading: loadingCouriers } = useCollection<any>(couriersQuery);
@@ -72,7 +85,7 @@ export function RequestOrder({ sender }: { sender: User }) {
     return [...couriers]
       .filter(c => 
         (c.nome || c.name)?.toLowerCase().includes(searchCourier.toLowerCase()) || 
-        c.id_motoboy?.includes(searchCourier)
+        String(c.id_motoboy || "").includes(searchCourier)
       )
       .sort((a, b) => (a.nome || a.name || "").localeCompare(b.nome || b.name || ""));
   }, [couriers, searchCourier]);
@@ -116,22 +129,23 @@ export function RequestOrder({ sender }: { sender: User }) {
       order_id: manualOrderId.trim(),
       store_name: "Solicitação Manual",
       direccion_entrega: "Entrada Manual"
-    });
+    } as RedashOrder);
   };
 
   const handleSendRequest = (targetUser: any) => {
     if (!selectedOrder || !selectedCourier) return;
 
     const requestId = Math.random().toString(36).substr(2, 9);
-    const orderId = selectedOrder.order_id || "0";
+    const orderId = String(selectedOrder.order_id || "0");
     const targetEmail = (targetUser.email || targetUser.id).toLowerCase().trim();
 
-    const requestData = {
+    const requestData: OrderRequest = {
       orderId,
       storeName: selectedOrder.store_name || "Pedido",
       command: `${selectedCommand} ${orderId} ${selectedCourier.id_motoboy}`,
       targetUserEmail: targetEmail,
       senderName: sender.name,
+      senderEmail: sender.email.toLowerCase().trim(),
       status: 'pending',
       createdAt: new Date().toISOString()
     };
@@ -149,8 +163,44 @@ export function RequestOrder({ sender }: { sender: User }) {
       });
   };
 
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'accepted':
+        return <Badge className="bg-green-500 text-white border-none gap-1 px-2 h-5 text-[9px] uppercase"><CheckCircle2 className="h-2.5 w-2.5" /> ACEITO</Badge>;
+      case 'rejected':
+        return <Badge className="bg-red-500 text-white border-none gap-1 px-2 h-5 text-[9px] uppercase"><XCircle className="h-2.5 w-2.5" /> RECUSADO</Badge>;
+      default:
+        return <Badge variant="outline" className="border-amber-500 text-amber-600 gap-1 px-2 h-5 text-[9px] uppercase bg-amber-50 dark:bg-amber-950/20"><Clock className="h-2.5 w-2.5 animate-pulse" /> PENDENTE</Badge>;
+    }
+  };
+
   return (
     <div className="space-y-6 animate-slide-up pb-32 max-w-xl mx-auto">
+      {/* SEÇÃO DE STATUS DAS MINHAS SOLICITAÇÕES */}
+      {history && history.length > 0 && (
+        <Card className="border-none shadow-sm bg-muted/30 overflow-hidden rounded-2xl">
+          <div className="p-3 bg-primary/5 border-b border-primary/10 flex items-center justify-between">
+            <h3 className="text-[10px] font-bold text-primary uppercase tracking-widest flex items-center gap-2">
+              <Clock className="h-3 w-3" /> Status do meu Despacho
+            </h3>
+          </div>
+          <CardContent className="p-2 space-y-1.5">
+            {history.map((req) => (
+              <div key={req.id} className="bg-card p-2.5 rounded-xl border border-border/40 flex items-center justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="text-[9px] font-mono font-bold text-muted-foreground">#{req.orderId}</span>
+                    <span className="text-[10px] font-bold truncate">{req.storeName}</span>
+                  </div>
+                  <p className="text-[9px] text-muted-foreground truncate">Para: {req.targetUserEmail}</p>
+                </div>
+                {getStatusBadge(req.status)}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
       <div className="bg-primary/5 p-4 rounded-2xl border border-primary/10 flex items-center gap-3">
         <BellRing className="h-5 w-5 text-primary" />
         <div>
