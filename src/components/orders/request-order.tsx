@@ -59,7 +59,7 @@ export function RequestOrder({ sender }: { sender: User }) {
     collection(db, 'requests'),
     where('senderEmail', '==', sender.email.toLowerCase().trim()),
     orderBy('createdAt', 'desc'),
-    limit(5)
+    limit(8)
   ), [db, sender.email]);
   const { data: history } = useCollection<OrderRequest>(historyQuery);
 
@@ -192,7 +192,7 @@ export function RequestOrder({ sender }: { sender: User }) {
                     <span className="text-[9px] font-mono font-bold text-muted-foreground">#{req.orderId}</span>
                     <span className="text-[10px] font-bold truncate">{req.storeName}</span>
                   </div>
-                  <p className="text-[9px] text-muted-foreground truncate">Para: {req.targetUserEmail}</p>
+                  <p className="text-[9px] text-muted-foreground truncate">Operador: {req.targetUserEmail}</p>
                 </div>
                 {getStatusBadge(req.status)}
               </div>
@@ -205,7 +205,7 @@ export function RequestOrder({ sender }: { sender: User }) {
         <BellRing className="h-5 w-5 text-primary" />
         <div>
           <h3 className="text-sm font-bold text-primary">Solicitação Push</h3>
-          <p className="text-[10px] text-muted-foreground">Envie pedidos para outros operadores aceitarem no celular.</p>
+          <p className="text-[10px] text-muted-foreground">O Redash removerá os pedidos quando forem despachados.</p>
         </div>
       </div>
 
@@ -230,10 +230,7 @@ export function RequestOrder({ sender }: { sender: User }) {
 
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
-          <h2 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Pedidos para Solicitar</h2>
-          <div className="flex items-center justify-center w-6 h-6 rounded-full border border-primary/30 text-primary font-bold text-[10px] bg-primary/5">
-            {redashOrders.length}
-          </div>
+          <h2 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Pedidos Disponíveis ({redashOrders.length})</h2>
         </div>
         <Button variant="ghost" size="sm" onClick={() => loadData()} disabled={loading} className="h-6 text-[11px] font-bold text-blue-600">
           <RefreshCw className={cn("h-3 w-3 mr-1", loading && "animate-spin")} /> ATUALIZAR
@@ -244,7 +241,7 @@ export function RequestOrder({ sender }: { sender: User }) {
         {redashOrders.length === 0 && !loading ? (
           <div className="text-center py-8 bg-muted/20 rounded-xl border border-dashed flex flex-col items-center">
             <Package className="h-6 w-6 text-muted-foreground/50 mb-2" />
-            <h3 className="text-xs font-medium text-muted-foreground">Nenhum pedido para solicitar</h3>
+            <h3 className="text-xs font-medium text-muted-foreground">Nenhum pedido no Redash</h3>
           </div>
         ) : (
           redashOrders.map((order, idx) => (

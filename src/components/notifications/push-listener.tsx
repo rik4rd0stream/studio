@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useFirestore } from "@/firebase";
-import { collection, query, where, onSnapshot, doc, updateDoc } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, updateDoc, limit, orderBy } from "firebase/firestore";
 import { User, OrderRequest } from "@/lib/types";
 import { 
   AlertDialog, 
@@ -15,7 +15,7 @@ import {
   AlertDialogHeader, 
   AlertDialogTitle 
 } from "@/components/ui/alert-dialog";
-import { BellRing, ExternalLink, X, MessageSquareQuote } from "lucide-react";
+import { BellRing, ExternalLink, X, MessageSquareQuote, BatteryWarning } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -31,11 +31,14 @@ export function PushListener({
   const { toast } = useToast();
   const [pendingRequests, setPendingRequests] = useState<OrderRequest[]>([]);
   const [isMinimized, setIsMinimized] = useState(false);
+  const [permissionStatus, setPermissionStatus] = useState<string>("default");
 
+  // Verificar permissão de notificação e bateria
   useEffect(() => {
     if (typeof window !== 'undefined' && "Notification" in window) {
+      setPermissionStatus(Notification.permission);
       if (Notification.permission === "default") {
-        Notification.requestPermission();
+        Notification.requestPermission().then(setPermissionStatus);
       }
     }
   }, []);
@@ -56,10 +59,13 @@ export function PushListener({
 
     const userEmail = user.email.toLowerCase().trim();
     
+    // Ouvir apenas pedidos pendentes para o popup principal
     const q = query(
       collection(db, "requests"),
       where("targetUserEmail", "==", userEmail),
-      where("status", "==", "pending")
+      where("status", "==", "pending"),
+      orderBy("createdAt", "desc"),
+      limit(10)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -81,32 +87,26 @@ export function PushListener({
           audio.play().catch(() => {});
         } catch (e) {}
 
-        const lastRequest = requests[requests.length - 1];
+        const lastRequest = requests[0];
         if (lastRequest) {
           sendSystemNotification(
             "NOVA SOLICITAÇÃO - RC", 
-            `${lastRequest.senderName}: Pedido #${lastRequest.orderId} em ${lastRequest.storeName}`
+            `${lastRequest.senderName}: Pedido #${lastRequest.orderId}`
           );
         }
-        
-        toast({
-          title: "NOVA SOLICITAÇÃO",
-          description: `Você tem ${requests.length} pedido(s) na fila.`,
-        });
       }
     }, (error) => {
       console.error("Erro no Listener de Push:", error);
     });
 
     return () => unsubscribe();
-  }, [db, user, toast, onPendingCountChange, sendSystemNotification]);
+  }, [db, user, onPendingCountChange, sendSystemNotification]);
 
   const handleAccept = (request: OrderRequest) => {
     if (!request.id) return;
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(request.command)}`;
     window.open(whatsappUrl, '_blank');
     
-    // Agora atualiza em vez de deletar
     updateDoc(doc(db, "requests", request.id), {
       status: 'accepted',
       updatedAt: new Date().toISOString()
@@ -116,13 +116,12 @@ export function PushListener({
   };
 
   const handleReject = (id: string) => {
-    // Agora atualiza em vez de deletar
     updateDoc(doc(db, "requests", id), {
       status: 'rejected',
       updatedAt: new Date().toISOString()
     });
     
-    toast({ title: "Removido", description: "Solicitação excluída da fila." });
+    toast({ title: "Removido", description: "Solicitação marcada como recusada." });
   };
 
   const activeRequest = pendingRequests[0];
@@ -130,6 +129,21 @@ export function PushListener({
 
   return (
     <>
+      {/* Alerta de Configuração de Segundo Plano (Aparece se permissão negada) */}
+      {permissionStatus !== "granted" && (
+        <div className="fixed bottom-20 left-4 right-4 bg-amber-500 text-white p-3 rounded-xl shadow-lg z-[100] flex items-center justify-between animate-bounce">
+          <div className="flex items-center gap-2">
+            <BatteryWarning className="h-5 w-5" />
+            <p className="text-[10px] font-bold uppercase leading-tight">
+              Habilite Notificações e Remova "Economia de Bateria" para o app não dormir!
+            </p>
+          </div>
+          <Button variant="ghost" size="sm" onClick={() => Notification.requestPermission().then(setPermissionStatus)} className="h-7 text-[9px] bg-white/20 hover:bg-white/30 text-white border-none font-bold uppercase">
+            OK
+          </Button>
+        </div>
+      )}
+
       <AlertDialog open={showPopup}>
         <AlertDialogContent className="max-w-[320px] rounded-3xl border-none shadow-2xl animate-in zoom-in-95 duration-300">
           <button 
@@ -145,7 +159,7 @@ export function PushListener({
             </div>
             <AlertDialogTitle className="text-2xl font-bold text-primary">Novo Pedido!</AlertDialogTitle>
             <AlertDialogDescription className="text-sm">
-              <span className="font-bold text-foreground text-base">{activeRequest?.senderName}</span> está solicitando despacho:
+              <span className="font-bold text-foreground text-base">{activeRequest?.senderName}</span> solicita despacho:
               
               <div className="mt-4 p-4 bg-muted/50 rounded-2xl font-mono text-[11px] text-left border border-primary/10">
                 <p className="font-bold text-primary mb-1 uppercase truncate">{activeRequest?.storeName}</p>
