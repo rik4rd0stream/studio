@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useFirestore } from "@/firebase";
 import { collection, query, where, onSnapshot, doc, deleteDoc } from "firebase/firestore";
 import { User, OrderRequest } from "@/lib/types";
@@ -15,12 +15,13 @@ import {
   AlertDialogHeader, 
   AlertDialogTitle 
 } from "@/components/ui/alert-dialog";
-import { BellRing, ExternalLink } from "lucide-react";
+import { BellRing, ExternalLink, X, MessageSquareQuote } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 /**
- * Listener de notificações em tempo real com Fila Persistente.
- * Em vez de depender de um evento "push" volátil, ele escuta uma coleção "requests".
+ * Listener de notificações em tempo real com Fila Persistente e Modo Soneca.
  */
 export function PushListener({ 
   user, 
@@ -32,13 +33,13 @@ export function PushListener({
   const db = useFirestore();
   const { toast } = useToast();
   const [pendingRequests, setPendingRequests] = useState<OrderRequest[]>([]);
+  const [isMinimized, setIsMinimized] = useState(false);
 
   useEffect(() => {
     if (!user || !user.email || !user.notificationsEnabled) return;
 
     const userEmail = user.email.toLowerCase().trim();
     
-    // Escuta a fila de solicitações destinadas a este usuário
     const q = query(
       collection(db, "requests"),
       where("targetUserEmail", "==", userEmail),
@@ -57,8 +58,9 @@ export function PushListener({
         onPendingCountChange(requests.length);
       }
 
-      // Alerta sonoro apenas quando um NOVO pedido entra na fila
+      // Se um NOVO pedido entrou, reativa o popup automaticamente
       if (snapshot.docChanges().some(change => change.type === "added")) {
+        setIsMinimized(false);
         try {
           const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
           audio.play().catch(() => {});
@@ -76,67 +78,99 @@ export function PushListener({
 
   const handleAccept = (request: OrderRequest) => {
     if (!request.id) return;
-    
-    // Executa a ação (Abre o WhatsApp)
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(request.command)}`;
     window.open(whatsappUrl, '_blank');
-    
-    // Confirmação (ACK): Remove do banco apenas após a execução
     deleteDoc(doc(db, "requests", request.id));
-    
     toast({ title: "Despachado", description: "Comando enviado para o WhatsApp." });
   };
 
   const handleReject = (id: string) => {
     deleteDoc(doc(db, "requests", id));
+    toast({ title: "Removido", description: "Solicitação excluída da fila." });
   };
 
-  // Pega o primeiro da fila para exibir o alerta
   const activeRequest = pendingRequests[0];
 
-  if (!activeRequest) return null;
+  // Se não houver pedido ou estiver minimizado, não mostra o Alert
+  const showPopup = !!activeRequest && !isMinimized;
 
   return (
-    <AlertDialog open={!!activeRequest}>
-      <AlertDialogContent className="max-w-[320px] rounded-3xl border-none shadow-2xl animate-in zoom-in-95 duration-300">
-        <AlertDialogHeader className="items-center text-center">
-          <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-4 animate-bounce">
-            <BellRing className="h-10 w-10 text-primary" />
-          </div>
-          <AlertDialogTitle className="text-2xl font-bold text-primary">Novo Pedido!</AlertDialogTitle>
-          <AlertDialogDescription className="text-sm">
-            <span className="font-bold text-foreground text-base">{activeRequest.senderName}</span> está solicitando despacho:
-            
-            <div className="mt-4 p-4 bg-muted/50 rounded-2xl font-mono text-[11px] text-left border border-primary/10">
-              <p className="font-bold text-primary mb-1 uppercase truncate">{activeRequest.storeName}</p>
-              <p className="opacity-70 font-bold">ORDEM: #{activeRequest.orderId}</p>
+    <>
+      <AlertDialog open={showPopup}>
+        <AlertDialogContent className="max-w-[320px] rounded-3xl border-none shadow-2xl animate-in zoom-in-95 duration-300">
+          <button 
+            onClick={() => setIsMinimized(true)}
+            className="absolute right-4 top-4 p-2 rounded-full hover:bg-muted transition-colors"
+          >
+            <X className="h-5 w-5 text-muted-foreground" />
+          </button>
+          
+          <AlertDialogHeader className="items-center text-center">
+            <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-4 animate-bounce">
+              <BellRing className="h-10 w-10 text-primary" />
             </div>
-            
-            {pendingRequests.length > 1 && (
-              <div className="mt-4 py-1.5 px-3 bg-blue-50 dark:bg-blue-900/30 rounded-full inline-flex items-center gap-2">
-                <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
-                <p className="text-[10px] text-blue-600 dark:text-blue-300 font-bold uppercase">
-                  + {pendingRequests.length - 1} na fila de espera
-                </p>
+            <AlertDialogTitle className="text-2xl font-bold text-primary">Novo Pedido!</AlertDialogTitle>
+            <AlertDialogDescription className="text-sm">
+              <span className="font-bold text-foreground text-base">{activeRequest?.senderName}</span> está solicitando despacho:
+              
+              <div className="mt-4 p-4 bg-muted/50 rounded-2xl font-mono text-[11px] text-left border border-primary/10">
+                <p className="font-bold text-primary mb-1 uppercase truncate">{activeRequest?.storeName}</p>
+                <p className="opacity-70 font-bold">ORDEM: #{activeRequest?.orderId}</p>
               </div>
-            )}
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter className="flex-col gap-2 mt-6">
-          <AlertDialogAction 
-            onClick={() => handleAccept(activeRequest)} 
-            className="w-full h-14 bg-primary hover:bg-primary/90 text-white font-bold text-base gap-3 rounded-2xl shadow-lg shadow-primary/20"
-          >
-            DESPACHAR AGORA <ExternalLink className="h-5 w-5" />
-          </AlertDialogAction>
-          <AlertDialogCancel 
-            onClick={() => handleReject(activeRequest.id!)} 
-            className="w-full h-10 border-none text-muted-foreground text-xs hover:bg-muted/50 rounded-xl"
-          >
-            RECUSAR / REMOVER
-          </AlertDialogCancel>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+              
+              {pendingRequests.length > 1 && (
+                <div className="mt-4 py-1.5 px-3 bg-blue-50 dark:bg-blue-900/30 rounded-full inline-flex items-center gap-2">
+                  <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+                  <p className="text-[10px] text-blue-600 dark:text-blue-300 font-bold uppercase">
+                    + {pendingRequests.length - 1} na fila de espera
+                  </p>
+                </div>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col gap-2 mt-6">
+            <AlertDialogAction 
+              onClick={() => handleAccept(activeRequest)} 
+              className="w-full h-14 bg-primary hover:bg-primary/90 text-white font-bold text-base gap-3 rounded-2xl shadow-lg shadow-primary/20"
+            >
+              DESPACHAR AGORA <ExternalLink className="h-5 w-5" />
+            </AlertDialogAction>
+            
+            <div className="grid grid-cols-2 gap-2 w-full">
+              <AlertDialogCancel 
+                onClick={() => setIsMinimized(true)} 
+                className="h-10 border-none text-muted-foreground text-xs hover:bg-muted/50 rounded-xl m-0"
+              >
+                VER DEPOIS
+              </AlertDialogCancel>
+              <Button 
+                variant="ghost" 
+                onClick={() => handleReject(activeRequest?.id!)} 
+                className="h-10 text-destructive text-xs hover:bg-destructive/10 rounded-xl"
+              >
+                REJEITAR
+              </Button>
+            </div>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Botão Flutuante quando minimizado ou quando há pendências */}
+      {pendingRequests.length > 0 && (
+        <Button
+          onClick={() => setIsMinimized(false)}
+          className={cn(
+            "fixed bottom-24 right-6 h-16 w-16 rounded-full shadow-2xl z-50 transition-all duration-500 hover:scale-110 active:scale-95 flex flex-col items-center justify-center p-0",
+            isMinimized ? "bg-primary animate-pulse" : "bg-muted-foreground/20 text-muted-foreground opacity-50"
+          )}
+        >
+          <MessageSquareQuote className="h-6 w-6" />
+          <span className="text-[10px] font-bold mt-0.5">{pendingRequests.length}</span>
+          <div className="absolute -top-1 -right-1 h-6 w-6 bg-red-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-background">
+            {pendingRequests.length}
+          </div>
+        </Button>
+      )}
+    </>
   );
 }
