@@ -40,15 +40,17 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
     return () => clearInterval(interval);
   }, []);
 
-  const handleCopyAndGo = (id: string) => {
-    navigator.clipboard.writeText(id).then(() => {
+  const handleCopyAndGo = (id: any) => {
+    // Garante que o ID seja sempre string para evitar erros no resto do sistema
+    const stringId = String(id);
+    navigator.clipboard.writeText(stringId).then(() => {
       toast({
         title: "ID Copiado",
-        description: `Código #${id} preparado para despacho.`,
+        description: `Código #${stringId} preparado para despacho.`,
         duration: 2000,
       });
       if (onSelectOrder) {
-        onSelectOrder(id);
+        onSelectOrder(stringId);
       }
     });
   };

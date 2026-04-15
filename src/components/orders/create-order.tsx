@@ -48,11 +48,12 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
   const [selectedOrder, setSelectedOrder] = useState<RedashOrder | null>(null);
   const [isCourierDialogOpen, setIsCourierDialogOpen] = useState(false);
   const [searchCourier, setSearchCourier] = useState("");
-  const [manualOrderId, setManualOrderId] = useState(initialOrderId || "");
+  // Garante que o estado inicial seja sempre uma string para evitar erro de .trim()
+  const [manualOrderId, setManualOrderId] = useState<string>(initialOrderId ? String(initialOrderId) : "");
 
   useEffect(() => {
     if (initialOrderId) {
-      setManualOrderId(initialOrderId);
+      setManualOrderId(String(initialOrderId));
     }
   }, [initialOrderId]);
 
@@ -76,8 +77,9 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
     return [...couriers]
       .filter(c => 
         (c.nome || c.name)?.toLowerCase().includes(searchCourier.toLowerCase()) || 
-        c.id_motoboy?.includes(searchCourier)
+        String(c.id_motoboy || "").includes(searchCourier)
       )
+      // ORDEM ALFABÉTICA
       .sort((a, b) => (a.nome || a.name || "").localeCompare(b.nome || b.name || ""));
   }, [couriers, searchCourier]);
 
@@ -108,12 +110,13 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
 
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!manualOrderId.trim()) return;
+    const cleanId = String(manualOrderId || "").trim();
+    if (!cleanId) return;
     handleOpenCourierSelection({
-      order_id: manualOrderId.trim(),
+      order_id: cleanId,
       store_name: "Pedido Manual",
       direccion_entrega: "Entrada Manual"
-    });
+    } as RedashOrder);
   };
 
   const handlePaste = async () => {
@@ -228,7 +231,11 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
           <Button type="button" variant="outline" onClick={handlePaste} className="h-11 font-bold text-[10px] uppercase text-primary border-primary/20 rounded-xl">
             <ClipboardPaste className="h-3.5 w-3.5 mr-2" /> Colar Manual
           </Button>
-          <Button type="submit" disabled={!manualOrderId.trim()} className="h-11 font-bold text-[10px] uppercase rounded-xl">
+          <Button 
+            type="submit" 
+            disabled={!String(manualOrderId || "").trim()} 
+            className="h-11 font-bold text-[10px] uppercase rounded-xl"
+          >
             Prosseguir <ArrowRight className="h-3.5 w-3.5 ml-2" />
           </Button>
         </div>

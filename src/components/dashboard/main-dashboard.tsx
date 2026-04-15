@@ -25,7 +25,7 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const [isOffline, setIsOffline] = useState(false);
-  const [prefilledOrderId, setPrefilledOrderId] = useState("");
+  const [prefilledOrderId, setPrefilledOrderId] = useState<string>("");
 
   useEffect(() => {
     const handleOnline = () => setIsOffline(false);
@@ -48,7 +48,8 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
   };
 
   const handleSelectOrderFromActive = (orderId: string) => {
-    setPrefilledOrderId(orderId);
+    // Garante que o ID seja sempre uma string ao ser passado para o estado
+    setPrefilledOrderId(String(orderId));
     setView('send-order');
   };
 
