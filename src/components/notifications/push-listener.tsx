@@ -20,7 +20,6 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Capacitor } from '@capacitor/core';
-import { LocalNotifications } from '@capacitor/local-notifications';
 
 export function PushListener({ 
   user, 
@@ -34,11 +33,14 @@ export function PushListener({
   const [pendingRequests, setPendingRequests] = useState<OrderRequest[]>([]);
   const [isMinimized, setIsMinimized] = useState(false);
 
-  // Solicitar permissão nativa e web de forma robusta e configurar canais do Android
+  // Configuração inicial de notificações (Apenas no Android)
   useEffect(() => {
     const setupNotifications = async () => {
       if (Capacitor.isNativePlatform()) {
         try {
+          // Import dinâmico para evitar erro de build na Vercel
+          const { LocalNotifications } = await import('@capacitor/local-notifications');
+
           // 1. Checar e Pedir Permissão
           const permStatus = await LocalNotifications.checkPermissions();
           if (permStatus.display === 'prompt' || permStatus.display === 'default') {
@@ -46,16 +48,17 @@ export function PushListener({
           }
 
           // 2. CRIAR CANAL (Obrigatório para Android aparecer na barra)
-          // IMPORTANTE: Se o canal não for criado, a notificação não aparece na barra superior.
           await LocalNotifications.createChannel({
-            id: 'orders-channel-v1', // ID do canal
+            id: 'orders-channel-v1',
             name: 'Novos Pedidos Rappi',
             description: 'Alertas críticos para novos despachos de pedidos',
-            importance: 5, // IMPORTANCE_HIGH: Faz barulho, vibra e aparece no topo
-            visibility: 1, // VISIBILITY_PUBLIC: Aparece na tela de bloqueio
+            importance: 5, // Prioridade Máxima
+            visibility: 1, // Público
             vibration: true,
             sound: 'default'
           });
+          
+          console.log("Canal de notificações configurado com sucesso.");
         } catch (e) {
           console.error("Erro ao configurar notificações nativas:", e);
         }
@@ -72,16 +75,16 @@ export function PushListener({
     // 1. Prioridade: Notificação Nativa (Aparece na barra do Android)
     if (Capacitor.isNativePlatform()) {
       try {
+        const { LocalNotifications } = await import('@capacitor/local-notifications');
+        
         await LocalNotifications.schedule({
           notifications: [
             {
               title,
               body,
-              id: Date.now(), // ID único baseado no tempo para não sobrepor
-              channelId: 'orders-channel-v1', // Deve ser o mesmo ID criado no setupNotifications
-              sound: 'default',
-              actionTypeId: "",
-              extra: null
+              id: Date.now(),
+              channelId: 'orders-channel-v1',
+              sound: 'default'
             }
           ]
         });
@@ -89,13 +92,12 @@ export function PushListener({
         console.error("Falha na notificação nativa:", e);
       }
     } 
-    // 2. Backup: Notificação Web (Caso esteja no navegador fora do app)
+    // 2. Backup: Notificação Web (Navegador Desktop)
     else if (typeof window !== 'undefined' && "Notification" in window && Notification.permission === "granted") {
       new Notification(title, {
         body,
         icon: "/favicon.ico",
-        badge: "/favicon.ico",
-        vibrate: [200, 100, 200]
+        badge: "/favicon.ico"
       });
     }
   }, []);
@@ -105,7 +107,6 @@ export function PushListener({
 
     const userEmail = user.email.toLowerCase().trim();
     
-    // Query para buscar solicitações pendentes para o usuário logado
     const q = query(
       collection(db, "requests"),
       where("targetUserEmail", "==", userEmail),
@@ -118,7 +119,6 @@ export function PushListener({
         ...doc.data() 
       } as OrderRequest));
       
-      // Ordenação manual no cliente
       requests.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       
       const limitedRequests = requests.slice(0, 10);
@@ -128,11 +128,9 @@ export function PushListener({
         onPendingCountChange(limitedRequests.length);
       }
 
-      // Se houver novos pedidos, aciona as notificações
       if (snapshot.docChanges().some(change => change.type === "added")) {
         setIsMinimized(false);
         
-        // Som local para feedback imediato
         try {
           const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
           audio.play().catch(() => {});
