@@ -9,22 +9,17 @@ export function ThemeToggle() {
   const [theme, setTheme] = React.useState<"light" | "dark">("light");
 
   React.useEffect(() => {
-    // Carrega o tema salvo no localStorage assim que o componente monta
     const savedTheme = localStorage.getItem("rappi_commander_theme") as "light" | "dark";
-    if (savedTheme) {
-      setTheme(savedTheme);
-      if (savedTheme === "dark") {
-        document.documentElement.classList.add("dark");
-      } else {
-        document.documentElement.classList.remove("dark");
-      }
+    const isDark = document.documentElement.classList.contains("dark") || 
+                   window.matchMedia("(prefers-color-scheme: dark)").matches;
+    
+    const initialTheme = savedTheme || (isDark ? "dark" : "light");
+    
+    setTheme(initialTheme);
+    if (initialTheme === "dark") {
+      document.documentElement.classList.add("dark");
     } else {
-      // Se não tiver nada salvo, verifica a preferência do sistema
-      const isDark = document.documentElement.classList.contains("dark") || 
-                     window.matchMedia("(prefers-color-scheme: dark)").matches;
-      const initialTheme = isDark ? "dark" : "light";
-      setTheme(initialTheme);
-      if (initialTheme === "dark") document.documentElement.classList.add("dark");
+      document.documentElement.classList.remove("dark");
     }
   }, []);
 
@@ -52,7 +47,7 @@ export function ThemeToggle() {
       ) : (
         <Moon className="h-5 w-5 text-blue-400" />
       )}
-      <span className="sr-only">Toggle theme</span>
+      <span className="sr-only">Alternar Tema</span>
     </Button>
   );
 }

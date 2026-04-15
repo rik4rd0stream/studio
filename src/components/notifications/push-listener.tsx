@@ -20,10 +20,6 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-/**
- * Listener de notificações em tempo real com Fila Persistente e Modo Soneca.
- * O botão flutuante agora fica no topo, afastado dos outros comandos.
- */
 export function PushListener({ 
   user, 
   onPendingCountChange 
@@ -35,6 +31,26 @@ export function PushListener({
   const { toast } = useToast();
   const [pendingRequests, setPendingRequests] = useState<OrderRequest[]>([]);
   const [isMinimized, setIsMinimized] = useState(false);
+
+  // Solicita permissão para notificações do sistema (Barra de Status)
+  useEffect(() => {
+    if (typeof window !== 'undefined' && "Notification" in window) {
+      if (Notification.permission === "default") {
+        Notification.requestPermission();
+      }
+    }
+  }, []);
+
+  const sendSystemNotification = useCallback((title: string, body: string) => {
+    if (typeof window !== 'undefined' && "Notification" in window && Notification.permission === "granted") {
+      new Notification(title, {
+        body,
+        icon: "/favicon.ico", // Tenta usar o ícone do app
+        badge: "/favicon.ico",
+        vibrate: [200, 100, 200]
+      });
+    }
+  }, []);
 
   useEffect(() => {
     if (!user || !user.email || !user.notificationsEnabled) return;
@@ -53,29 +69,43 @@ export function PushListener({
         ...doc.data() 
       } as OrderRequest));
       
+      const prevCount = pendingRequests.length;
       setPendingRequests(requests);
       
       if (onPendingCountChange) {
         onPendingCountChange(requests.length);
       }
 
-      // Se um NOVO pedido entrou, reativa o popup automaticamente
+      // Se entrou um NOVO pedido (mesmo com app em background)
       if (snapshot.docChanges().some(change => change.type === "added")) {
         setIsMinimized(false);
+        
+        // Alerta sonoro
         try {
           const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
           audio.play().catch(() => {});
         } catch (e) {}
+
+        // Notificação de Sistema (Barra de Status do Android)
+        const lastRequest = requests[requests.length - 1];
+        if (lastRequest) {
+          sendSystemNotification(
+            "NOVA SOLICITAÇÃO - RC", 
+            `${lastRequest.senderName}: Pedido #${lastRequest.orderId} em ${lastRequest.storeName}`
+          );
+        }
         
         toast({
           title: "NOVA SOLICITAÇÃO",
-          description: `Você tem ${requests.length} pedido(s) pendente(s).`,
+          description: `Você tem ${requests.length} pedido(s) na fila.`,
         });
       }
+    }, (error) => {
+      console.error("Erro no Listener de Push:", error);
     });
 
     return () => unsubscribe();
-  }, [db, user, toast, onPendingCountChange]);
+  }, [db, user, toast, onPendingCountChange, sendSystemNotification, pendingRequests.length]);
 
   const handleAccept = (request: OrderRequest) => {
     if (!request.id) return;
@@ -145,7 +175,6 @@ export function PushListener({
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Botão Flutuante quando há pendências - Agora no TOPO DIREITO */}
       {pendingRequests.length > 0 && (
         <Button
           onClick={() => setIsMinimized(false)}
