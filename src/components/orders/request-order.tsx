@@ -9,7 +9,6 @@ import {
   SendHorizontal, 
   MapPin, 
   RefreshCw, 
-  Bike,
   Search,
   Package,
   ArrowRight,
@@ -254,16 +253,13 @@ export function RequestOrder({ sender }: { sender: User }) {
                   <Button
                     key={c.id}
                     variant="ghost"
-                    className="flex flex-col items-center justify-center h-24 p-2 hover:bg-primary/5 group border border-transparent hover:border-primary/10 rounded-xl transition-all"
+                    className="flex flex-col items-center justify-center h-20 p-2 hover:bg-primary/5 group border border-transparent hover:border-primary/10 rounded-xl transition-all"
                     onClick={() => handleCourierSelect(c)}
                   >
-                    <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center mb-1.5 group-hover:bg-primary/10 transition-colors">
-                      <Bike className="h-5 w-5 text-muted-foreground group-hover:text-primary" />
-                    </div>
-                    <p className="font-bold text-[9px] leading-tight text-center truncate w-full group-hover:text-primary">
+                    <p className="font-bold text-sm leading-tight text-center truncate w-full group-hover:text-primary">
                       {(c.nome || c.name)?.split(' ')[0]}
                     </p>
-                    <p className="text-[7px] text-muted-foreground font-mono mt-0.5">{c.id_motoboy}</p>
+                    <p className="text-[10px] text-muted-foreground font-mono mt-1 opacity-70">{c.id_motoboy}</p>
                   </Button>
                 ))}
               </div>

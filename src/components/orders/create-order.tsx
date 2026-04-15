@@ -12,8 +12,7 @@ import {
   Package,
   ClipboardPaste,
   ArrowRight,
-  AlertCircle,
-  Bike
+  AlertCircle
 } from "lucide-react";
 import { redashService, RedashOrder } from "@/lib/api/redash-service";
 import { useToast } from "@/hooks/use-toast";
@@ -48,7 +47,6 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
   const [selectedOrder, setSelectedOrder] = useState<RedashOrder | null>(null);
   const [isCourierDialogOpen, setIsCourierDialogOpen] = useState(false);
   const [searchCourier, setSearchCourier] = useState("");
-  // Garante que o estado inicial seja sempre uma string para evitar erro de .trim()
   const [manualOrderId, setManualOrderId] = useState<string>(initialOrderId ? String(initialOrderId) : "");
 
   useEffect(() => {
@@ -79,7 +77,6 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
         (c.nome || c.name)?.toLowerCase().includes(searchCourier.toLowerCase()) || 
         String(c.id_motoboy || "").includes(searchCourier)
       )
-      // ORDEM ALFABÉTICA
       .sort((a, b) => (a.nome || a.name || "").localeCompare(b.nome || b.name || ""));
   }, [couriers, searchCourier]);
 
@@ -262,16 +259,13 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
                   <Button 
                     key={c.id} 
                     variant="ghost" 
-                    className="flex flex-col items-center justify-center h-24 p-2 hover:bg-primary/5 group border border-transparent hover:border-primary/10 rounded-xl transition-all" 
+                    className="flex flex-col items-center justify-center h-20 p-2 hover:bg-primary/5 group border border-transparent hover:border-primary/10 rounded-xl transition-all" 
                     onClick={() => handleGenerateCommand(c.id_motoboy)}
                   >
-                    <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center mb-1.5 group-hover:bg-primary/10 transition-colors">
-                      <Bike className="h-5 w-5 text-muted-foreground group-hover:text-primary" />
-                    </div>
-                    <p className="font-bold text-[9px] leading-tight text-center truncate w-full group-hover:text-primary">
+                    <p className="font-bold text-sm leading-tight text-center truncate w-full group-hover:text-primary">
                       {(c.nome || c.name)?.split(' ')[0]}
                     </p>
-                    <p className="text-[7px] text-muted-foreground font-mono mt-0.5">{c.id_motoboy}</p>
+                    <p className="text-[10px] text-muted-foreground font-mono mt-1 opacity-70">{c.id_motoboy}</p>
                   </Button>
                 ))}
               </div>
