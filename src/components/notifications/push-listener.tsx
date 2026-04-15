@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useFirestore } from "@/firebase";
-import { collection, query, where, onSnapshot, doc, updateDoc, limit } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, updateDoc } from "firebase/firestore";
 import { User, OrderRequest } from "@/lib/types";
 import { 
   AlertDialog, 
@@ -19,6 +19,8 @@ import { BellRing, ExternalLink, X, MessageSquareQuote } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { Capacitor } from '@capacitor/core';
+import { LocalNotifications } from '@capacitor/local-notifications';
 
 export function PushListener({ 
   user, 
@@ -32,15 +34,50 @@ export function PushListener({
   const [pendingRequests, setPendingRequests] = useState<OrderRequest[]>([]);
   const [isMinimized, setIsMinimized] = useState(false);
 
-  // Solicitar permissão de forma silenciosa na montagem, sem banners intrusivos
+  // Solicitar permissão nativa e web de forma robusta
   useEffect(() => {
-    if (typeof window !== 'undefined' && "Notification" in window && Notification.permission === "default") {
-      Notification.requestPermission();
-    }
+    const checkPermissions = async () => {
+      if (Capacitor.isNativePlatform()) {
+        try {
+          const permStatus = await LocalNotifications.checkPermissions();
+          if (permStatus.display === 'prompt' || permStatus.display === 'default') {
+            await LocalNotifications.requestPermissions();
+          }
+        } catch (e) {
+          console.error("Erro ao checar permissões nativas:", e);
+        }
+      } else if (typeof window !== 'undefined' && "Notification" in window) {
+        if (Notification.permission === "default") {
+          Notification.requestPermission();
+        }
+      }
+    };
+    checkPermissions();
   }, []);
 
-  const sendSystemNotification = useCallback((title: string, body: string) => {
-    if (typeof window !== 'undefined' && "Notification" in window && Notification.permission === "granted") {
+  const sendSystemNotification = useCallback(async (title: string, body: string) => {
+    // 1. Prioridade: Notificação Nativa (Aparece na barra do Android)
+    if (Capacitor.isNativePlatform()) {
+      try {
+        await LocalNotifications.schedule({
+          notifications: [
+            {
+              title,
+              body,
+              id: Math.floor(Math.random() * 1000000),
+              schedule: { at: new Date(Date.now() + 500) },
+              sound: 'default',
+              actionTypeId: "",
+              extra: null
+            }
+          ]
+        });
+      } catch (e) {
+        console.error("Falha na notificação nativa:", e);
+      }
+    } 
+    // 2. Backup: Notificação Web (Caso esteja no navegador)
+    else if (typeof window !== 'undefined' && "Notification" in window && Notification.permission === "granted") {
       new Notification(title, {
         body,
         icon: "/favicon.ico",
@@ -68,7 +105,7 @@ export function PushListener({
         ...doc.data() 
       } as OrderRequest));
       
-      // Ordenação manual para evitar necessidade de índices compostos complexos no Firebase
+      // Ordenação manual no cliente
       requests.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       
       const limitedRequests = requests.slice(0, 10);
@@ -78,9 +115,11 @@ export function PushListener({
         onPendingCountChange(limitedRequests.length);
       }
 
-      // Se houver novos pedidos, reabre o popup e toca o som
+      // Se houver novos pedidos, aciona as notificações
       if (snapshot.docChanges().some(change => change.type === "added")) {
         setIsMinimized(false);
+        
+        // Som local
         try {
           const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
           audio.play().catch(() => {});
