@@ -55,13 +55,20 @@ export function RequestOrder({ sender }: { sender: User }) {
   const [manualOrderId, setManualOrderId] = useState("");
 
   // Listener para o histórico de solicitações do remetente
+  // Removido orderBy para evitar erro de índice ausente no Firebase
   const historyQuery = useMemoFirebase(() => query(
     collection(db, 'requests'),
-    where('senderEmail', '==', sender.email.toLowerCase().trim()),
-    orderBy('createdAt', 'desc'),
-    limit(8)
+    where('senderEmail', '==', sender.email.toLowerCase().trim())
   ), [db, sender.email]);
-  const { data: history } = useCollection<OrderRequest>(historyQuery);
+  const { data: historyData } = useCollection<OrderRequest>(historyQuery);
+
+  // Ordenação manual no cliente
+  const history = useMemo(() => {
+    if (!historyData) return [];
+    return [...historyData]
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 8);
+  }, [historyData]);
 
   const couriersQuery = useMemoFirebase(() => query(collection(db, 'entregadores')), [db]);
   const { data: couriers, isLoading: loadingCouriers } = useCollection<any>(couriersQuery);
@@ -176,7 +183,6 @@ export function RequestOrder({ sender }: { sender: User }) {
 
   return (
     <div className="space-y-6 animate-slide-up pb-32 max-w-xl mx-auto">
-      {/* SEÇÃO DE STATUS DAS MINHAS SOLICITAÇÕES */}
       {history && history.length > 0 && (
         <Card className="border-none shadow-sm bg-muted/30 overflow-hidden rounded-2xl">
           <div className="p-3 bg-primary/5 border-b border-primary/10 flex items-center justify-between">
@@ -334,7 +340,7 @@ export function RequestOrder({ sender }: { sender: User }) {
 
       <Dialog open={isUserDialogOpen} onOpenChange={setIsUserDialogOpen}>
         <DialogContent 
-          className="max-w-sm p-0 border-none shadow-2xl rounded-2xl overflow-hidden"
+          className="max-sm p-0 border-none shadow-2xl rounded-2xl overflow-hidden"
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
           <DialogHeader className="p-5 pb-2">

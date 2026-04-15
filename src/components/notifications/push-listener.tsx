@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useFirestore } from "@/firebase";
-import { collection, query, where, onSnapshot, doc, updateDoc, limit, orderBy } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, updateDoc, limit } from "firebase/firestore";
 import { User, OrderRequest } from "@/lib/types";
 import { 
   AlertDialog, 
@@ -59,13 +59,11 @@ export function PushListener({
 
     const userEmail = user.email.toLowerCase().trim();
     
-    // Ouvir apenas pedidos pendentes para o popup principal
+    // Removido o orderBy da query para evitar erro de índice no Firebase
     const q = query(
       collection(db, "requests"),
       where("targetUserEmail", "==", userEmail),
-      where("status", "==", "pending"),
-      orderBy("createdAt", "desc"),
-      limit(10)
+      where("status", "==", "pending")
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -74,10 +72,15 @@ export function PushListener({
         ...doc.data() 
       } as OrderRequest));
       
-      setPendingRequests(requests);
+      // Ordenação manual no cliente para evitar erro de índice composto
+      requests.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      
+      // Mantemos apenas os 10 mais recentes
+      const limitedRequests = requests.slice(0, 10);
+      setPendingRequests(limitedRequests);
       
       if (onPendingCountChange) {
-        onPendingCountChange(requests.length);
+        onPendingCountChange(limitedRequests.length);
       }
 
       if (snapshot.docChanges().some(change => change.type === "added")) {
@@ -87,7 +90,7 @@ export function PushListener({
           audio.play().catch(() => {});
         } catch (e) {}
 
-        const lastRequest = requests[0];
+        const lastRequest = limitedRequests[0];
         if (lastRequest) {
           sendSystemNotification(
             "NOVA SOLICITAÇÃO - RC", 
@@ -129,7 +132,6 @@ export function PushListener({
 
   return (
     <>
-      {/* Alerta de Configuração de Segundo Plano (Aparece se permissão negada) */}
       {permissionStatus !== "granted" && (
         <div className="fixed bottom-20 left-4 right-4 bg-amber-500 text-white p-3 rounded-xl shadow-lg z-[100] flex items-center justify-between animate-bounce">
           <div className="flex items-center gap-2">
