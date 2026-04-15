@@ -15,7 +15,7 @@ import {
   AlertDialogHeader, 
   AlertDialogTitle 
 } from "@/components/ui/alert-dialog";
-import { BellRing, ExternalLink, X, MessageSquareQuote, BatteryWarning } from "lucide-react";
+import { BellRing, ExternalLink, X, MessageSquareQuote } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -31,15 +31,11 @@ export function PushListener({
   const { toast } = useToast();
   const [pendingRequests, setPendingRequests] = useState<OrderRequest[]>([]);
   const [isMinimized, setIsMinimized] = useState(false);
-  const [permissionStatus, setPermissionStatus] = useState<string>("default");
 
-  // Verificar permissão de notificação e bateria
+  // Solicitar permissão de forma silenciosa na montagem, sem banners intrusivos
   useEffect(() => {
-    if (typeof window !== 'undefined' && "Notification" in window) {
-      setPermissionStatus(Notification.permission);
-      if (Notification.permission === "default") {
-        Notification.requestPermission().then(setPermissionStatus);
-      }
+    if (typeof window !== 'undefined' && "Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
     }
   }, []);
 
@@ -59,7 +55,7 @@ export function PushListener({
 
     const userEmail = user.email.toLowerCase().trim();
     
-    // Removido o orderBy da query para evitar erro de índice no Firebase
+    // Query para buscar solicitações pendentes para o usuário logado
     const q = query(
       collection(db, "requests"),
       where("targetUserEmail", "==", userEmail),
@@ -72,10 +68,9 @@ export function PushListener({
         ...doc.data() 
       } as OrderRequest));
       
-      // Ordenação manual no cliente para evitar erro de índice composto
+      // Ordenação manual para evitar necessidade de índices compostos complexos no Firebase
       requests.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       
-      // Mantemos apenas os 10 mais recentes
       const limitedRequests = requests.slice(0, 10);
       setPendingRequests(limitedRequests);
       
@@ -83,6 +78,7 @@ export function PushListener({
         onPendingCountChange(limitedRequests.length);
       }
 
+      // Se houver novos pedidos, reabre o popup e toca o som
       if (snapshot.docChanges().some(change => change.type === "added")) {
         setIsMinimized(false);
         try {
@@ -132,20 +128,6 @@ export function PushListener({
 
   return (
     <>
-      {permissionStatus !== "granted" && (
-        <div className="fixed bottom-20 left-4 right-4 bg-amber-500 text-white p-3 rounded-xl shadow-lg z-[100] flex items-center justify-between animate-bounce">
-          <div className="flex items-center gap-2">
-            <BatteryWarning className="h-5 w-5" />
-            <p className="text-[10px] font-bold uppercase leading-tight">
-              Habilite Notificações e Remova "Economia de Bateria" para o app não dormir!
-            </p>
-          </div>
-          <Button variant="ghost" size="sm" onClick={() => Notification.requestPermission().then(setPermissionStatus)} className="h-7 text-[9px] bg-white/20 hover:bg-white/30 text-white border-none font-bold uppercase">
-            OK
-          </Button>
-        </div>
-      )}
-
       <AlertDialog open={showPopup}>
         <AlertDialogContent className="max-w-[320px] rounded-3xl border-none shadow-2xl animate-in zoom-in-95 duration-300">
           <button 
