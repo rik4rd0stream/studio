@@ -239,7 +239,10 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
       </form>
 
       <Dialog open={isCourierDialogOpen} onOpenChange={setIsCourierDialogOpen}>
-        <DialogContent className="max-w-md rounded-2xl overflow-hidden p-0 border-none shadow-2xl">
+        <DialogContent 
+          className="max-w-md rounded-2xl overflow-hidden p-0 border-none shadow-2xl"
+          onOpenAutoFocus={(e) => e.preventDefault()}
+        >
           <DialogHeader className="p-5 pb-2">
             <DialogTitle>Despachar para:</DialogTitle>
             <DialogTitle className="text-xs">Pedido <span className="font-bold">#{selectedOrder?.order_id}</span></DialogTitle>

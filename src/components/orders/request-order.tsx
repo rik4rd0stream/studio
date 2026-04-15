@@ -226,7 +226,10 @@ export function RequestOrder({ sender }: { sender: User }) {
       </form>
 
       <Dialog open={isCourierDialogOpen} onOpenChange={setIsCourierDialogOpen}>
-        <DialogContent className="max-w-md p-0 border-none shadow-2xl rounded-2xl overflow-hidden">
+        <DialogContent 
+          className="max-w-md p-0 border-none shadow-2xl rounded-2xl overflow-hidden"
+          onOpenAutoFocus={(e) => e.preventDefault()}
+        >
           <DialogHeader className="p-5 pb-2">
             <DialogTitle className="text-lg">Etapa 1: Selecione o Motoboy</DialogTitle>
             <DialogDescription className="text-xs">
@@ -269,7 +272,10 @@ export function RequestOrder({ sender }: { sender: User }) {
       </Dialog>
 
       <Dialog open={isUserDialogOpen} onOpenChange={setIsUserDialogOpen}>
-        <DialogContent className="max-w-sm p-0 border-none shadow-2xl rounded-2xl overflow-hidden">
+        <DialogContent 
+          className="max-w-sm p-0 border-none shadow-2xl rounded-2xl overflow-hidden"
+          onOpenAutoFocus={(e) => e.preventDefault()}
+        >
           <DialogHeader className="p-5 pb-2">
             <DialogTitle className="text-lg">Etapa 2: Quem vai enviar?</DialogTitle>
             <DialogDescription className="text-xs">
