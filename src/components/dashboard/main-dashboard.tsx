@@ -6,7 +6,7 @@ import { AppView, User } from "@/lib/types";
 import { SidebarNav } from "./sidebar-nav";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
-import { Send, Bell, Activity, Menu, WifiOff } from "lucide-react";
+import { Send, Bell, Activity, Menu, WifiOff, Package } from "lucide-react";
 import { CreateOrder } from "@/components/orders/create-order";
 import { ActiveOrders } from "@/components/orders/active-orders";
 import { RequestOrder } from "@/components/orders/request-order";
@@ -104,6 +104,16 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
               >
                 <Send className="h-3.5 w-3.5" /> <span className="hidden xs:inline">Envio</span>
               </Button>
+              
+              <Button 
+                size="sm" 
+                variant={currentView === 'active-orders' ? 'default' : 'outline'} 
+                className="rounded-full h-8 gap-1.5 text-[10px] px-3 transition-all"
+                onClick={() => setView('active-orders')}
+              >
+                <Activity className="h-3.5 w-3.5" /> <span className="hidden xs:inline">Ativos</span>
+              </Button>
+
               {isOffline && (
                 <div className="flex items-center gap-1 bg-red-100 dark:bg-red-950 text-red-600 dark:text-red-400 px-2 py-1 rounded-full text-[8px] font-bold uppercase animate-pulse border border-red-200">
                   <WifiOff className="h-3 w-3" /> Offline
