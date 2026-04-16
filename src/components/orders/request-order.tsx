@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, query, where, doc, setDoc, orderBy, limit } from "firebase/firestore";
+import { collection, query, where, doc, setDoc } from "firebase/firestore";
 import { cn } from "@/lib/utils";
 import { User, OrderRequest } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
@@ -55,19 +55,18 @@ export function RequestOrder({ sender }: { sender: User }) {
   const [manualOrderId, setManualOrderId] = useState("");
 
   // Listener para o histórico de solicitações do remetente
-  // Removido orderBy para evitar erro de índice ausente no Firebase
   const historyQuery = useMemoFirebase(() => query(
     collection(db, 'requests'),
     where('senderEmail', '==', sender.email.toLowerCase().trim())
   ), [db, sender.email]);
   const { data: historyData } = useCollection<OrderRequest>(historyQuery);
 
-  // Ordenação manual no cliente
+  // Ordenação manual no cliente - Limitado aos últimos 3
   const history = useMemo(() => {
     if (!historyData) return [];
     return [...historyData]
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, 8);
+      .slice(0, 3);
   }, [historyData]);
 
   const couriersQuery = useMemoFirebase(() => query(collection(db, 'entregadores')), [db]);
