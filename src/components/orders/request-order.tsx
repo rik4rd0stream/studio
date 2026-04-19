@@ -24,7 +24,8 @@ export function RequestOrder({ sender }: { sender: User }) {
   }, []);
 
   const usersQuery = useMemoFirebase(() => query(collection(db, 'userProfiles'), where('role', '==', 'normal')), [db]);
-  const { data: users = [] } = useCollection(usersQuery);
+  const { data: usersData } = useCollection(usersQuery);
+  const users = usersData || [];
 
   const myRequestsQuery = useMemoFirebase(() => {
     if (!sender?.email) return null;
@@ -35,9 +36,11 @@ export function RequestOrder({ sender }: { sender: User }) {
     );
   }, [db, sender?.email]);
 
-  const { data: myRequests = [] } = useCollection(myRequestsQuery);
+  const { data: myRequestsData } = useCollection(myRequestsQuery);
+  const myRequests = myRequestsData || [];
 
   const lastThreeRequests = useMemo(() => {
+    if (!myRequests) return [];
     return [...myRequests]
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       .slice(0, 3);
