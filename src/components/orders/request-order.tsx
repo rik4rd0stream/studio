@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ClipboardPaste, Search, ArrowRight, X, Clock, CheckCircle2, XCircle, AlertCircle, History } from 'lucide-react';
 import { OrderRequest, User } from '@/lib/types';
+import { cn } from '@/lib/utils';
 
 export function RequestOrder({ sender }: { sender: User }) {
   const db = useFirestore();
@@ -37,10 +38,10 @@ export function RequestOrder({ sender }: { sender: User }) {
   }, [db, sender?.email]);
 
   const { data: myRequestsData } = useCollection(myRequestsQuery);
-  const myRequests = myRequestsData || [];
+  const myRequests = Array.isArray(myRequestsData) ? myRequestsData : [];
 
   const lastThreeRequests = useMemo(() => {
-    if (!myRequests) return [];
+    if (!Array.isArray(myRequests)) return [];
     return [...myRequests]
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       .slice(0, 3);
