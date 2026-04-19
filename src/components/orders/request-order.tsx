@@ -22,7 +22,7 @@ import {
   Bike,
   UserCheck,
   ChevronRight,
-  User
+  User as UserIcon
 } from 'lucide-react';
 import { OrderRequest, User as UserType, Courier } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -34,6 +34,9 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+
+const STORAGE_LAST_USER = 'rappi_commander_last_user_v1';
+const STORAGE_LAST_COURIER = 'rappi_commander_last_courier_v1';
 
 export function RequestOrder({ sender }: { sender: UserType }) {
   const db = useFirestore();
@@ -51,10 +54,34 @@ export function RequestOrder({ sender }: { sender: UserType }) {
   const [isCourierPopupOpen, setIsCourierPopupOpen] = useState(false);
   const [isUserPopupOpen, setIsUserPopupOpen] = useState(false);
 
+  // Carregar última seleção do localStorage ao montar
   useEffect(() => {
+    const savedUser = localStorage.getItem(STORAGE_LAST_USER);
+    const savedCourier = localStorage.getItem(STORAGE_LAST_COURIER);
+    
+    if (savedUser) {
+      try { setSelectedUser(JSON.parse(savedUser)); } catch (e) {}
+    }
+    if (savedCourier) {
+      try { setSelectedCourier(JSON.parse(savedCourier)); } catch (e) {}
+    }
+
     const timer = setInterval(() => setCurrentTime(Date.now()), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  // Salvar seleções no localStorage quando mudarem
+  useEffect(() => {
+    if (selectedUser) {
+      localStorage.setItem(STORAGE_LAST_USER, JSON.stringify(selectedUser));
+    }
+  }, [selectedUser]);
+
+  useEffect(() => {
+    if (selectedCourier) {
+      localStorage.setItem(STORAGE_LAST_COURIER, JSON.stringify(selectedCourier));
+    }
+  }, [selectedCourier]);
 
   const loadRedashData = async (silent = false) => {
     if (!silent) setLoadingOrders(true);
@@ -141,8 +168,7 @@ export function RequestOrder({ sender }: { sender: UserType }) {
 
       await addDoc(collection(db, 'orderRequests'), newRequest);
       setManualOrderId('');
-      setSelectedUser(null);
-      setSelectedCourier(null);
+      // Não resetamos selectedUser nem selectedCourier para manter a memória
     } catch (e) {
       console.error(e);
     } finally {
