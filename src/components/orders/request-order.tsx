@@ -20,24 +20,36 @@ import {
   Loader2,
   MapPin,
   Bike,
-  UserCheck
+  UserCheck,
+  ChevronRight,
+  User
 } from 'lucide-react';
-import { OrderRequest, User, Courier } from '@/lib/types';
+import { OrderRequest, User as UserType, Courier } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { redashService, RedashOrder } from '@/lib/api/redash-service';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
-export function RequestOrder({ sender }: { sender: User }) {
+export function RequestOrder({ sender }: { sender: UserType }) {
   const db = useFirestore();
   const [manualOrderId, setManualOrderId] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchCourierQuery, setSearchCourierQuery] = useState('');
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [selectedUser, setSelectedUser] = useState<UserType | null>(null);
   const [selectedCourier, setSelectedCourier] = useState<Courier | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentTime, setCurrentTime] = useState(Date.now());
   
   const [allOrders, setAllOrders] = useState<RedashOrder[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
+
+  const [isCourierPopupOpen, setIsCourierPopupOpen] = useState(false);
+  const [isUserPopupOpen, setIsUserPopupOpen] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(Date.now()), 1000);
@@ -70,7 +82,7 @@ export function RequestOrder({ sender }: { sender: User }) {
   }, [allOrders]);
 
   const usersQuery = useMemoFirebase(() => query(collection(db, 'userProfiles'), where('role', '==', 'normal')), [db]);
-  const { data: usersData } = useCollection<User>(usersQuery);
+  const { data: usersData } = useCollection<UserType>(usersQuery);
   const users = usersData || [];
 
   const couriersQuery = useMemoFirebase(() => query(collection(db, 'entregadores')), [db]);
@@ -238,8 +250,10 @@ export function RequestOrder({ sender }: { sender: User }) {
           </Button>
         </div>
 
-        <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1 no-scrollbar">
-          {redashOrders.map((order, idx) => (
+        <div className="space-y-2 max-h-[140px] overflow-y-auto pr-1 no-scrollbar">
+          {redashOrders.length === 0 && !loadingOrders ? (
+            <p className="text-center py-6 text-xs text-muted-foreground italic">Aguardando pedidos sem RT...</p>
+          ) : redashOrders.map((order, idx) => (
             <Card 
               key={idx} 
               className={cn(
@@ -277,65 +291,66 @@ export function RequestOrder({ sender }: { sender: User }) {
         )}
       </div>
 
-      {/* SELEÇÃO DE ENTREGADOR (MOTOBOY) */}
-      <div className="space-y-3">
-        <div className="flex items-center gap-2 px-1">
-          <Bike className="h-3 w-3 text-primary" />
-          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Escolher Entregador (Motoboy)</p>
+      {/* SELETORES EM POPUP */}
+      <div className="grid grid-cols-1 gap-3">
+        {/* SELECIONAR ENTREGADOR */}
+        <div className="space-y-1.5">
+          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider px-1">Entregador (Quem vai levar)</p>
+          <Button 
+            variant="outline" 
+            onClick={() => setIsCourierPopupOpen(true)}
+            className={cn(
+              "w-full h-14 justify-between rounded-2xl border-none bg-card shadow-sm px-4",
+              selectedCourier ? "ring-1 ring-primary/20" : ""
+            )}
+          >
+            <div className="flex items-center gap-3">
+              <div className={cn("p-2 rounded-xl", selectedCourier ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>
+                <Bike className="h-5 w-5" />
+              </div>
+              <div className="text-left">
+                {selectedCourier ? (
+                  <>
+                    <p className="text-xs font-bold leading-tight">{selectedCourier.nome}</p>
+                    <p className="text-[10px] font-mono text-primary font-bold">RT {selectedCourier.id_motoboy}</p>
+                  </>
+                ) : (
+                  <p className="text-sm font-medium text-muted-foreground">Escolher Motoboy</p>
+                )}
+              </div>
+            </div>
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          </Button>
         </div>
-        <Input
-          placeholder="Buscar Motoboy ou RT..."
-          value={searchCourierQuery}
-          onChange={(e) => setSearchCourierQuery(e.target.value)}
-          className="h-10 rounded-xl border-none bg-muted/30 text-sm"
-        />
-        <div className="grid grid-cols-2 gap-2 max-h-[160px] overflow-y-auto p-1 no-scrollbar">
-          {filteredCouriers.map((c) => (
-            <Card
-              key={c.id}
-              onClick={() => setSelectedCourier(c)}
-              className={cn(
-                "p-3 cursor-pointer transition-all border-2 rounded-2xl flex flex-col items-center text-center gap-1",
-                selectedCourier?.id === c.id
-                  ? 'border-primary bg-primary/5 ring-4 ring-primary/10'
-                  : 'border-transparent bg-card hover:bg-muted/10 shadow-sm'
-              )}
-            >
-              <span className="font-bold text-[10px] text-foreground truncate">{c.nome}</span>
-              <span className="text-[9px] font-mono font-bold text-primary">RT {c.id_motoboy}</span>
-            </Card>
-          ))}
-        </div>
-      </div>
 
-      {/* SELEÇÃO DE OPERADOR (QUEM VAI DESPACHAR) */}
-      <div className="space-y-3">
-        <div className="flex items-center gap-2 px-1">
-          <UserCheck className="h-3 w-3 text-primary" />
-          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Escolher Operador (Quem Despacha)</p>
-        </div>
-        <Input
-          placeholder="Buscar Operador..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="h-10 rounded-xl border-none bg-muted/30 text-sm"
-        />
-        <div className="grid grid-cols-2 gap-2 max-h-[160px] overflow-y-auto p-1 no-scrollbar">
-          {filteredUsers.map((u) => (
-            <Card
-              key={u.id}
-              onClick={() => setSelectedUser(u)}
-              className={cn(
-                "p-3 cursor-pointer transition-all border-2 rounded-2xl flex flex-col items-center text-center gap-1",
-                selectedUser?.id === u.id
-                  ? 'border-primary bg-primary/5 ring-4 ring-primary/10'
-                  : 'border-transparent bg-card hover:bg-muted/10 shadow-sm'
-              )}
-            >
-              <span className="font-bold text-[10px] text-foreground truncate">{u.name}</span>
-              <span className="text-[8px] text-muted-foreground truncate">{u.email.split('@')[0]}</span>
-            </Card>
-          ))}
+        {/* SELECIONAR OPERADOR */}
+        <div className="space-y-1.5">
+          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider px-1">Operador (Quem despacha)</p>
+          <Button 
+            variant="outline" 
+            onClick={() => setIsUserPopupOpen(true)}
+            className={cn(
+              "w-full h-14 justify-between rounded-2xl border-none bg-card shadow-sm px-4",
+              selectedUser ? "ring-1 ring-primary/20" : ""
+            )}
+          >
+            <div className="flex items-center gap-3">
+              <div className={cn("p-2 rounded-xl", selectedUser ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>
+                <UserCheck className="h-5 w-5" />
+              </div>
+              <div className="text-left">
+                {selectedUser ? (
+                  <>
+                    <p className="text-xs font-bold leading-tight">{selectedUser.name}</p>
+                    <p className="text-[10px] text-muted-foreground">{selectedUser.email.split('@')[0]}</p>
+                  </>
+                ) : (
+                  <p className="text-sm font-medium text-muted-foreground">Escolher Operador</p>
+                )}
+              </div>
+            </div>
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          </Button>
         </div>
       </div>
 
@@ -344,10 +359,92 @@ export function RequestOrder({ sender }: { sender: User }) {
         onClick={handleSendRequest}
         className="w-full h-14 rounded-2xl font-bold text-sm uppercase shadow-lg shadow-primary/20"
       >
-        {isSubmitting ? 'Enviando...' : (
+        {isSubmitting ? <Loader2 className="animate-spin h-5 w-5" /> : (
           <>Enviar Solicitação <ArrowRight className="ml-2 h-5 w-5" /></>
         )}
       </Button>
+
+      {/* POPUP SELEÇÃO ENTREGADOR */}
+      <Dialog open={isCourierPopupOpen} onOpenChange={setIsCourierPopupOpen}>
+        <DialogContent className="max-w-[320px] rounded-3xl p-6 gap-4">
+          <DialogHeader>
+            <DialogTitle className="text-lg">Escolher Entregador</DialogTitle>
+            <DialogDescription className="text-xs">Selecione o motoboy para este despacho.</DialogDescription>
+          </DialogHeader>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input 
+              placeholder="Buscar por nome ou RT..." 
+              value={searchCourierQuery} 
+              onChange={(e) => setSearchCourierQuery(e.target.value)} 
+              className="pl-9 h-11 rounded-xl bg-muted/50 border-none"
+            />
+          </div>
+          <div className="max-h-[300px] overflow-y-auto pr-1 no-scrollbar space-y-2">
+            {filteredCouriers.map((c) => (
+              <Button
+                key={c.id}
+                variant="ghost"
+                onClick={() => {
+                  setSelectedCourier(c);
+                  setIsCourierPopupOpen(false);
+                }}
+                className={cn(
+                  "w-full h-auto py-3 px-4 justify-between rounded-2xl border-2 transition-all",
+                  selectedCourier?.id === c.id ? "border-primary bg-primary/5" : "border-transparent bg-muted/30"
+                )}
+              >
+                <div className="text-left overflow-hidden">
+                  <p className="text-xs font-bold truncate">{c.nome}</p>
+                  <p className="text-[10px] font-mono text-primary font-bold">RT {c.id_motoboy}</p>
+                </div>
+                <ChevronRight className="h-4 w-4 text-primary/40" />
+              </Button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* POPUP SELEÇÃO OPERADOR */}
+      <Dialog open={isUserPopupOpen} onOpenChange={setIsUserPopupOpen}>
+        <DialogContent className="max-w-[320px] rounded-3xl p-6 gap-4">
+          <DialogHeader>
+            <DialogTitle className="text-lg">Escolher Operador</DialogTitle>
+            <DialogDescription className="text-xs">Quem deve receber esta notificação?</DialogDescription>
+          </DialogHeader>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input 
+              placeholder="Buscar por nome ou e-mail..." 
+              value={searchQuery} 
+              onChange={(e) => setSearchQuery(e.target.value)} 
+              className="pl-9 h-11 rounded-xl bg-muted/50 border-none"
+            />
+          </div>
+          <div className="max-h-[300px] overflow-y-auto pr-1 no-scrollbar space-y-2">
+            {filteredUsers.map((u) => (
+              <Button
+                key={u.id}
+                variant="ghost"
+                onClick={() => {
+                  setSelectedUser(u);
+                  setIsUserPopupOpen(false);
+                }}
+                className={cn(
+                  "w-full h-auto py-3 px-4 justify-between rounded-2xl border-2 transition-all",
+                  selectedUser?.id === u.id ? "border-primary bg-primary/5" : "border-transparent bg-muted/30"
+                )}
+              >
+                <div className="text-left overflow-hidden">
+                  <p className="text-xs font-bold truncate">{u.name}</p>
+                  <p className="text-[10px] text-muted-foreground">{u.email}</p>
+                </div>
+                <ChevronRight className="h-4 w-4 text-primary/40" />
+              </Button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
