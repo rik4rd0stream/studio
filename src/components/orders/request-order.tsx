@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, addDoc, query, where, limit, doc, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, query, where, limit, doc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -77,19 +77,18 @@ export function RequestOrder({ sender }: { sender: User }) {
     return query(
       collection(db, 'orderRequests'),
       where('senderEmail', '==', sender.email.toLowerCase().trim()),
-      limit(20)
+      limit(10)
     );
   }, [db, sender?.email]);
 
-  const { data: myRequestsData } = useCollection(myRequestsQuery);
-  const myRequests = Array.isArray(myRequestsData) ? myRequestsData : [];
-
+  const { data: myRequestsData, isLoading: loadingMyRequests } = useCollection(myRequestsQuery);
+  
   const lastThreeRequests = useMemo(() => {
-    if (!Array.isArray(myRequests)) return [];
-    return [...myRequests]
+    if (!myRequestsData || !Array.isArray(myRequestsData)) return [];
+    return [...myRequestsData]
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       .slice(0, 3);
-  }, [myRequests]);
+  }, [myRequestsData]);
 
   const filteredUsers = users.filter(u => 
     (u.name || u.nome || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -102,8 +101,6 @@ export function RequestOrder({ sender }: { sender: User }) {
     setIsSubmitting(true);
     try {
       const cleanId = manualOrderId.trim();
-      
-      // Busca detalhes do pedido se ele estiver na lista do redash para enriquecer o comando
       const matchedOrder = redashOrders.find(o => String(o.order_id) === cleanId);
       const storeName = matchedOrder?.store_name || 'Pedido Manual';
       
@@ -151,10 +148,10 @@ export function RequestOrder({ sender }: { sender: User }) {
         const isTimeOut = req.statusNote === "Time Out";
         return { label: isTimeOut ? 'TIME OUT' : 'Cancelado', color: 'bg-red-100 text-red-700', icon: XCircle };
       case 'unavailable':
-        return { label: 'Indisponível', color: 'bg-gray-100 text-gray-500', icon: AlertCircle };
+        return { label: 'Indisponível', color: 'bg-slate-100 text-slate-500', icon: AlertCircle };
       default:
         return { 
-          label: `Pendente (${Math.floor(remaining / 60)}:${(remaining % 60).toString().padStart(2, '0')})`, 
+          label: remaining > 0 ? `Pendente (${Math.floor(remaining / 60)}:${(remaining % 60).toString().padStart(2, '0')})` : 'Expirando...', 
           color: 'bg-amber-100 text-amber-700 animate-pulse', 
           icon: Clock,
           canCancel: true
@@ -164,53 +161,66 @@ export function RequestOrder({ sender }: { sender: User }) {
 
   return (
     <div className="space-y-6 max-w-md mx-auto p-4 pb-24 animate-fade-in">
-      {/* 3 ÚLTIMOS STATUS */}
-      {lastThreeRequests.length > 0 && (
-        <div className="space-y-3">
-          <div className="flex items-center gap-2 text-muted-foreground mb-2">
-            <History className="h-4 w-4" />
-            <h3 className="text-[10px] font-bold uppercase tracking-wider">Status do meu Despacho (3 Últimos)</h3>
-          </div>
-          {lastThreeRequests.map((req) => {
-            const status = getStatusInfo(req);
-            const Icon = status.icon;
-            return (
-              <div key={req.id} className="bg-card border border-border/40 rounded-2xl p-4 flex items-center justify-between shadow-sm">
-                <div className="flex flex-col">
-                  <span className="text-[10px] font-bold text-muted-foreground uppercase">#{req.orderId}</span>
-                  <span className="text-xs font-bold text-foreground truncate max-w-[120px]">{req.storeName}</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="flex flex-col items-end">
-                    <span className="text-[8px] font-bold text-muted-foreground mb-1 uppercase">PARA: {req.targetUserEmail.split('@')[0]}</span>
-                    <div className={cn(
-                      "flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-bold uppercase",
-                      status.color
-                    )}>
-                      <Icon className="h-3 w-3" />
-                      {status.label}
-                    </div>
-                  </div>
-                  {status.canCancel && (
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-8 w-8 rounded-full text-destructive hover:bg-destructive/10"
-                      onClick={() => handleCancelRequest(req.id!)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+      {/* SEÇÃO DE ESTADOS DAS SOLICITAÇÕES */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 text-primary px-1">
+          <History className="h-4 w-4" />
+          <h3 className="text-[10px] font-bold uppercase tracking-wider">Estados das Solicitações (Recentes)</h3>
         </div>
-      )}
+        
+        {loadingMyRequests ? (
+          <div className="py-4 text-center">
+            <Loader2 className="h-5 w-5 animate-spin mx-auto text-muted-foreground opacity-30" />
+          </div>
+        ) : lastThreeRequests.length === 0 ? (
+          <div className="bg-muted/10 border border-dashed rounded-2xl p-6 text-center">
+            <p className="text-[10px] text-muted-foreground italic">Nenhuma solicitação recente encontrada.</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {lastThreeRequests.map((req) => {
+              const status = getStatusInfo(req);
+              const Icon = status.icon;
+              return (
+                <div key={req.id} className="bg-card border border-border/40 rounded-2xl p-3 flex items-center justify-between shadow-sm transition-all hover:border-primary/20">
+                  <div className="flex flex-col">
+                    <span className="text-[9px] font-mono font-bold text-muted-foreground">#{req.orderId}</span>
+                    <span className="text-[11px] font-bold text-foreground truncate max-w-[140px]">{req.storeName}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex flex-col items-end">
+                      <span className="text-[7px] font-bold text-muted-foreground mb-1 uppercase">PARA: {req.targetUserEmail.split('@')[0]}</span>
+                      <div className={cn(
+                        "flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[8px] font-bold uppercase",
+                        status.color
+                      )}>
+                        <Icon className="h-3 w-3" />
+                        {status.label}
+                      </div>
+                    </div>
+                    {status.canCancel && (
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-7 w-7 rounded-full text-destructive hover:bg-destructive/10"
+                        onClick={() => handleCancelRequest(req.id!)}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <div className="h-px bg-border/40 my-2" />
 
       <div className="space-y-1">
         <h2 className="text-xl font-bold text-foreground">Solicitar Despacho</h2>
-        <p className="text-xs text-muted-foreground">Escolha um pedido ou digite o ID.</p>
+        <p className="text-xs text-muted-foreground">Escolha um pedido abaixo ou digite o ID.</p>
       </div>
 
       {/* LISTA DE PEDIDOS DISPONÍVEIS (REDASH) */}
@@ -228,7 +238,7 @@ export function RequestOrder({ sender }: { sender: User }) {
           </Button>
         </div>
 
-        <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1 no-scrollbar">
+        <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1 no-scrollbar">
           {loadingOrders && allOrders.length === 0 ? (
             <div className="flex flex-col items-center py-6 gap-2">
               <Loader2 className="h-5 w-5 animate-spin text-primary opacity-50" />
@@ -299,7 +309,7 @@ export function RequestOrder({ sender }: { sender: User }) {
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-2 max-h-[180px] overflow-y-auto p-1 no-scrollbar">
+        <div className="grid grid-cols-2 gap-2 max-h-[160px] overflow-y-auto p-1 no-scrollbar">
           {filteredUsers.map((u) => (
             <Card
               key={u.id}
