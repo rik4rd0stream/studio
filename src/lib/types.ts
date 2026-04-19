@@ -26,7 +26,7 @@ export interface OrderRequest {
   targetUserEmail: string;
   senderName: string;
   senderEmail?: string; 
-  status: 'pending' | 'accepted' | 'rejected';
+  status: 'pending' | 'accepted' | 'rejected' | 'unavailable';
   createdAt: string;
   updatedAt?: string;
 }
