@@ -21,7 +21,8 @@ import {
   Dialog, 
   DialogContent, 
   DialogHeader, 
-  DialogTitle 
+  DialogTitle,
+  DialogDescription
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
@@ -244,7 +245,9 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
         >
           <DialogHeader className="p-6 pb-2">
             <DialogTitle className="text-xl">Despachar Pedido</DialogTitle>
-            <DialogTitle className="text-xs text-muted-foreground font-mono">#{selectedOrder?.order_id}</DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground font-mono">
+              Pedido #{selectedOrder?.order_id}
+            </DialogDescription>
           </DialogHeader>
           <div className="px-6 py-2">
             <div className="relative">

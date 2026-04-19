@@ -12,7 +12,14 @@ import { ActiveOrders } from "@/components/orders/active-orders";
 import { RequestOrder } from "@/components/orders/request-order";
 import { Registration } from "@/components/admin/registration";
 import { PushListener } from "@/components/notifications/push-listener";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { 
+  Sheet, 
+  SheetContent, 
+  SheetTrigger,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription
+} from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
 interface MainDashboardProps {
@@ -95,6 +102,10 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
                   </Button>
                 </SheetTrigger>
                 <SheetContent side="left" className="p-0 w-72 border-none">
+                  <SheetHeader className="sr-only">
+                    <SheetTitle>Menu de Navegação</SheetTitle>
+                    <SheetDescription>Acesse as funcionalidades do sistema</SheetDescription>
+                  </SheetHeader>
                   <SidebarNav 
                     currentView={currentView} 
                     setView={handleSetView} 
