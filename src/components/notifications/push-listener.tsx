@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useFirestore } from "@/firebase";
 import { collection, query, where, onSnapshot, doc, updateDoc } from "firebase/firestore";
 import { User, OrderRequest } from "@/lib/types";
@@ -15,13 +15,14 @@ import {
   AlertDialogHeader, 
   AlertDialogTitle 
 } from "@/components/ui/alert-dialog";
-import { BellRing, ExternalLink, X, MessageSquareQuote, Timer } from "lucide-react";
+import { BellRing, ExternalLink, X, MessageSquareQuote, Timer, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Capacitor } from '@capacitor/core';
+import { redashService } from "@/lib/api/redash-service";
 
-const EXPIRATION_TIME_MS = 2 * 60 * 1000; // 2 minutos
+const EXPIRATION_TIME_MS = 120000; // 2 minutos exatos
 
 export function PushListener({ 
   user, 
@@ -36,29 +37,21 @@ export function PushListener({
   const [isMinimized, setIsMinimized] = useState(false);
   const [timeLeft, setTimeLeft] = useState<string>("");
 
-  // Configuração inicial de notificações (Apenas no Android)
   useEffect(() => {
     const setupNotifications = async () => {
       if (Capacitor.isNativePlatform()) {
         try {
           const { LocalNotifications } = await import('@capacitor/local-notifications');
-          const permStatus = await LocalNotifications.checkPermissions();
-          if (permStatus.display === 'prompt' || permStatus.display === 'default') {
-            await LocalNotifications.requestPermissions();
-          }
-
+          await LocalNotifications.requestPermissions();
           await LocalNotifications.createChannel({
             id: 'orders-channel-v1',
             name: 'Novos Pedidos Rappi',
-            description: 'Alertas críticos para novos despachos de pedidos',
             importance: 5,
             visibility: 1,
             vibration: true,
             sound: 'default'
           });
-        } catch (e) {
-          console.error("Erro ao configurar notificações nativas:", e);
-        }
+        } catch (e) {}
       }
     };
     setupNotifications();
@@ -69,139 +62,89 @@ export function PushListener({
       try {
         const { LocalNotifications } = await import('@capacitor/local-notifications');
         await LocalNotifications.schedule({
-          notifications: [
-            {
-              title,
-              body,
-              id: Date.now(),
-              channelId: 'orders-channel-v1',
-              sound: 'default'
-            }
-          ]
+          notifications: [{ title, body, id: Date.now(), channelId: 'orders-channel-v1', sound: 'default' }]
         });
-      } catch (e) {
-        console.error("Falha na notificação nativa:", e);
-      }
+      } catch (e) {}
     } 
-    else if (typeof window !== 'undefined' && "Notification" in window && Notification.permission === "granted") {
-      new Notification(title, {
-        body,
-        icon: "/favicon.ico"
-      });
-    }
   }, []);
 
-  // Monitor de expiração e timer
+  // Monitor de expiração e disponibilidade
   useEffect(() => {
     if (pendingRequests.length === 0) return;
 
-    const interval = setInterval(() => {
+    const interval = setInterval(async () => {
       const now = new Date().getTime();
       const firstRequest = pendingRequests[0];
       const createdTime = new Date(firstRequest.createdAt).getTime();
       const diff = (createdTime + EXPIRATION_TIME_MS) - now;
 
+      // 1. Verificação de Expiração (Time Out)
       if (diff <= 0) {
-        // Expira o pedido no Firestore
         if (firstRequest.id) {
           updateDoc(doc(db, "requests", firstRequest.id), {
             status: 'rejected',
             updatedAt: new Date().toISOString(),
-            expirationNote: "Expirado por inatividade (2min)"
+            statusNote: "Time Out"
           });
-          toast({ variant: "destructive", title: "Pedido Expirado", description: "O tempo de 2 minutos acabou." });
+          toast({ variant: "destructive", title: "Time Out", description: "Solicitação expirada." });
         }
       } else {
         const mins = Math.floor(diff / 60000);
         const secs = Math.floor((diff % 60000) / 1000);
         setTimeLeft(`${mins}:${secs.toString().padStart(2, '0')}`);
       }
-    }, 1000);
+
+      // 2. Verificação de Disponibilidade (Se o pedido ainda existe no Redash como sem RT)
+      const redash = await redashService.fetchOrders();
+      if (redash.success && redash.data) {
+        const isStillAvailable = redash.data.some(o => String(o.order_id) === String(firstRequest.orderId));
+        if (!isStillAvailable && firstRequest.id) {
+          updateDoc(doc(db, "requests", firstRequest.id), {
+            status: 'rejected',
+            updatedAt: new Date().toISOString(),
+            statusNote: "Indisponível"
+          });
+          toast({ variant: "destructive", title: "Pedido Indisponível", description: "Já alocado para outro RT." });
+        }
+      }
+    }, 2000);
 
     return () => clearInterval(interval);
   }, [pendingRequests, db, toast]);
 
   useEffect(() => {
-    if (!user || !user.email || !user.notificationsEnabled) return;
+    if (!user?.email || !user.notificationsEnabled) return;
 
-    const userEmail = user.email.toLowerCase().trim();
-    
     const q = query(
       collection(db, "requests"),
-      where("targetUserEmail", "==", userEmail),
+      where("targetUserEmail", "==", user.email.toLowerCase().trim()),
       where("status", "==", "pending")
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const requests = snapshot.docs.map(doc => ({ 
-        id: doc.id, 
-        ...doc.data() 
-      } as OrderRequest));
-      
+      const requests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as OrderRequest));
       requests.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       
-      const limitedRequests = requests.slice(0, 10);
-      setPendingRequests(limitedRequests);
-      
-      if (onPendingCountChange) {
-        onPendingCountChange(limitedRequests.length);
-      }
+      setPendingRequests(requests);
+      if (onPendingCountChange) onPendingCountChange(requests.length);
 
       if (snapshot.docChanges().some(change => change.type === "added")) {
         setIsMinimized(false);
-        try {
-          const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
-          audio.play().catch(() => {});
-        } catch (e) {}
-
-        const lastRequest = limitedRequests[0];
-        if (lastRequest) {
-          sendSystemNotification(
-            "NOVA SOLICITAÇÃO - RC", 
-            `${lastRequest.senderName}: Pedido #${lastRequest.orderId}`
-          );
-        }
+        const lastRequest = requests[0];
+        if (lastRequest) sendSystemNotification("NOVA SOLICITAÇÃO", `${lastRequest.senderName}: #${lastRequest.orderId}`);
       }
-    }, (error) => {
-      console.error("Erro no Listener de Push:", error);
     });
 
     return () => unsubscribe();
   }, [db, user, onPendingCountChange, sendSystemNotification]);
 
-  const handleAccept = (request: OrderRequest) => {
-    if (!request.id) return;
-    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(request.command)}`;
-    window.open(whatsappUrl, '_blank');
-    
-    updateDoc(doc(db, "requests", request.id), {
-      status: 'accepted',
-      updatedAt: new Date().toISOString()
-    });
-    
-    toast({ title: "Despachado", description: "Comando enviado para o WhatsApp." });
-  };
-
-  const handleReject = (id: string) => {
-    updateDoc(doc(db, "requests", id), {
-      status: 'rejected',
-      updatedAt: new Date().toISOString()
-    });
-    
-    toast({ title: "Removido", description: "Solicitação marcada como recusada." });
-  };
-
   const activeRequest = pendingRequests[0];
-  const showPopup = !!activeRequest && !isMinimized;
 
   return (
     <>
-      <AlertDialog open={showPopup}>
-        <AlertDialogContent className="max-w-[320px] rounded-3xl border-none shadow-2xl animate-in zoom-in-95 duration-300">
-          <button 
-            onClick={() => setIsMinimized(true)}
-            className="absolute right-4 top-4 p-2 rounded-full hover:bg-muted transition-colors"
-          >
+      <AlertDialog open={!!activeRequest && !isMinimized}>
+        <AlertDialogContent className="max-w-[320px] rounded-3xl border-none shadow-2xl">
+          <button onClick={() => setIsMinimized(true)} className="absolute right-4 top-4 p-2 rounded-full hover:bg-muted">
             <X className="h-5 w-5 text-muted-foreground" />
           </button>
           
@@ -214,8 +157,7 @@ export function PushListener({
             </div>
             <AlertDialogTitle className="text-2xl font-bold text-primary">Novo Pedido!</AlertDialogTitle>
             <AlertDialogDescription className="text-sm">
-              <span className="font-bold text-foreground text-base">{activeRequest?.senderName}</span> solicita despacho:
-              
+              <span className="font-bold text-foreground">{activeRequest?.senderName}</span> solicita despacho:
               <div className="mt-4 p-4 bg-muted/50 rounded-2xl font-mono text-[11px] text-left border border-primary/10">
                 <p className="font-bold text-primary mb-1 uppercase truncate">{activeRequest?.storeName}</p>
                 <p className="opacity-70 font-bold">ORDEM: #{activeRequest?.orderId}</p>
@@ -224,46 +166,28 @@ export function PushListener({
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col gap-2 mt-6">
             <AlertDialogAction 
-              onClick={() => handleAccept(activeRequest)} 
-              className="w-full h-14 bg-primary hover:bg-primary/90 text-white font-bold text-base gap-3 rounded-2xl shadow-lg shadow-primary/20"
+              onClick={() => {
+                const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(activeRequest?.command || '')}`;
+                window.open(whatsappUrl, '_blank');
+                updateDoc(doc(db, "requests", activeRequest?.id!), { status: 'accepted', updatedAt: new Date().toISOString() });
+              }} 
+              className="w-full h-14 bg-primary text-white font-bold text-base gap-3 rounded-2xl"
             >
-              DESPACHAR AGORA ({timeLeft}) <ExternalLink className="h-5 w-5" />
+              DESPACHAR ({timeLeft}) <ExternalLink className="h-5 w-5" />
             </AlertDialogAction>
-            
-            <div className="grid grid-cols-2 gap-2 w-full">
-              <AlertDialogCancel 
-                onClick={() => setIsMinimized(true)} 
-                className="h-10 border-none text-muted-foreground text-xs hover:bg-muted/50 rounded-xl m-0"
-              >
-                VER DEPOIS
-              </AlertDialogCancel>
-              <Button 
-                variant="ghost" 
-                onClick={() => handleReject(activeRequest?.id!)} 
-                className="h-10 text-destructive text-xs hover:bg-destructive/10 rounded-xl"
-              >
-                REJEITAR
-              </Button>
-            </div>
+            <Button variant="ghost" onClick={() => updateDoc(doc(db, "requests", activeRequest?.id!), { status: 'rejected', updatedAt: new Date().toISOString() })} className="h-10 text-destructive text-xs hover:bg-destructive/10 rounded-xl">
+              REJEITAR
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {pendingRequests.length > 0 && (
-        <Button
-          onClick={() => setIsMinimized(false)}
-          className={cn(
-            "fixed top-24 right-8 h-14 w-14 rounded-full shadow-2xl z-50 transition-all duration-500 hover:scale-110 active:scale-95 flex flex-col items-center justify-center p-0",
-            isMinimized ? "bg-primary animate-pulse border-4 border-background" : "bg-muted-foreground/20 text-muted-foreground opacity-30 grayscale"
-          )}
-        >
+      {pendingRequests.length > 0 && isMinimized && (
+        <Button onClick={() => setIsMinimized(false)} className="fixed top-24 right-8 h-14 w-14 rounded-full shadow-2xl z-50 bg-primary animate-pulse border-4 border-background">
           <MessageSquareQuote className="h-5 w-5" />
-          <span className="text-[10px] font-bold">{pendingRequests.length}</span>
-          {isMinimized && (
-            <div className="absolute -top-1 -right-1 h-6 w-6 bg-red-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-background animate-bounce">
-              {pendingRequests.length}
-            </div>
-          )}
+          <span className="absolute -top-1 -right-1 h-6 w-6 bg-red-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-background">
+            {pendingRequests.length}
+          </span>
         </Button>
       )}
     </>

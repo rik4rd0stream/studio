@@ -18,7 +18,8 @@ import {
   Clock,
   CheckCircle2,
   XCircle,
-  Timer
+  Timer,
+  AlertCircle
 } from "lucide-react";
 import { redashService, RedashOrder } from "@/lib/api/redash-service";
 import { useToast } from "@/hooks/use-toast";
@@ -31,13 +32,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, query, where, doc, setDoc } from "firebase/firestore";
+import { collection, query, where, doc, setDoc, updateDoc } from "firebase/firestore";
 import { cn } from "@/lib/utils";
 import { User, OrderRequest } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 
 const COMMANDS = ["!!bundleBR", "!!rebr", "!!Br", "!!forzabr"];
-const EXPIRATION_TIME_MS = 120000; // 2 minutos
+const EXPIRATION_TIME_MS = 120000;
 
 export function RequestOrder({ sender }: { sender: User }) {
   const { toast } = useToast();
@@ -49,15 +50,12 @@ export function RequestOrder({ sender }: { sender: User }) {
   const [selectedCommand, setSelectedCommand] = useState("!!bundleBR");
   const [selectedOrder, setSelectedOrder] = useState<RedashOrder | null>(null);
   const [selectedCourier, setSelectedCourier] = useState<any>(null);
-  
   const [isCourierDialogOpen, setIsCourierDialogOpen] = useState(false);
   const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
-  
   const [searchCourier, setSearchCourier] = useState("");
   const [searchUser, setSearchUser] = useState("");
   const [manualOrderId, setManualOrderId] = useState("");
 
-  // Timer global para atualizar os cronômetros na tela
   useEffect(() => {
     const interval = setInterval(() => setCurrentTime(Date.now()), 1000);
     return () => clearInterval(interval);
@@ -67,7 +65,7 @@ export function RequestOrder({ sender }: { sender: User }) {
     collection(db, 'requests'),
     where('senderEmail', '==', sender.email.toLowerCase().trim())
   ), [db, sender.email]);
-  const { data: historyData } = useCollection<OrderRequest>(historyQuery);
+  const { data: historyData } = useCollection<any>(historyQuery);
 
   const history = useMemo(() => {
     if (!historyData) return [];
@@ -96,19 +94,13 @@ export function RequestOrder({ sender }: { sender: User }) {
   const filteredCouriers = useMemo(() => {
     if (!couriers) return [];
     return [...couriers]
-      .filter(c => 
-        (c.nome || c.name)?.toLowerCase().includes(searchCourier.toLowerCase()) || 
-        String(c.id_motoboy || "").includes(searchCourier)
-      )
+      .filter(c => (c.nome || c.name)?.toLowerCase().includes(searchCourier.toLowerCase()) || String(c.id_motoboy || "").includes(searchCourier))
       .sort((a, b) => (a.nome || a.name || "").localeCompare(b.nome || b.name || ""));
   }, [couriers, searchCourier]);
 
   const filteredUsers = useMemo(() => {
     if (!appUsers) return [];
-    return appUsers.filter(u => 
-      u.name?.toLowerCase().includes(searchUser.toLowerCase()) || 
-      (u.email || u.id)?.toLowerCase().includes(searchUser.toLowerCase())
-    );
+    return appUsers.filter(u => u.name?.toLowerCase().includes(searchUser.toLowerCase()) || (u.email || u.id)?.toLowerCase().includes(searchUser.toLowerCase()));
   }, [appUsers, searchUser]);
 
   const loadData = async (silent = false) => {
@@ -124,101 +116,79 @@ export function RequestOrder({ sender }: { sender: User }) {
     return () => clearInterval(interval);
   }, []);
 
-  const handleOrderClick = (order: RedashOrder) => {
-    setSelectedOrder(order);
-    setIsCourierDialogOpen(true);
-  };
-
-  const handleCourierSelect = (courier: any) => {
-    setSelectedCourier(courier);
-    setIsCourierDialogOpen(false);
-    setIsUserDialogOpen(true);
-  };
-
-  const handleManualSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!manualOrderId.trim()) return;
-    handleOrderClick({
-      order_id: manualOrderId.trim(),
-      store_name: "Solicitação Manual",
-      direccion_entrega: "Entrada Manual"
-    } as RedashOrder);
-  };
-
   const handleSendRequest = (targetUser: any) => {
     if (!selectedOrder || !selectedCourier) return;
-
     const requestId = Math.random().toString(36).substr(2, 9);
-    const orderId = String(selectedOrder.order_id || "0");
-    const targetEmail = (targetUser.email || targetUser.id).toLowerCase().trim();
-
-    const requestData: OrderRequest = {
-      orderId,
+    const requestData = {
+      orderId: String(selectedOrder.order_id),
       storeName: selectedOrder.store_name || "Pedido",
-      command: `${selectedCommand} ${orderId} ${selectedCourier.id_motoboy}`,
-      targetUserEmail: targetEmail,
+      command: `${selectedCommand} ${selectedOrder.order_id} ${selectedCourier.id_motoboy}`,
+      targetUserEmail: targetUser.email.toLowerCase().trim(),
       senderName: sender.name,
       senderEmail: sender.email.toLowerCase().trim(),
       status: 'pending',
       createdAt: new Date().toISOString()
     };
-
-    setDoc(doc(db, 'requests', requestId), requestData)
-      .then(() => {
-        toast({ title: "Solicitado", description: `Pedido enviado para ${targetUser.name}` });
-        setIsUserDialogOpen(false);
-        setSelectedOrder(null);
-        setSelectedCourier(null);
-        setManualOrderId("");
-      })
-      .catch(err => {
-        toast({ variant: "destructive", title: "Erro", description: "Falha ao enviar solicitação." });
-      });
+    setDoc(doc(db, 'requests', requestId), requestData).then(() => {
+      toast({ title: "Solicitado" });
+      setIsUserDialogOpen(false);
+      setSelectedOrder(null);
+      setManualOrderId("");
+    });
   };
 
-  const formatTimeLeft = (createdAt: string) => {
-    const createdTime = new Date(createdAt).getTime();
+  const handleCancelRequest = (id: string) => {
+    updateDoc(doc(db, "requests", id), {
+      status: 'rejected',
+      statusNote: 'Cancelado',
+      updatedAt: new Date().toISOString()
+    });
+    toast({ title: "Cancelado" });
+  };
+
+  const getStatusBadge = (req: any) => {
+    if (req.status === 'accepted') {
+      return <Badge className="bg-green-500 text-white gap-1 px-2 h-5 text-[9px] uppercase"><CheckCircle2 className="h-2.5 w-2.5" /> ACEITO</Badge>;
+    }
+    if (req.status === 'rejected') {
+      const note = req.statusNote || "RECUSADO";
+      return <Badge className="bg-red-500 text-white gap-1 px-2 h-5 text-[9px] uppercase"><XCircle className="h-2.5 w-2.5" /> {note.toUpperCase()}</Badge>;
+    }
+    
+    const createdTime = new Date(req.createdAt).getTime();
     const diff = (createdTime + EXPIRATION_TIME_MS) - currentTime;
-    if (diff <= 0) return "Expirado";
+    const isIndisponivel = !redashOrders.some(o => String(o.order_id) === String(req.orderId));
+    
+    if (isIndisponivel) {
+      return <Badge className="bg-slate-500 text-white gap-1 px-2 h-5 text-[9px] uppercase"><AlertCircle className="h-2.5 w-2.5" /> INDISPONÍVEL</Badge>;
+    }
+
+    if (diff <= 0) return <Badge className="bg-red-500 text-white gap-1 px-2 h-5 text-[9px] uppercase">TIME OUT</Badge>;
+    
     const mins = Math.floor(diff / 60000);
     const secs = Math.floor((diff % 60000) / 1000);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const getStatusBadge = (req: OrderRequest) => {
-    switch (req.status) {
-      case 'accepted':
-        return <Badge className="bg-green-500 text-white border-none gap-1 px-2 h-5 text-[9px] uppercase"><CheckCircle2 className="h-2.5 w-2.5" /> ACEITO</Badge>;
-      case 'rejected':
-        return <Badge className="bg-red-500 text-white border-none gap-1 px-2 h-5 text-[9px] uppercase"><XCircle className="h-2.5 w-2.5" /> {req.id?.includes('exp') ? 'EXPIRADO' : 'RECUSADO'}</Badge>;
-      default:
-        const timeLeft = formatTimeLeft(req.createdAt);
-        return (
-          <div className="flex flex-col items-end gap-1">
-            <Badge variant="outline" className="border-amber-500 text-amber-600 gap-1 px-2 h-5 text-[9px] uppercase bg-amber-50 dark:bg-amber-950/20">
-              <Clock className="h-2.5 w-2.5 animate-pulse" /> PENDENTE
-            </Badge>
-            {timeLeft !== "Expirado" && (
-              <span className="text-[8px] font-bold text-red-500 flex items-center gap-0.5 animate-pulse">
-                <Timer className="h-2 w-2" /> {timeLeft}
-              </span >
-            )}
-          </div>
-        );
-    }
+    
+    return (
+      <div className="flex flex-col items-end gap-1">
+        <Badge variant="outline" className="border-amber-500 text-amber-600 gap-1 px-2 h-5 text-[9px] bg-amber-50 uppercase">
+          <Clock className="h-2.5 w-2.5 animate-pulse" /> {mins}:{secs.toString().padStart(2, '0')}
+        </Badge>
+        <Button variant="ghost" size="icon" onClick={() => handleCancelRequest(req.id)} className="h-6 w-6 text-red-500 hover:bg-red-50">
+          <X size={12} />
+        </Button>
+      </div>
+    );
   };
 
   return (
     <div className="space-y-6 animate-slide-up pb-32 max-w-xl mx-auto">
       {history && history.length > 0 && (
-        <Card className="border-none shadow-sm bg-muted/30 overflow-hidden rounded-2xl">
+        <Card className="border-none shadow-sm bg-muted/30 rounded-2xl">
           <div className="p-3 bg-primary/5 border-b border-primary/10 flex items-center justify-between">
-            <h3 className="text-[10px] font-bold text-primary uppercase tracking-widest flex items-center gap-2">
-              <Clock className="h-3 w-3" /> Status do meu Despacho
-            </h3>
+            <h3 className="text-[10px] font-bold text-primary uppercase tracking-widest flex items-center gap-2"><Clock className="h-3 w-3" /> Status do Despacho</h3>
           </div>
           <CardContent className="p-2 space-y-1.5">
-            {history.map((req) => (
+            {history.map((req: any) => (
               <div key={req.id} className="bg-card p-2.5 rounded-xl border border-border/40 flex items-center justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
@@ -237,8 +207,8 @@ export function RequestOrder({ sender }: { sender: User }) {
       <div className="bg-primary/5 p-4 rounded-2xl border border-primary/10 flex items-center gap-3">
         <BellRing className="h-5 w-5 text-primary" />
         <div>
-          <h3 className="text-sm font-bold text-primary">Solicitação Push</h3>
-          <p className="text-[10px] text-muted-foreground">Expiração automática em 2 minutos para pedidos não atendidos.</p>
+          <h3 className="text-sm font-bold text-primary">Solicitação de Alta Precisão</h3>
+          <p className="text-[10px] text-muted-foreground">O sistema detecta se o pedido for alocado para outro antes do tempo.</p>
         </div>
       </div>
 
@@ -246,175 +216,64 @@ export function RequestOrder({ sender }: { sender: User }) {
         <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-1">Comando Base</p>
         <div className="flex flex-wrap gap-1.5">
           {COMMANDS.map((cmd) => (
-            <Button
-              key={cmd}
-              variant="default"
-              onClick={() => setSelectedCommand(cmd)}
-              className={cn(
-                "h-8 px-4 font-bold text-xs transition-all border-none rounded-lg",
-                selectedCommand === cmd ? "bg-primary text-primary-foreground shadow-md" : "bg-muted text-muted-foreground"
-              )}
-            >
-              {cmd}
-            </Button>
+            <Button key={cmd} variant="default" onClick={() => setSelectedCommand(cmd)} className={cn("h-8 px-4 font-bold text-xs rounded-lg", selectedCommand === cmd ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>{cmd}</Button>
           ))}
         </div>
       </div>
 
       <div className="flex items-center justify-between px-1">
-        <div className="flex items-center gap-2">
-          <h2 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Pedidos Disponíveis ({redashOrders.length})</h2>
-        </div>
-        <Button variant="ghost" size="sm" onClick={() => loadData()} disabled={loading} className="h-6 text-[11px] font-bold text-blue-600">
-          <RefreshCw className={cn("h-3 w-3 mr-1", loading && "animate-spin")} /> ATUALIZAR
-        </Button>
+        <h2 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Pedidos Disponíveis ({redashOrders.length})</h2>
+        <Button variant="ghost" size="sm" onClick={() => loadData()} disabled={loading} className="h-6 text-[11px] font-bold text-blue-600"><RefreshCw className={cn("h-3 w-3 mr-1", loading && "animate-spin")} /> ATUALIZAR</Button>
       </div>
 
       <div className="space-y-2">
-        {redashOrders.length === 0 && !loading ? (
-          <div className="text-center py-8 bg-muted/20 rounded-xl border border-dashed flex flex-col items-center">
-            <Package className="h-6 w-6 text-muted-foreground/50 mb-2" />
-            <h3 className="text-xs font-medium text-muted-foreground">Nenhum pedido no Redash</h3>
-          </div>
-        ) : (
-          redashOrders.map((order, idx) => (
-            <Card key={idx} className="border border-border/40 hover:border-primary/40 cursor-pointer shadow-none overflow-hidden group" onClick={() => handleOrderClick(order)}>
-              <CardContent className="p-3 space-y-1">
-                <div className="flex justify-between items-start">
-                  <h3 className="text-xs font-bold text-foreground group-hover:text-primary">{order.store_name}</h3>
-                  <span className="text-[9px] font-mono text-muted-foreground">#{order.order_id}</span>
-                </div>
-                <div className="flex items-start gap-1.5 text-muted-foreground">
-                  <MapPin className="h-3 w-3 text-primary shrink-0" />
-                  <p className="text-[10px] font-medium leading-tight">{order.direccion_entrega}</p>
-                </div>
-              </CardContent>
-            </Card>
-          ))
-        )}
+        {redashOrders.map((order, idx) => (
+          <Card key={idx} className="border border-border/40 hover:border-primary/40 cursor-pointer shadow-none overflow-hidden" onClick={() => { setSelectedOrder(order); setIsCourierDialogOpen(true); }}>
+            <CardContent className="p-3 space-y-1">
+              <div className="flex justify-between items-start"><h3 className="text-xs font-bold">{order.store_name}</h3><span className="text-[9px] font-mono text-muted-foreground">#{order.order_id}</span></div>
+              <div className="flex items-start gap-1.5 text-muted-foreground"><MapPin className="h-3 w-3 text-primary shrink-0" /><p className="text-[10px] font-medium leading-tight">{order.direccion_entrega}</p></div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      <form onSubmit={handleManualSubmit} className="pt-6 space-y-3">
+      <form onSubmit={(e) => { e.preventDefault(); if(manualOrderId.trim()) { setSelectedOrder({order_id: manualOrderId.trim(), store_name: "Manual"} as any); setIsCourierDialogOpen(true); } }} className="pt-6 space-y-3">
         <div className="relative group">
-          <Input 
-            placeholder="ID DO PEDIDO MANUAL" 
-            value={manualOrderId}
-            onChange={(e) => setManualOrderId(e.target.value)}
-            className="h-12 text-center text-lg font-bold tracking-widest rounded-xl shadow-sm uppercase pr-12"
-          />
-          {manualOrderId.trim() !== "" && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={() => setManualOrderId("")}
-              className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full text-muted-foreground hover:text-destructive transition-colors"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          )}
+          <Input placeholder="ID DO PEDIDO MANUAL" value={manualOrderId} onChange={(e) => setManualOrderId(e.target.value)} className="h-12 text-center text-lg font-bold tracking-widest rounded-xl shadow-sm uppercase pr-12" />
+          {manualOrderId.trim() !== "" && <Button type="button" variant="ghost" size="icon" onClick={() => setManualOrderId("")} className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full text-muted-foreground hover:text-destructive"><X className="h-4 w-4" /></Button>}
         </div>
-        <Button type="submit" className="w-full h-11 font-bold text-[10px] uppercase rounded-xl">
-          Solicitar Manualmente <ArrowRight className="h-3.5 w-3.5 ml-2" />
-        </Button>
+        <Button type="submit" className="w-full h-11 font-bold text-[10px] uppercase rounded-xl">Solicitar Manualmente <ArrowRight className="h-3.5 w-3.5 ml-2" /></Button>
       </form>
 
       <Dialog open={isCourierDialogOpen} onOpenChange={setIsCourierDialogOpen}>
-        <DialogContent 
-          className="max-w-md p-0 border-none shadow-2xl rounded-2xl overflow-hidden"
-          onOpenAutoFocus={(e) => e.preventDefault()}
-        >
-          <DialogHeader className="p-5 pb-2">
-            <DialogTitle className="text-lg">Etapa 1: Selecione o Motoboy</DialogTitle>
-            <DialogDescription className="text-xs">
-              Para o pedido <span className="font-bold">#{selectedOrder?.order_id}</span>
-            </DialogDescription>
-          </DialogHeader>
-          <div className="px-5 py-2">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <Input 
-                placeholder="Buscar motoboy..." 
-                className="pl-9 bg-muted/40 border-none h-9 text-sm rounded-lg"
-                value={searchCourier}
-                onChange={(e) => setSearchCourier(e.target.value)}
-              />
-            </div>
-          </div>
-          <div className="flex-1 overflow-y-auto px-5 py-4 max-h-[50vh]">
-            {loadingCouriers ? (
-              <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
-            ) : (
-              <div className="grid grid-cols-3 gap-2">
-                {filteredCouriers.map((c) => (
-                  <Button
-                    key={c.id}
-                    variant="ghost"
-                    className="flex flex-col items-center justify-center h-20 p-2 hover:bg-primary/5 group border border-transparent hover:border-primary/10 rounded-xl transition-all"
-                    onClick={() => handleCourierSelect(c)}
-                  >
-                    <p className="font-bold text-sm leading-tight text-center truncate w-full group-hover:text-primary">
-                      {(c.nome || c.name)?.split(' ')[0]}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground font-mono mt-1 opacity-70">{c.id_motoboy}</p>
-                  </Button>
-                ))}
-              </div>
-            )}
+        <DialogContent className="max-w-md p-0 border-none shadow-2xl rounded-2xl overflow-hidden" onOpenAutoFocus={(e) => e.preventDefault()}>
+          <DialogHeader className="p-5 pb-2"><DialogTitle>Selecione o Motoboy</DialogTitle></DialogHeader>
+          <div className="px-5 py-2"><div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" /><Input placeholder="Buscar motoboy..." className="pl-9 h-9 text-sm" value={searchCourier} onChange={(e) => setSearchCourier(e.target.value)} /></div></div>
+          <div className="flex-1 overflow-y-auto px-5 py-4 max-h-[50vh] grid grid-cols-3 gap-2">
+            {filteredCouriers.map((c) => (
+              <Button key={c.id} variant="ghost" className="flex flex-col items-center justify-center h-20 p-2 border hover:border-primary/20 rounded-xl" onClick={() => { setSelectedCourier(c); setIsCourierDialogOpen(false); setIsUserDialogOpen(true); }}>
+                <p className="font-bold text-sm leading-tight text-center truncate w-full">{(c.nome || c.name)?.split(' ')[0]}</p>
+                <p className="text-[10px] text-muted-foreground font-mono mt-1 opacity-70">{c.id_motoboy}</p>
+              </Button>
+            ))}
           </div>
         </DialogContent>
       </Dialog>
 
       <Dialog open={isUserDialogOpen} onOpenChange={setIsUserDialogOpen}>
-        <DialogContent 
-          className="max-sm p-0 border-none shadow-2xl rounded-2xl overflow-hidden"
-          onOpenAutoFocus={(e) => e.preventDefault()}
-        >
-          <DialogHeader className="p-5 pb-2">
-            <DialogTitle className="text-lg">Etapa 2: Quem vai enviar?</DialogTitle>
-            <DialogDescription className="text-xs">
-              Pedido <span className="font-bold">#{selectedOrder?.order_id}</span> para o RT <span className="font-bold">{selectedCourier?.nome}</span>
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="px-5 py-2">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <Input 
-                placeholder="Buscar usuário..." 
-                className="pl-9 bg-muted/40 border-none h-9 text-sm rounded-lg"
-                value={searchUser}
-                onChange={(e) => setSearchUser(e.target.value)}
-              />
-            </div>
-          </div>
-
+        <DialogContent className="max-sm p-0 border-none shadow-2xl rounded-2xl overflow-hidden" onOpenAutoFocus={(e) => e.preventDefault()}>
+          <DialogHeader className="p-5 pb-2"><DialogTitle>Quem vai enviar?</DialogTitle></DialogHeader>
+          <div className="px-5 py-2"><div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" /><Input placeholder="Buscar usuário..." className="pl-9 h-9 text-sm" value={searchUser} onChange={(e) => setSearchUser(e.target.value)} /></div></div>
           <div className="flex-1 overflow-y-auto px-5 py-2 space-y-1.5 pb-5 max-h-[40vh]">
-            {loadingUsers ? (
-              <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
-            ) : filteredUsers.length === 0 ? (
-              <p className="text-center py-4 text-muted-foreground text-xs italic">Nenhum usuário disponível.</p>
-            ) : (
-              filteredUsers.map((u) => (
-                <Button
-                  key={u.id}
-                  variant="ghost"
-                  className="w-full h-auto py-2.5 px-3 justify-between hover:bg-primary/5 hover:text-primary border border-transparent hover:border-primary/10 rounded-lg group"
-                  onClick={() => handleSendRequest(u)}
-                >
-                  <div className="text-left flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center group-hover:bg-primary/10">
-                      <UserIcon className="h-3.5 w-3.5" />
-                    </div>
-                    <div>
-                      <p className="font-bold text-[11px] leading-none">{u.name}</p>
-                      <p className="text-[9px] text-muted-foreground mt-1">{u.email || u.id}</p>
-                    </div>
-                  </div>
-                  <SendHorizontal className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100" />
-                </Button>
-              ))
-            )}
+            {filteredUsers.map((u) => (
+              <Button key={u.id} variant="ghost" className="w-full h-auto py-2.5 px-3 justify-between hover:bg-primary/5 border rounded-lg group" onClick={() => handleSendRequest(u)}>
+                <div className="text-left flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center group-hover:bg-primary/10"><UserIcon className="h-3.5 w-3.5" /></div>
+                  <div><p className="font-bold text-[11px] leading-none">{u.name}</p><p className="text-[9px] text-muted-foreground mt-1">{u.email || u.id}</p></div>
+                </div>
+                <SendHorizontal className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100" />
+              </Button>
+            ))}
           </div>
         </DialogContent>
       </Dialog>
