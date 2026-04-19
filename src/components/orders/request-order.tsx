@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -6,10 +5,25 @@ import { useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebas
 import { collection, addDoc, query, where, limit, doc, updateDoc } from 'firebase/firestore';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { ClipboardPaste, Search, ArrowRight, X, Clock, CheckCircle2, XCircle, AlertCircle, History } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { 
+  ClipboardPaste, 
+  Search, 
+  ArrowRight, 
+  X, 
+  Clock, 
+  CheckCircle2, 
+  XCircle, 
+  AlertCircle, 
+  History,
+  Package,
+  RefreshCw,
+  Loader2,
+  MapPin
+} from 'lucide-react';
 import { OrderRequest, User } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { redashService, RedashOrder } from '@/lib/api/redash-service';
 
 export function RequestOrder({ sender }: { sender: User }) {
   const db = useFirestore();
@@ -18,11 +32,41 @@ export function RequestOrder({ sender }: { sender: User }) {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentTime, setCurrentTime] = useState(Date.now());
+  
+  // Redash Orders State
+  const [allOrders, setAllOrders] = useState<RedashOrder[]>([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(Date.now()), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  // Fetch Redash Orders
+  const loadRedashData = async (silent = false) => {
+    if (!silent) setLoadingOrders(true);
+    const result = await redashService.fetchOrders();
+    if (result.success) {
+      setAllOrders(result.data || []);
+    }
+    if (!silent) setLoadingOrders(false);
+  };
+
+  useEffect(() => {
+    loadRedashData();
+    const interval = setInterval(() => loadRedashData(true), 20000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const redashOrders = useMemo(() => {
+    return allOrders.filter(row => {
+      const isPoint9944 = Object.values(row).some(val => String(val).includes('9944'));
+      const isSinRT = Object.entries(row).some(([key, val]) => 
+        key.toLowerCase().includes('trusted') && String(val).includes('Sin RT')
+      );
+      return isPoint9944 && isSinRT;
+    });
+  }, [allOrders]);
 
   const usersQuery = useMemoFirebase(() => query(collection(db, 'userProfiles'), where('role', '==', 'normal')), [db]);
   const { data: usersData } = useCollection(usersQuery);
@@ -58,10 +102,17 @@ export function RequestOrder({ sender }: { sender: User }) {
     setIsSubmitting(true);
     try {
       const cleanId = manualOrderId.trim();
+      
+      // Busca detalhes do pedido se ele estiver na lista do redash para enriquecer o comando
+      const matchedOrder = redashOrders.find(o => String(o.order_id) === cleanId);
+      const storeName = matchedOrder?.store_name || 'Pedido Manual';
+      
       const newRequest: OrderRequest = {
         orderId: cleanId,
-        storeName: 'Solicitação Manual',
-        command: `PEDIDO MANUAL: ${cleanId}`,
+        storeName: storeName,
+        command: matchedOrder 
+          ? `SOLICITAÇÃO: ${storeName} #${cleanId}` 
+          : `PEDIDO MANUAL: ${cleanId}`,
         targetUserEmail: selectedUser.email.toLowerCase().trim(),
         senderName: sender.name || sender.email || 'Usuário',
         senderEmail: sender.email.toLowerCase().trim(),
@@ -112,7 +163,8 @@ export function RequestOrder({ sender }: { sender: User }) {
   };
 
   return (
-    <div className="space-y-6 max-w-md mx-auto p-4 pb-20 animate-fade-in">
+    <div className="space-y-6 max-w-md mx-auto p-4 pb-24 animate-fade-in">
+      {/* 3 ÚLTIMOS STATUS */}
       {lastThreeRequests.length > 0 && (
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-muted-foreground mb-2">
@@ -125,14 +177,14 @@ export function RequestOrder({ sender }: { sender: User }) {
             return (
               <div key={req.id} className="bg-card border border-border/40 rounded-2xl p-4 flex items-center justify-between shadow-sm">
                 <div className="flex flex-col">
-                  <span className="text-[10px] font-bold text-muted-foreground">PEDIDO</span>
-                  <span className="text-sm font-bold text-foreground">#{req.orderId}</span>
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase">#{req.orderId}</span>
+                  <span className="text-xs font-bold text-foreground truncate max-w-[120px]">{req.storeName}</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="flex flex-col items-end">
-                    <span className="text-[9px] font-bold text-muted-foreground mb-1 uppercase tracking-tight">PARA: {req.targetUserEmail.split('@')[0]}</span>
+                    <span className="text-[8px] font-bold text-muted-foreground mb-1 uppercase">PARA: {req.targetUserEmail.split('@')[0]}</span>
                     <div className={cn(
-                      "flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase",
+                      "flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-bold uppercase",
                       status.color
                     )}>
                       <Icon className="h-3 w-3" />
@@ -156,15 +208,70 @@ export function RequestOrder({ sender }: { sender: User }) {
         </div>
       )}
 
-      <div className="space-y-2">
+      <div className="space-y-1">
         <h2 className="text-xl font-bold text-foreground">Solicitar Despacho</h2>
-        <p className="text-xs text-muted-foreground">Peça para um operador despachar um pedido para você.</p>
+        <p className="text-xs text-muted-foreground">Escolha um pedido ou digite o ID.</p>
       </div>
 
-      <div className="space-y-4">
+      {/* LISTA DE PEDIDOS DISPONÍVEIS (REDASH) */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between px-1">
+          <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Pedidos Disponíveis ({redashOrders.length})</h3>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => loadRedashData()} 
+            disabled={loadingOrders} 
+            className="h-6 text-[10px] font-bold text-blue-600 uppercase"
+          >
+            <RefreshCw className={cn("h-3 w-3 mr-1", loadingOrders && "animate-spin")} /> ATUALIZAR
+          </Button>
+        </div>
+
+        <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1 no-scrollbar">
+          {loadingOrders && allOrders.length === 0 ? (
+            <div className="flex flex-col items-center py-6 gap-2">
+              <Loader2 className="h-5 w-5 animate-spin text-primary opacity-50" />
+              <p className="text-[9px] text-muted-foreground animate-pulse uppercase font-bold">Buscando...</p>
+            </div>
+          ) : redashOrders.length === 0 && !loadingOrders ? (
+            <div className="text-center py-6 bg-muted/20 rounded-2xl border border-dashed flex flex-col items-center">
+              <Package className="h-5 w-5 text-muted-foreground/50 mb-1" />
+              <h3 className="text-[10px] font-medium text-muted-foreground">Nenhum pedido pendente</h3>
+            </div>
+          ) : (
+            redashOrders.map((order, idx) => (
+              <Card 
+                key={idx} 
+                className={cn(
+                  "border-none bg-card shadow-sm hover:shadow-md transition-all cursor-pointer rounded-2xl group",
+                  manualOrderId === String(order.order_id) ? "ring-2 ring-primary bg-primary/5" : ""
+                )}
+                onClick={() => setManualOrderId(String(order.order_id))}
+              >
+                <CardContent className="p-3 space-y-1">
+                  <div className="flex justify-between items-start">
+                    <h3 className="text-[11px] font-bold group-hover:text-primary truncate max-w-[180px]">{order.store_name}</h3>
+                    <div className="flex flex-col items-end">
+                      <span className="text-[9px] font-mono font-bold text-muted-foreground">#{order.order_id}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-1 text-muted-foreground">
+                    <MapPin className="h-3 w-3 text-primary shrink-0" />
+                    <p className="text-[9px] font-medium leading-tight truncate">{order.direccion_entrega}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* INPUT MANUAL E ENVIO */}
+      <div className="space-y-4 pt-2">
         <div className="relative group">
           <Input
-            placeholder="Digite o ID do Pedido..."
+            placeholder="ID DO PEDIDO"
             value={manualOrderId}
             onChange={(e) => setManualOrderId(e.target.value)}
             className="h-14 text-lg font-bold rounded-2xl border-none bg-muted/40 shadow-inner pr-12 text-center tracking-widest"
@@ -179,37 +286,40 @@ export function RequestOrder({ sender }: { sender: User }) {
           )}
         </div>
 
-        <div className="relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 px-1">
+            <Search className="h-3 w-3 text-muted-foreground" />
+            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Escolher Operador</p>
+          </div>
           <Input
             placeholder="Buscar Operador..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 h-12 rounded-xl border-none bg-muted/30"
+            className="h-10 rounded-xl border-none bg-muted/30 text-sm"
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-3 max-h-[300px] overflow-y-auto p-1">
+        <div className="grid grid-cols-2 gap-2 max-h-[180px] overflow-y-auto p-1 no-scrollbar">
           {filteredUsers.map((u) => (
             <Card
               key={u.id}
               onClick={() => setSelectedUser(u)}
               className={cn(
-                "p-4 cursor-pointer transition-all border-2 rounded-2xl flex flex-col items-center text-center gap-2",
+                "p-3 cursor-pointer transition-all border-2 rounded-2xl flex flex-col items-center text-center gap-1",
                 selectedUser?.id === u.id
                   ? 'border-primary bg-primary/5 ring-4 ring-primary/10'
                   : 'border-transparent bg-card hover:bg-muted/10 shadow-sm'
               )}
             >
               <div className={cn(
-                "w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg",
+                "w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs",
                 selectedUser?.id === u.id ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'
               )}>
                 {(u.name || u.nome || 'U').charAt(0).toUpperCase()}
               </div>
               <div className="flex flex-col overflow-hidden w-full">
-                <span className="font-bold text-xs text-foreground truncate">{u.name || u.nome}</span>
-                <span className="text-[10px] text-muted-foreground truncate">{u.email.split('@')[0]}</span>
+                <span className="font-bold text-[10px] text-foreground truncate">{u.name || u.nome}</span>
+                <span className="text-[8px] text-muted-foreground truncate">{u.email.split('@')[0]}</span>
               </div>
             </Card>
           ))}
