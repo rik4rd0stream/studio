@@ -276,7 +276,7 @@ export function RequestOrder({ sender }: { sender: UserType }) {
           </Button>
         </div>
 
-        <div className="space-y-2 max-h-[140px] overflow-y-auto pr-1 no-scrollbar">
+        <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1 no-scrollbar">
           {redashOrders.length === 0 && !loadingOrders ? (
             <p className="text-center py-6 text-xs text-muted-foreground italic">Aguardando pedidos sem RT...</p>
           ) : redashOrders.map((order, idx) => (
