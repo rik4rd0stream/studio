@@ -15,7 +15,7 @@ import {
   AlertDialogHeader, 
   AlertDialogTitle 
 } from "@/components/ui/alert-dialog";
-import { BellRing, ExternalLink, X, MessageSquareQuote, Timer, AlertTriangle } from "lucide-react";
+import { BellRing, ExternalLink, X, MessageSquareQuote, Timer, AlertTriangle, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -62,7 +62,13 @@ export function PushListener({
       try {
         const { LocalNotifications } = await import('@capacitor/local-notifications');
         await LocalNotifications.schedule({
-          notifications: [{ title, body, id: Date.now(), channelId: 'orders-channel-v1', sound: 'default' }]
+          notifications: [{ 
+            title, 
+            body, 
+            id: Date.now(), 
+            channelId: 'orders-channel-v1', 
+            sound: 'default' 
+          }]
         });
       } catch (e) {}
     } 
@@ -75,18 +81,19 @@ export function PushListener({
     const interval = setInterval(async () => {
       const now = new Date().getTime();
       const firstRequest = pendingRequests[0];
+      if (!firstRequest) return;
+
       const createdTime = new Date(firstRequest.createdAt).getTime();
       const diff = (createdTime + EXPIRATION_TIME_MS) - now;
 
       // 1. Verificação de Expiração (Time Out)
       if (diff <= 0) {
         if (firstRequest.id) {
-          updateDoc(doc(db, "requests", firstRequest.id), {
+          updateDoc(doc(db, "orderRequests", firstRequest.id), {
             status: 'rejected',
             updatedAt: new Date().toISOString(),
             statusNote: "Time Out"
           });
-          toast({ variant: "destructive", title: "Time Out", description: "Solicitação expirada." });
         }
       } else {
         const mins = Math.floor(diff / 60000);
@@ -94,17 +101,15 @@ export function PushListener({
         setTimeLeft(`${mins}:${secs.toString().padStart(2, '0')}`);
       }
 
-      // 2. Verificação de Disponibilidade (Se o pedido ainda existe no Redash como sem RT)
+      // 2. Verificação de Disponibilidade (Se o pedido ainda existe no Redash)
       const redash = await redashService.fetchOrders();
       if (redash.success && redash.data) {
         const isStillAvailable = redash.data.some(o => String(o.order_id) === String(firstRequest.orderId));
         if (!isStillAvailable && firstRequest.id) {
-          updateDoc(doc(db, "requests", firstRequest.id), {
-            status: 'rejected',
-            updatedAt: new Date().toISOString(),
-            statusNote: "Indisponível"
+          updateDoc(doc(db, "orderRequests", firstRequest.id), {
+            status: 'unavailable',
+            updatedAt: new Date().toISOString()
           });
-          toast({ variant: "destructive", title: "Pedido Indisponível", description: "Já alocado para outro RT." });
         }
       }
     }, 2000);
@@ -116,7 +121,7 @@ export function PushListener({
     if (!user?.email || !user.notificationsEnabled) return;
 
     const q = query(
-      collection(db, "requests"),
+      collection(db, "orderRequests"),
       where("targetUserEmail", "==", user.email.toLowerCase().trim()),
       where("status", "==", "pending")
     );
@@ -131,7 +136,9 @@ export function PushListener({
       if (snapshot.docChanges().some(change => change.type === "added")) {
         setIsMinimized(false);
         const lastRequest = requests[0];
-        if (lastRequest) sendSystemNotification("NOVA SOLICITAÇÃO", `${lastRequest.senderName}: #${lastRequest.orderId}`);
+        if (lastRequest) {
+          sendSystemNotification("NOVA SOLICITAÇÃO", `${lastRequest.senderName}: #${lastRequest.orderId}`);
+        }
       }
     });
 
@@ -152,7 +159,7 @@ export function PushListener({
             <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-4 relative">
               <BellRing className="h-10 w-10 text-primary animate-bounce" />
               <div className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-lg">
-                <Timer className="h-3 w-3" /> {timeLeft}
+                <Clock className="h-3 w-3" /> {timeLeft}
               </div>
             </div>
             <AlertDialogTitle className="text-2xl font-bold text-primary">Novo Pedido!</AlertDialogTitle>
@@ -167,15 +174,31 @@ export function PushListener({
           <AlertDialogFooter className="flex-col gap-2 mt-6">
             <AlertDialogAction 
               onClick={() => {
-                const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(activeRequest?.command || '')}`;
-                window.open(whatsappUrl, '_blank');
-                updateDoc(doc(db, "requests", activeRequest?.id!), { status: 'accepted', updatedAt: new Date().toISOString() });
+                if (activeRequest?.id) {
+                  updateDoc(doc(db, "orderRequests", activeRequest.id), { 
+                    status: 'accepted', 
+                    updatedAt: new Date().toISOString() 
+                  });
+                  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(activeRequest.command)}`;
+                  window.open(whatsappUrl, '_blank');
+                }
               }} 
               className="w-full h-14 bg-primary text-white font-bold text-base gap-3 rounded-2xl"
             >
               DESPACHAR ({timeLeft}) <ExternalLink className="h-5 w-5" />
             </AlertDialogAction>
-            <Button variant="ghost" onClick={() => updateDoc(doc(db, "requests", activeRequest?.id!), { status: 'rejected', updatedAt: new Date().toISOString() })} className="h-10 text-destructive text-xs hover:bg-destructive/10 rounded-xl">
+            <Button 
+              variant="ghost" 
+              onClick={() => {
+                if (activeRequest?.id) {
+                  updateDoc(doc(db, "orderRequests", activeRequest.id), { 
+                    status: 'rejected', 
+                    updatedAt: new Date().toISOString() 
+                  });
+                }
+              }} 
+              className="h-10 text-destructive text-xs hover:bg-destructive/10 rounded-xl"
+            >
               REJEITAR
             </Button>
           </AlertDialogFooter>

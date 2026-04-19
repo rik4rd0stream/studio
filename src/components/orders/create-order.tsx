@@ -31,13 +31,11 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const COMMANDS = ["!!bundleBR", "!!rebr", "!!Br", "!!forzabr"];
 
-interface CreateOrderProps {
+export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }: { 
   onOrderCreated: (order: any) => void;
   initialOrderId?: string;
   onClearInitialId?: () => void;
-}
-
-export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }: CreateOrderProps) {
+}) {
   const { toast } = useToast();
   const db = useFirestore();
   const [loading, setLoading] = useState(false);
@@ -51,9 +49,7 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
   const [manualOrderId, setManualOrderId] = useState<string>(initialOrderId ? String(initialOrderId) : "");
 
   useEffect(() => {
-    if (initialOrderId) {
-      setManualOrderId(String(initialOrderId));
-    }
+    if (initialOrderId) setManualOrderId(String(initialOrderId));
   }, [initialOrderId]);
 
   const couriersQuery = useMemoFirebase(() => query(collection(db, 'entregadores')), [db]);
@@ -61,9 +57,7 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
 
   const redashOrders = useMemo(() => {
     return allOrders.filter(row => {
-      const isPoint9944 = Object.values(row).some(val => 
-        String(val).includes('9944')
-      );
+      const isPoint9944 = Object.values(row).some(val => String(val).includes('9944'));
       const isSinRT = Object.entries(row).some(([key, val]) => 
         key.toLowerCase().includes('trusted') && String(val).includes('Sin RT')
       );
@@ -75,7 +69,7 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
     if (!couriers) return [];
     return [...couriers]
       .filter(c => 
-        (c.nome || c.name)?.toLowerCase().includes(searchCourier.toLowerCase()) || 
+        (c.nome || c.name || '').toLowerCase().includes(searchCourier.toLowerCase()) || 
         String(c.id_motoboy || "").includes(searchCourier)
       )
       .sort((a, b) => (a.nome || a.name || "").localeCompare(b.nome || b.name || ""));
@@ -117,13 +111,6 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
     } as RedashOrder);
   };
 
-  const handlePaste = async () => {
-    try {
-      const text = await navigator.clipboard.readText();
-      if (text) setManualOrderId(text.trim());
-    } catch (err) {}
-  };
-
   const handleClearManualId = () => {
     setManualOrderId("");
     if (onClearInitialId) onClearInitialId();
@@ -142,19 +129,14 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
   return (
     <div className="space-y-6 animate-slide-up pb-32 max-w-xl mx-auto">
       {fetchError && (
-        <Alert variant="destructive" className="bg-destructive/10 border-destructive/20 text-destructive rounded-2xl animate-in fade-in">
+        <Alert variant="destructive" className="rounded-2xl border-none bg-destructive/10">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Erro de Conexão</AlertTitle>
-          <AlertDescription className="text-[10px] leading-tight opacity-80">
-            {fetchError}
-          </AlertDescription>
-          <Button variant="outline" size="sm" onClick={() => loadData()} className="mt-2 h-7 text-[9px] uppercase font-bold border-destructive/20 hover:bg-destructive/10 text-destructive">
-            Tentar Novamente
-          </Button>
+          <AlertTitle>Erro Redash</AlertTitle>
+          <AlertDescription className="text-[10px]">{fetchError}</AlertDescription>
         </Alert>
       )}
 
-      <div className="bg-card p-3 rounded-xl border shadow-sm space-y-2">
+      <div className="bg-card p-3 rounded-2xl border border-border/40 shadow-sm space-y-2">
         <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-1">Comando de Despacho</p>
         <div className="flex flex-wrap gap-1.5">
           {COMMANDS.map((cmd) => (
@@ -163,8 +145,8 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
               variant="default"
               onClick={() => setSelectedCommand(cmd)}
               className={cn(
-                "h-8 px-4 font-bold text-xs rounded-lg transition-all",
-                selectedCommand === cmd ? "bg-primary text-primary-foreground shadow-md" : "bg-muted text-muted-foreground"
+                "h-8 px-4 font-bold text-xs rounded-xl transition-all",
+                selectedCommand === cmd ? "bg-primary text-primary-foreground shadow-lg" : "bg-muted text-muted-foreground"
               )}
             >
               {cmd}
@@ -180,21 +162,20 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
           size="sm" 
           onClick={() => loadData()} 
           disabled={loading} 
-          className="h-6 text-[11px] font-bold text-blue-600 uppercase tracking-tight"
+          className="h-6 text-[11px] font-bold text-blue-600 uppercase"
         >
-          <RefreshCw className={cn("h-3.5 w-3.5 mr-1.5", loading && "animate-spin")} />
-          ATUALIZAR
+          <RefreshCw className={cn("h-3.5 w-3.5 mr-1.5", loading && "animate-spin")} /> ATUALIZAR
         </Button>
       </div>
 
       <div className="space-y-2">
         {loading && allOrders.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 gap-3">
+          <div className="flex flex-col items-center py-12 gap-3">
             <Loader2 className="h-6 w-6 animate-spin text-primary opacity-50" />
-            <p className="text-[10px] text-muted-foreground font-medium animate-pulse">Buscando dados...</p>
+            <p className="text-[10px] text-muted-foreground animate-pulse">BUSCANDO PEDIDOS...</p>
           </div>
         ) : redashOrders.length === 0 && !loading ? (
-          <div className="text-center py-8 bg-muted/20 rounded-xl border border-dashed flex flex-col items-center">
+          <div className="text-center py-8 bg-muted/20 rounded-2xl border border-dashed flex flex-col items-center">
             <Package className="h-6 w-6 text-muted-foreground/50 mb-2" />
             <h3 className="text-xs font-medium text-muted-foreground">Nenhum pedido pendente</h3>
           </div>
@@ -202,19 +183,19 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
           redashOrders.map((order, idx) => (
             <Card 
               key={idx} 
-              className="border border-border/40 hover:border-primary/40 cursor-pointer shadow-none overflow-hidden group"
+              className="border-none bg-card shadow-sm hover:shadow-md transition-all cursor-pointer rounded-2xl group"
               onClick={() => handleOpenCourierSelection(order)}
             >
-              <CardContent className="p-3 space-y-1">
+              <CardContent className="p-4 space-y-1">
                 <div className="flex justify-between items-start">
-                  <h3 className="text-xs font-bold group-hover:text-primary transition-colors">{order.store_name}</h3>
+                  <h3 className="text-xs font-bold group-hover:text-primary">{order.store_name}</h3>
                   <div className="flex flex-col items-end">
-                    <span className="text-[9px] font-mono text-muted-foreground">#{order.order_id}</span>
+                    <span className="text-[9px] font-mono font-bold text-muted-foreground">#{order.order_id}</span>
                     <span className="text-[8px] text-primary font-bold uppercase">{order.estado_detallado_actual}</span>
                   </div>
                 </div>
                 <div className="flex items-start gap-1.5 text-muted-foreground">
-                  <MapPin className="h-3 w-3 text-primary shrink-0" />
+                  <MapPin className="h-3.5 w-3.5 text-primary shrink-0" />
                   <p className="text-[10px] font-medium leading-tight">{order.direccion_entrega}</p>
                 </div>
               </CardContent>
@@ -224,76 +205,80 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
       </div>
 
       <form onSubmit={handleManualSubmit} className="pt-6 space-y-3">
-        <div className="relative group">
+        <div className="relative">
           <Input 
             placeholder="ID DO PEDIDO" 
             value={manualOrderId}
             onChange={(e) => setManualOrderId(e.target.value)}
-            className="h-12 text-center text-lg font-bold tracking-widest rounded-xl shadow-sm uppercase pr-12"
+            className="h-14 text-center text-xl font-bold tracking-widest rounded-2xl border-none bg-muted/50 shadow-inner pr-12"
           />
-          {String(manualOrderId || "").trim() !== "" && (
+          {manualOrderId && (
             <Button
               type="button"
               variant="ghost"
               size="icon"
               onClick={handleClearManualId}
-              className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full text-muted-foreground hover:text-destructive transition-colors"
+              className="absolute right-3 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full text-muted-foreground hover:text-destructive"
             >
               <X className="h-4 w-4" />
             </Button>
           )}
         </div>
-        <div className="grid grid-cols-2 gap-2">
-          <Button type="button" variant="outline" onClick={handlePaste} className="h-11 font-bold text-[10px] uppercase text-primary border-primary/20 rounded-xl">
-            <ClipboardPaste className="h-3.5 w-3.5 mr-2" /> Colar Manual
+        <div className="grid grid-cols-2 gap-3">
+          <Button type="button" variant="outline" onClick={async () => {
+            const text = await navigator.clipboard.readText();
+            if (text) setManualOrderId(text.trim());
+          }} className="h-12 font-bold text-[10px] uppercase rounded-2xl">
+            <ClipboardPaste className="h-4 w-4 mr-2" /> Colar ID
           </Button>
-          <Button 
-            type="submit" 
-            disabled={!String(manualOrderId || "").trim()} 
-            className="h-11 font-bold text-[10px] uppercase rounded-xl"
-          >
-            Prosseguir <ArrowRight className="h-3.5 w-3.5 ml-2" />
+          <Button type="submit" disabled={!manualOrderId.trim()} className="h-12 font-bold text-[10px] uppercase rounded-2xl shadow-lg">
+            Prosseguir <ArrowRight className="h-4 w-4 ml-2" />
           </Button>
         </div>
       </form>
 
       <Dialog open={isCourierDialogOpen} onOpenChange={setIsCourierDialogOpen}>
         <DialogContent 
-          className="max-w-md rounded-2xl overflow-hidden p-0 border-none shadow-2xl"
+          className="max-w-md rounded-3xl p-0 border-none shadow-2xl overflow-hidden"
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
-          <DialogHeader className="p-5 pb-2">
-            <DialogTitle>Despachar para:</DialogTitle>
-            <DialogTitle className="text-xs">Pedido <span className="font-bold">#{selectedOrder?.order_id}</span></DialogTitle>
+          <DialogHeader className="p-6 pb-2">
+            <DialogTitle className="text-xl">Despachar Pedido</DialogTitle>
+            <DialogTitle className="text-xs text-muted-foreground font-mono">#{selectedOrder?.order_id}</DialogTitle>
           </DialogHeader>
-          <div className="px-5 py-2">
+          <div className="px-6 py-2">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <Input placeholder="Buscar motoboy..." className="pl-9 h-9 text-sm" value={searchCourier} onChange={(e) => setSearchCourier(e.target.value)} />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input 
+                placeholder="Buscar motoboy..." 
+                className="pl-9 h-11 text-sm bg-muted/30 border-none rounded-xl" 
+                value={searchCourier} 
+                onChange={(e) => setSearchCourier(e.target.value)} 
+              />
             </div>
           </div>
-          <div className="flex-1 overflow-y-auto px-5 py-4 max-h-[50vh]">
+          <div className="px-6 py-4 max-h-[50vh] overflow-y-auto">
             {loadingCouriers ? (
               <Loader2 className="h-8 w-8 animate-spin mx-auto my-4 text-primary opacity-30" />
             ) : (
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-3 gap-3">
                 {filteredCouriers.map((c) => (
                   <Button 
                     key={c.id} 
                     variant="ghost" 
-                    className="flex flex-col items-center justify-center h-20 p-2 hover:bg-primary/5 group border border-transparent hover:border-primary/10 rounded-xl transition-all" 
+                    className="flex flex-col items-center justify-center h-24 p-2 hover:bg-primary/10 rounded-2xl border-2 border-transparent hover:border-primary/20 transition-all group" 
                     onClick={() => handleGenerateCommand(c.id_motoboy)}
                   >
                     <p className="font-bold text-sm leading-tight text-center truncate w-full group-hover:text-primary">
-                      {(c.nome || c.name)?.split(' ')[0]}
+                      {(c.nome || c.name || '').split(' ')[0]}
                     </p>
-                    <p className="text-[10px] text-muted-foreground font-mono mt-1 opacity-70">{c.id_motoboy}</p>
+                    <p className="text-[10px] text-muted-foreground font-mono mt-1 font-bold">RT {c.id_motoboy}</p>
                   </Button>
                 ))}
               </div>
             )}
             {filteredCouriers.length === 0 && !loadingCouriers && (
-              <p className="text-center py-4 text-muted-foreground text-[10px] italic">Nenhum motoboy encontrado.</p>
+              <p className="text-center py-8 text-muted-foreground text-xs italic">Nenhum motoboy encontrado.</p>
             )}
           </div>
         </DialogContent>
