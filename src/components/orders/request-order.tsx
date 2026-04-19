@@ -17,7 +17,8 @@ import {
   X,
   Clock,
   CheckCircle2,
-  XCircle
+  XCircle,
+  Timer
 } from "lucide-react";
 import { redashService, RedashOrder } from "@/lib/api/redash-service";
 import { useToast } from "@/hooks/use-toast";
@@ -36,12 +37,14 @@ import { User, OrderRequest } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 
 const COMMANDS = ["!!bundleBR", "!!rebr", "!!Br", "!!forzabr"];
+const EXPIRATION_TIME_MS = 120000; // 2 minutos
 
 export function RequestOrder({ sender }: { sender: User }) {
   const { toast } = useToast();
   const db = useFirestore();
   const [loading, setLoading] = useState(false);
   const [allOrders, setAllOrders] = useState<RedashOrder[]>([]);
+  const [currentTime, setCurrentTime] = useState(Date.now());
   
   const [selectedCommand, setSelectedCommand] = useState("!!bundleBR");
   const [selectedOrder, setSelectedOrder] = useState<RedashOrder | null>(null);
@@ -54,14 +57,18 @@ export function RequestOrder({ sender }: { sender: User }) {
   const [searchUser, setSearchUser] = useState("");
   const [manualOrderId, setManualOrderId] = useState("");
 
-  // Listener para o histórico de solicitações do remetente
+  // Timer global para atualizar os cronômetros na tela
+  useEffect(() => {
+    const interval = setInterval(() => setCurrentTime(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   const historyQuery = useMemoFirebase(() => query(
     collection(db, 'requests'),
     where('senderEmail', '==', sender.email.toLowerCase().trim())
   ), [db, sender.email]);
   const { data: historyData } = useCollection<OrderRequest>(historyQuery);
 
-  // Ordenação manual no cliente - Limitado aos últimos 3
   const history = useMemo(() => {
     if (!historyData) return [];
     return [...historyData]
@@ -169,14 +176,35 @@ export function RequestOrder({ sender }: { sender: User }) {
       });
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
+  const formatTimeLeft = (createdAt: string) => {
+    const createdTime = new Date(createdAt).getTime();
+    const diff = (createdTime + EXPIRATION_TIME_MS) - currentTime;
+    if (diff <= 0) return "Expirado";
+    const mins = Math.floor(diff / 60000);
+    const secs = Math.floor((diff % 60000) / 1000);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const getStatusBadge = (req: OrderRequest) => {
+    switch (req.status) {
       case 'accepted':
         return <Badge className="bg-green-500 text-white border-none gap-1 px-2 h-5 text-[9px] uppercase"><CheckCircle2 className="h-2.5 w-2.5" /> ACEITO</Badge>;
       case 'rejected':
-        return <Badge className="bg-red-500 text-white border-none gap-1 px-2 h-5 text-[9px] uppercase"><XCircle className="h-2.5 w-2.5" /> RECUSADO</Badge>;
+        return <Badge className="bg-red-500 text-white border-none gap-1 px-2 h-5 text-[9px] uppercase"><XCircle className="h-2.5 w-2.5" /> {req.id?.includes('exp') ? 'EXPIRADO' : 'RECUSADO'}</Badge>;
       default:
-        return <Badge variant="outline" className="border-amber-500 text-amber-600 gap-1 px-2 h-5 text-[9px] uppercase bg-amber-50 dark:bg-amber-950/20"><Clock className="h-2.5 w-2.5 animate-pulse" /> PENDENTE</Badge>;
+        const timeLeft = formatTimeLeft(req.createdAt);
+        return (
+          <div className="flex flex-col items-end gap-1">
+            <Badge variant="outline" className="border-amber-500 text-amber-600 gap-1 px-2 h-5 text-[9px] uppercase bg-amber-50 dark:bg-amber-950/20">
+              <Clock className="h-2.5 w-2.5 animate-pulse" /> PENDENTE
+            </Badge>
+            {timeLeft !== "Expirado" && (
+              <span className="text-[8px] font-bold text-red-500 flex items-center gap-0.5 animate-pulse">
+                <Timer className="h-2 w-2" /> {timeLeft}
+              </span >
+            )}
+          </div>
+        );
     }
   };
 
@@ -199,7 +227,7 @@ export function RequestOrder({ sender }: { sender: User }) {
                   </div>
                   <p className="text-[9px] text-muted-foreground truncate">Operador: {req.targetUserEmail}</p>
                 </div>
-                {getStatusBadge(req.status)}
+                {getStatusBadge(req)}
               </div>
             ))}
           </CardContent>
@@ -210,7 +238,7 @@ export function RequestOrder({ sender }: { sender: User }) {
         <BellRing className="h-5 w-5 text-primary" />
         <div>
           <h3 className="text-sm font-bold text-primary">Solicitação Push</h3>
-          <p className="text-[10px] text-muted-foreground">O Redash removerá os pedidos quando forem despachados.</p>
+          <p className="text-[10px] text-muted-foreground">Expiração automática em 2 minutos para pedidos não atendidos.</p>
         </div>
       </div>
 

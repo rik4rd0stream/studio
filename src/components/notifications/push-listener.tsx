@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useFirestore } from "@/firebase";
 import { collection, query, where, onSnapshot, doc, updateDoc } from "firebase/firestore";
 import { User, OrderRequest } from "@/lib/types";
@@ -15,11 +15,13 @@ import {
   AlertDialogHeader, 
   AlertDialogTitle 
 } from "@/components/ui/alert-dialog";
-import { BellRing, ExternalLink, X, MessageSquareQuote } from "lucide-react";
+import { BellRing, ExternalLink, X, MessageSquareQuote, Timer } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Capacitor } from '@capacitor/core';
+
+const EXPIRATION_TIME_MS = 2 * 60 * 1000; // 2 minutos
 
 export function PushListener({ 
   user, 
@@ -32,39 +34,30 @@ export function PushListener({
   const { toast } = useToast();
   const [pendingRequests, setPendingRequests] = useState<OrderRequest[]>([]);
   const [isMinimized, setIsMinimized] = useState(false);
+  const [timeLeft, setTimeLeft] = useState<string>("");
 
   // Configuração inicial de notificações (Apenas no Android)
   useEffect(() => {
     const setupNotifications = async () => {
       if (Capacitor.isNativePlatform()) {
         try {
-          // Import dinâmico para evitar erro de build na Vercel
           const { LocalNotifications } = await import('@capacitor/local-notifications');
-
-          // 1. Checar e Pedir Permissão
           const permStatus = await LocalNotifications.checkPermissions();
           if (permStatus.display === 'prompt' || permStatus.display === 'default') {
             await LocalNotifications.requestPermissions();
           }
 
-          // 2. CRIAR CANAL (Obrigatório para Android aparecer na barra)
           await LocalNotifications.createChannel({
             id: 'orders-channel-v1',
             name: 'Novos Pedidos Rappi',
             description: 'Alertas críticos para novos despachos de pedidos',
-            importance: 5, // Prioridade Máxima
-            visibility: 1, // Público
+            importance: 5,
+            visibility: 1,
             vibration: true,
             sound: 'default'
           });
-          
-          console.log("Canal de notificações configurado com sucesso.");
         } catch (e) {
           console.error("Erro ao configurar notificações nativas:", e);
-        }
-      } else if (typeof window !== 'undefined' && "Notification" in window) {
-        if (Notification.permission === "default") {
-          Notification.requestPermission();
         }
       }
     };
@@ -72,11 +65,9 @@ export function PushListener({
   }, []);
 
   const sendSystemNotification = useCallback(async (title: string, body: string) => {
-    // 1. Prioridade: Notificação Nativa (Aparece na barra do Android)
     if (Capacitor.isNativePlatform()) {
       try {
         const { LocalNotifications } = await import('@capacitor/local-notifications');
-        
         await LocalNotifications.schedule({
           notifications: [
             {
@@ -92,15 +83,43 @@ export function PushListener({
         console.error("Falha na notificação nativa:", e);
       }
     } 
-    // 2. Backup: Notificação Web (Navegador Desktop)
     else if (typeof window !== 'undefined' && "Notification" in window && Notification.permission === "granted") {
       new Notification(title, {
         body,
-        icon: "/favicon.ico",
-        badge: "/favicon.ico"
+        icon: "/favicon.ico"
       });
     }
   }, []);
+
+  // Monitor de expiração e timer
+  useEffect(() => {
+    if (pendingRequests.length === 0) return;
+
+    const interval = setInterval(() => {
+      const now = new Date().getTime();
+      const firstRequest = pendingRequests[0];
+      const createdTime = new Date(firstRequest.createdAt).getTime();
+      const diff = (createdTime + EXPIRATION_TIME_MS) - now;
+
+      if (diff <= 0) {
+        // Expira o pedido no Firestore
+        if (firstRequest.id) {
+          updateDoc(doc(db, "requests", firstRequest.id), {
+            status: 'rejected',
+            updatedAt: new Date().toISOString(),
+            expirationNote: "Expirado por inatividade (2min)"
+          });
+          toast({ variant: "destructive", title: "Pedido Expirado", description: "O tempo de 2 minutos acabou." });
+        }
+      } else {
+        const mins = Math.floor(diff / 60000);
+        const secs = Math.floor((diff % 60000) / 1000);
+        setTimeLeft(`${mins}:${secs.toString().padStart(2, '0')}`);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [pendingRequests, db, toast]);
 
   useEffect(() => {
     if (!user || !user.email || !user.notificationsEnabled) return;
@@ -130,7 +149,6 @@ export function PushListener({
 
       if (snapshot.docChanges().some(change => change.type === "added")) {
         setIsMinimized(false);
-        
         try {
           const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
           audio.play().catch(() => {});
@@ -188,8 +206,11 @@ export function PushListener({
           </button>
           
           <AlertDialogHeader className="items-center text-center">
-            <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-4 animate-bounce">
-              <BellRing className="h-10 w-10 text-primary" />
+            <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-4 relative">
+              <BellRing className="h-10 w-10 text-primary animate-bounce" />
+              <div className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-lg">
+                <Timer className="h-3 w-3" /> {timeLeft}
+              </div>
             </div>
             <AlertDialogTitle className="text-2xl font-bold text-primary">Novo Pedido!</AlertDialogTitle>
             <AlertDialogDescription className="text-sm">
@@ -206,7 +227,7 @@ export function PushListener({
               onClick={() => handleAccept(activeRequest)} 
               className="w-full h-14 bg-primary hover:bg-primary/90 text-white font-bold text-base gap-3 rounded-2xl shadow-lg shadow-primary/20"
             >
-              DESPACHAR AGORA <ExternalLink className="h-5 w-5" />
+              DESPACHAR AGORA ({timeLeft}) <ExternalLink className="h-5 w-5" />
             </AlertDialogAction>
             
             <div className="grid grid-cols-2 gap-2 w-full">
