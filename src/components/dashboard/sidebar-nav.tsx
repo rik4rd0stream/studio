@@ -13,7 +13,6 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import Image from "next/image";
 
 interface SidebarNavProps {
   currentView: AppView;
@@ -65,25 +64,7 @@ export function SidebarNav({ currentView, setView, user, onLogout }: SidebarNavP
   return (
     <div className="flex flex-col h-full bg-card border-r" data-sidebar="sidebar">
       <div className="p-6">
-        <div className="flex items-center gap-3">
-          <div className="bg-primary/5 p-1 rounded-lg">
-            <Image 
-              src="/logo.png" 
-              alt="Robot Logo" 
-              width={38} 
-              height={38} 
-              className="animate-pulse object-contain"
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                target.src = "https://picsum.photos/seed/robot-sidebar/38/38";
-              }}
-            />
-          </div>
-          <div>
-            <h2 className="text-lg font-headline font-bold text-primary tracking-tight leading-none">Rappi Commander</h2>
-            <p className="text-[9px] font-bold text-primary/80 uppercase tracking-tighter mt-1">Robot ta on</p>
-          </div>
-        </div>
+        <h2 className="text-lg font-headline font-bold text-primary tracking-tight leading-none">Rappi Commander</h2>
         <div className="mt-4 px-1">
           <p className="text-xs text-muted-foreground font-medium">Olá, <span className="text-foreground font-bold">{firstName}</span></p>
         </div>

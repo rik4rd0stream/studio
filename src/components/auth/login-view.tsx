@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
-import Image from "next/image";
 
 interface LoginViewProps {
   onLogin: (email: string, pass: string) => void;
@@ -31,23 +30,6 @@ export function LoginView({ onLogin }: LoginViewProps) {
     <div className="flex min-h-screen items-center justify-center p-4 bg-background">
       <Card className="w-full max-w-md border-none shadow-none bg-transparent">
         <CardHeader className="text-center space-y-1">
-          <div className="flex flex-col items-center gap-2 mb-2">
-            <div className="bg-primary/5 p-4 rounded-full overflow-hidden flex items-center justify-center w-28 h-28 mb-2">
-              <Image 
-                src="/logo.png" 
-                alt="Rappi Commander Logo" 
-                width={100} 
-                height={100} 
-                className="object-contain animate-pulse"
-                priority
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.src = "https://picsum.photos/seed/robot-login/100/100";
-                }}
-              />
-            </div>
-            <p className="text-sm font-bold text-primary uppercase tracking-widest">Robot ta on</p>
-          </div>
           <CardTitle className="text-4xl font-headline font-bold text-primary tracking-tight">
             Rappi Commander
           </CardTitle>

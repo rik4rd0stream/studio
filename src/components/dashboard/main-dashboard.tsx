@@ -12,7 +12,6 @@ import { ActiveOrders } from "@/components/orders/active-orders";
 import { RequestOrder } from "@/components/orders/request-order";
 import { Registration } from "@/components/admin/registration";
 import { PushListener } from "@/components/notifications/push-listener";
-import Image from "next/image";
 import { 
   Sheet, 
   SheetContent, 
@@ -116,20 +115,7 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
               </Sheet>
             </div>
 
-            <div className="flex items-center gap-1">
-              <Image 
-                src="/logo.png" 
-                alt="RC" 
-                width={32} 
-                height={32} 
-                className="animate-pulse object-contain"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.src = "https://picsum.photos/seed/robot-icon/32/32";
-                }}
-              />
-              <div className="hidden sm:block font-bold text-primary text-xl tracking-tighter">RC</div>
-            </div>
+            <div className="font-bold text-primary text-xl tracking-tighter">RC</div>
             
             <div className="flex gap-1.5 items-center">
               <Button 
