@@ -2,13 +2,13 @@
 'use server';
 
 /**
- * @fileOverview Ponte de Dados (Data Bridge) via Server Actions.
- * Garante que o Android consiga ler e gravar dados ignorando bloqueios locais.
+ * @fileOverview Ponte de Dados (Data Bridge) via Server Actions com suporte a Logs.
  */
 
 import { 
   collection, 
   setDoc,
+  addDoc,
   deleteDoc, 
   doc, 
   getDocs,
@@ -24,28 +24,31 @@ export async function getCollectionBridge(collectionName: string) {
   try {
     const db = getDb();
     const colRef = collection(db, collectionName);
-    
-    // Removido o orderBy fixo para evitar que documentos sem o campo 'updatedAt' sejam ocultados
     const snapshot = await getDocs(colRef);
     
-    const data = snapshot.docs.map(doc => {
-      const docData = doc.data();
-      return {
-        id: doc.id,
-        ...docData,
-        createdAt: docData.createdAt || new Date().toISOString(),
-        updatedAt: docData.updatedAt || new Date().toISOString()
-      };
-    });
-    
-    // Ordenação manual para garantir que os mais novos apareçam primeiro sem quebrar a consulta
-    data.sort((a: any, b: any) => {
-      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
-    });
+    const data = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
     
     return { success: true, data };
   } catch (error: any) {
     console.error(`Bridge Read Error (${collectionName}):`, error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function addDocumentBridge(collectionName: string, data: any) {
+  try {
+    const db = getDb();
+    const colRef = collection(db, collectionName);
+    const docRef = await addDoc(colRef, {
+      ...data,
+      createdAt: data.createdAt || new Date().toISOString()
+    });
+    return { success: true, id: docRef.id };
+  } catch (error: any) {
+    console.error(`Bridge Add Error (${collectionName}):`, error.message);
     return { success: false, error: error.message };
   }
 }

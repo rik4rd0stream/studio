@@ -1,260 +1,42 @@
+
 {
   "entities": {
     "UserProfile": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "UserProfile",
       "type": "object",
-      "description": "Represents a user of the Rappi Commander system, including their profile details and access role. Linked to Firebase Authentication for secure login and managed by users with 'master' roles.",
+      "description": "Represents a user of the Rappi Commander system, including their profile details and access role.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the UserProfile entity, directly corresponding to the Firebase Authentication User UID."
-        },
-        "name": {
-          "type": "string",
-          "description": "The full name of the user."
-        },
-        "email": {
-          "type": "string",
-          "description": "The email address of the user, used for authentication and communication.",
-          "format": "email"
-        },
-        "role": {
-          "type": "string",
-          "description": "The access role of the user within the system. 'master' users have administrative access, while 'normal' users have standard access.",
-          "items": {
-            "type": "string"
-          }
-        },
-        "preferredTheme": {
-          "type": "string",
-          "description": "The user's preferred theme for the application interface (e.g., 'light', 'dark', 'system'), ensuring consistent visual comfort.",
-          "items": {
-            "type": "string"
-          }
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the user profile was created.",
-          "format": "date-time"
-        },
-        "updatedAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the user profile was last updated.",
-          "format": "date-time"
-        }
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "role": { "type": "string" },
+        "notificationsEnabled": { "type": "boolean" },
+        "hasRequestAccess": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": [
-        "id",
-        "name",
-        "email",
-        "role",
-        "createdAt",
-        "updatedAt"
-      ]
+      "required": ["id", "name", "email", "role", "createdAt", "updatedAt"]
     },
-    "DeliveryDriver": {
+    "OperationLog": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "DeliveryDriver",
+      "title": "OperationLog",
       "type": "object",
-      "description": "Represents a delivery driver registered in the Rappi Commander system, including their profile details and current availability status. Linked to Firebase Authentication for secure login.",
+      "description": "Logs system actions like copying IDs or sending 'Cheguei' commands for audit purposes.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the DeliveryDriver entity, directly corresponding to the Firebase Authentication User UID for the driver."
-        },
-        "name": {
-          "type": "string",
-          "description": "The full name of the delivery driver."
-        },
-        "email": {
-          "type": "string",
-          "description": "The email address of the delivery driver, used for authentication and communication.",
-          "format": "email"
-        },
-        "status": {
-          "type": "string",
-          "description": "The current operational status of the delivery driver (e.g., 'available' for accepting orders, 'on_delivery' when assigned, 'offline').",
-          "items": {
-            "type": "string"
-          }
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the delivery driver profile was created.",
-          "format": "date-time"
-        },
-        "updatedAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the delivery driver profile was last updated.",
-          "format": "date-time"
-        }
+        "id": { "type": "string" },
+        "orderId": { "type": "string" },
+        "rtId": { "type": "string" },
+        "action": { "type": "string", "enum": ["copy_id", "cheguei"] },
+        "userName": { "type": "string" },
+        "userEmail": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
       },
-      "required": [
-        "id",
-        "name",
-        "email",
-        "status",
-        "createdAt",
-        "updatedAt"
-      ]
-    },
-    "Order": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Order",
-      "type": "object",
-      "description": "Represents a delivery order within the Rappi Commander system, tracking all details from creation to final delivery, including status and assigned driver.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Order entity."
-        },
-        "creatorUserId": {
-          "type": "string",
-          "description": "Reference to the UserProfile who created this order. (Relationship: UserProfile 1:N Order)"
-        },
-        "deliveryDriverId": {
-          "type": "string",
-          "description": "Reference to the DeliveryDriver assigned to this order. Null if not yet assigned. (Relationship: DeliveryDriver 0..1:N Order)"
-        },
-        "pickupAddress": {
-          "type": "string",
-          "description": "The full street address where items should be picked up."
-        },
-        "pickupLatitude": {
-          "type": "number",
-          "description": "The geographic latitude coordinate for the pickup location, used for mapping and navigation."
-        },
-        "pickupLongitude": {
-          "type": "number",
-          "description": "The geographic longitude coordinate for the pickup location, used for mapping and navigation."
-        },
-        "deliveryAddress": {
-          "type": "string",
-          "description": "The full street address where items should be delivered."
-        },
-        "deliveryLatitude": {
-          "type": "number",
-          "description": "The geographic latitude coordinate for the delivery location, used for mapping and navigation."
-        },
-        "deliveryLongitude": {
-          "type": "number",
-          "description": "The geographic longitude coordinate for the delivery location, used for mapping and navigation."
-        },
-        "orderItemIds": {
-          "type": "array",
-          "description": "References to OrderItem entities belonging to this order, detailing the specific items. (Relationship: Order 1:N OrderItem)",
-          "items": {
-            "type": "string"
-          }
-        },
-        "specialInstructions": {
-          "type": "string",
-          "description": "Any additional special instructions or notes for the entire order, such as gate codes or delivery preferences."
-        },
-        "status": {
-          "type": "string",
-          "description": "The current status of the order, indicating its progression through the delivery process.",
-          "items": {
-            "type": "string"
-          }
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the order was created in the system.",
-          "format": "date-time"
-        },
-        "acceptedAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the order was accepted by a delivery driver. Null if not yet accepted.",
-          "format": "date-time"
-        },
-        "pickedUpAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the order items were picked up by the driver. Null if not yet picked up.",
-          "format": "date-time"
-        },
-        "deliveredAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the order was successfully delivered to the recipient. Null if not yet delivered.",
-          "format": "date-time"
-        },
-        "cancelledAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the order was cancelled. Null if not cancelled.",
-          "format": "date-time"
-        },
-        "aiRefinementNotes": {
-          "type": "string",
-          "description": "Notes or suggestions generated by the AI refinement tool for this order, enhancing clarity or detail. Null if AI tool was not used or did not provide notes."
-        }
-      },
-      "required": [
-        "id",
-        "creatorUserId",
-        "pickupAddress",
-        "pickupLatitude",
-        "pickupLongitude",
-        "deliveryAddress",
-        "deliveryLatitude",
-        "deliveryLongitude",
-        "orderItemIds",
-        "status",
-        "createdAt"
-      ]
-    },
-    "OrderItem": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "OrderItem",
-      "type": "object",
-      "description": "Represents a specific item within an order, detailing its name, quantity, and any special notes. Linked to a parent Order entity.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the OrderItem entity."
-        },
-        "orderId": {
-          "type": "string",
-          "description": "Reference to the Order entity this item belongs to. (Relationship: Order 1:N OrderItem)"
-        },
-        "name": {
-          "type": "string",
-          "description": "The name or description of the item in the order."
-        },
-        "quantity": {
-          "type": "number",
-          "description": "The numerical quantity of this specific item."
-        },
-        "notes": {
-          "type": "string",
-          "description": "Any specific notes or preferences for this individual item, such as size, color, or preparation instructions."
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp indicating when this order item was created.",
-          "format": "date-time"
-        },
-        "updatedAt": {
-          "type": "string",
-          "description": "Timestamp indicating when this order item was last updated.",
-          "format": "date-time"
-        }
-      },
-      "required": [
-        "id",
-        "orderId",
-        "name",
-        "quantity",
-        "createdAt",
-        "updatedAt"
-      ]
+      "required": ["orderId", "action", "userEmail", "timestamp"]
     }
   },
   "auth": {
-    "providers": [
-      "password",
-      "anonymous"
-    ]
+    "providers": ["password", "anonymous"]
   },
   "firestore": {
     "structure": [
@@ -262,87 +44,18 @@
         "path": "/userProfiles/{userId}",
         "definition": {
           "entityName": "UserProfile",
-          "schema": {
-            "$ref": "#/backend/entities/UserProfile"
-          },
-          "description": "Stores individual user profiles, where the document ID (`userId`) is the Firebase Authentication UID. Contains user details and their general role. Access for 'master' users is managed by the separate 'roles_master' collection. Includes denormalized 'id' field for authorization independence.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique Firebase Authentication User ID (UID) of the user."
-            }
-          ]
+          "schema": { "$ref": "#/backend/entities/UserProfile" },
+          "description": "User profile data."
         }
       },
       {
-        "path": "/deliveryDrivers/{driverId}",
+        "path": "/operationLogs/{logId}",
         "definition": {
-          "entityName": "DeliveryDriver",
-          "schema": {
-            "$ref": "#/backend/entities/DeliveryDriver"
-          },
-          "description": "Stores profiles for delivery drivers, where the document ID (`driverId`) is the Firebase Authentication UID of the driver. Includes their status and other relevant details. Includes denormalized 'id' field for authorization independence.",
-          "params": [
-            {
-              "name": "driverId",
-              "description": "The unique Firebase Authentication User ID (UID) of the delivery driver."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/orders/{orderId}",
-        "definition": {
-          "entityName": "Order",
-          "schema": {
-            "$ref": "#/backend/entities/Order"
-          },
-          "description": "Stores details of individual delivery orders. This collection includes 'creatorUserId' and 'deliveryDriverId' fields denormalized directly into the document for authorization independence, allowing rules to evaluate access without parent lookups. The 'status' field explicitly models the order's state.",
-          "params": [
-            {
-              "name": "orderId",
-              "description": "The unique identifier for the order."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/orders/{orderId}/orderItems/{orderItemId}",
-        "definition": {
-          "entityName": "OrderItem",
-          "schema": {
-            "$ref": "#/backend/entities/OrderItem"
-          },
-          "description": "Stores individual items belonging to a specific order. To ensure Authorization Independence (Mandate A), this subcollection's documents MUST include denormalized 'creatorUserId' and 'deliveryDriverId' (copied from the parent Order) to enable direct access checks by security rules. This avoids 'get()' calls to the parent 'Order' document for authorization.",
-          "params": [
-            {
-              "name": "orderId",
-              "description": "The unique identifier of the parent order."
-            },
-            {
-              "name": "orderItemId",
-              "description": "The unique identifier for the order item."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/roles_master/{userId}",
-        "definition": {
-          "entityName": "UserProfile",
-          "schema": {
-            "$ref": "#/backend/entities/UserProfile"
-          },
-          "description": "A sentinel collection used for Database Access Control (DBAC) to grant 'master' administrative privileges. The existence of a document at `{userId}` (where `userId` is the Firebase Auth UID) indicates that the user has master permissions. This supports 'Existence over Content' for global roles and ensures authorization independence.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique Firebase Authentication User ID (UID) of the user granted 'master' role."
-            }
-          ]
+          "entityName": "OperationLog",
+          "schema": { "$ref": "#/backend/entities/OperationLog" },
+          "description": "Historical log of actions performed in the Active Orders view."
         }
       }
-    ],
-    "reasoning": "The recommended Firestore structure for Rappi Commander prioritizes security, scalability, and debuggability following the core design principles. It employs structural segregation, clear access modeling, and crucial denormalization for authorization independence. \n\n**Authorization Independence (Mandate A):**\n1.  **UserProfile and DeliveryDriver:** Documents in `/userProfiles/{userId}` and `/deliveryDrivers/{driverId}` directly contain their `id` which corresponds to the Firebase Authentication UID (`request.auth.uid`). Authorization rules for these collections will directly compare `request.auth.uid` with the document `id`, or check against the `/roles_master/{userId}` collection, avoiding any `get()` calls to parent or related documents for basic access.\n2.  **Order:** Documents in `/orders/{orderId}` contain `creatorUserId` and `deliveryDriverId` fields. This denormalization means that rules for accessing an order can directly check `request.auth.uid` against these fields within the `Order` document itself, eliminating the need to perform `get()` operations on separate user or driver profiles to determine access.\n3.  **OrderItem:** Documents in `/orders/{orderId}/orderItems/{orderItemId}` *will include denormalized `creatorUserId` and `deliveryDriverId` fields, copied from their parent `Order` document*. This is a critical application of Mandate A. By denormalizing these fields into each `OrderItem`, authorization rules can evaluate access for an `OrderItem` purely based on its own data and `request.auth.uid`, without needing a `get()` call to its parent `Order`. This ensures atomic operations and simplifies rule debugging.\n4.  **Master Role:** The `/roles_master/{userId}` collection uses **existence over content** (Mandate C.4). A user is a master if a document exists with their UID. Rules check `exists(/roles_master/$(request.auth.uid))`, which is an atomic, independent operation.\n\n**QAPs (Rules are not Filters):**\n1.  **userProfiles:** 'Master' users (`exists(/roles_master/$(request.auth.uid))`) can list and manage all user profiles. Regular users can only read/update their own profile, enforced by rules `allow read, update: if request.auth.uid == userId;`. This prevents regular users from listing all profiles.\n2.  **deliveryDrivers:** 'Master' users can list and manage all driver profiles. Individual drivers can only read/update their own profile. Rules will explicitly check `request.auth.uid == driverId` for self-management.\n3.  **orders:** `list` operations for non-master users will be secured by client-side queries containing `where('creatorUserId', '==', request.auth.uid)` or `where('deliveryDriverId', '==', request.auth.uid)`. The security rules will then enforce that `request.auth.uid` matches the respective denormalized field in the document being accessed, ensuring that only authorized documents are returned, and preventing unauthorized `list` access to the entire collection.\n4.  **orderItems:** Access to order items is governed by access to their parent order. Because `creatorUserId` and `deliveryDriverId` are denormalized into `OrderItem` documents, rules can directly check these fields during `list` operations within a specific order's subcollection, maintaining QAPs.\n\n**Structural Segregation (Mandate B):** Different entities with distinct security requirements (User Profiles, Delivery Drivers, Orders, Order Items, Master Roles) are stored in separate top-level collections or subcollections. For instance, `UserProfile` and `DeliveryDriver` are distinct entities with their own lifecycle and roles, thus residing in separate collections. The `roles_master` collection further segregates global role assignments for explicit access control.\n\n**Access Modeling (Mandate C):** Path-based ownership (`/userProfiles/{userId}`, `/deliveryDrivers/{driverId}`) is used for private data. Collaborative data like `Order`s use denormalized ownership fields (`creatorUserId`, `deliveryDriverId`). Global roles are managed by existence (`/roles_master/{userId}`).\n\nThis robust structure provides clear, efficient, and secure access patterns, making Firestore security rules straightforward to write and debug, and enabling scalable query patterns."
+    ]
   }
 }

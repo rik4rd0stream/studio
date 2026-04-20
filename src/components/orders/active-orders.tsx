@@ -7,10 +7,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { RefreshCw, Loader2, Package, User, Send, Settings2, ClipboardCopy, Zap, Cloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
+import { useFirestore, useCollection, useMemoFirebase, useUser } from "@/firebase";
 import { collection } from "firebase/firestore";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { addDocumentBridge } from "@/app/actions/firestore-bridge";
 import {
   Dialog,
   DialogContent,
@@ -26,6 +27,7 @@ interface ActiveOrdersProps {
 export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
   const { toast } = useToast();
   const db = useFirestore();
+  const { user } = useUser();
   const [loading, setLoading] = useState(false);
   const [allOrders, setAllOrders] = useState<RedashOrder[]>([]);
   
@@ -49,7 +51,22 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
     return () => clearInterval(interval);
   }, []);
 
-  const handleCopyAndGo = (id: any) => {
+  const recordLog = (orderId: string, rtId: string, action: 'copy_id' | 'cheguei') => {
+    if (!user) return;
+    
+    const logData = {
+      orderId,
+      rtId: rtId || "Nuvem",
+      action,
+      userName: user.name || "Operador",
+      userEmail: user.email,
+      timestamp: new Date().toISOString()
+    };
+    
+    addDocumentBridge('operationLogs', logData);
+  };
+
+  const handleCopyAndGo = (id: any, rtId: string) => {
     const stringId = String(id);
     navigator.clipboard.writeText(stringId).then(() => {
       toast({
@@ -57,6 +74,9 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
         description: `Código #${stringId} preparado para despacho.`,
         duration: 2000,
       });
+      
+      recordLog(stringId, rtId, 'copy_id');
+      
       if (onSelectOrder) {
         onSelectOrder(stringId);
       }
@@ -66,20 +86,19 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
   const handleForzaBr = (orderId: string, rtId: string) => {
     const command = `!!forzabr ${orderId} ${rtId}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(command)}`, '_blank');
+    
+    recordLog(orderId, rtId, 'cheguei');
   };
 
   const filteredOrders = useMemo(() => {
     return allOrders.filter(row => {
-      // Filtro estrito pelo point_id 9944
       const isPoint9944 = String(row.point_id || row.point || '').includes('9944');
       
       const isGeo = Object.entries(row).some(([key, val]) => 
         key.toLowerCase().includes('trusted') && String(val).includes('GEO⚡')
       );
-      const isExterno = String(row.estado_detallado_actual || "").includes('EXTERNO❌') || 
-                       Object.entries(row).some(([key, val]) => 
-                         key.toLowerCase().includes('trusted') && String(val).includes('EXTERNO❌')
-                       );
+      const isExterno = String(row.estado_detallado_actual || "").includes('EXTERNO❌');
+      
       return isPoint9944 && (isGeo || isExterno);
     });
   }, [allOrders]);
@@ -133,21 +152,22 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
             const courierName = getCourierName(rtId);
             const isNuvemSub = courierName === "Nuvem";
             const hasExterno = orders.some(o => String(o.estado_detallado_actual || "").includes('EXTERNO❌'));
+            const isCritical = isNuvemGroup || isNuvemSub || hasExterno;
             
             return (
               <Card key={rtId} className={cn(
                 "border border-border/60 shadow-sm overflow-hidden rounded-2xl transition-colors",
-                (isNuvemGroup || isNuvemSub || hasExterno) ? "bg-red-500/10 border-red-200/50" : "bg-card/80"
+                isCritical ? "bg-red-500/10 border-red-200/50" : "bg-card/80"
               )}>
                 <CardContent className="p-0">
                   <div className={cn(
                     "p-4 flex items-center justify-between border-b border-border/40",
-                    (isNuvemGroup || isNuvemSub || hasExterno) ? "bg-red-500/15" : "bg-muted/30"
+                    isCritical ? "bg-red-500/15" : "bg-muted/30"
                   )}>
                     <div className="flex items-center gap-3">
                       <div className={cn(
                         "w-8 h-8 rounded-full flex items-center justify-center",
-                        (isNuvemGroup || isNuvemSub || hasExterno) ? "bg-red-500/20" : "bg-primary/10"
+                        isCritical ? "bg-red-500/20" : "bg-primary/10"
                       )}>
                         {isNuvemGroup || isNuvemSub ? <Cloud className="h-4 w-4 text-red-600" /> : <User className="h-4 w-4 text-primary" />}
                       </div>
@@ -156,8 +176,8 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
                           {courierName}
                         </h3>
                         <p className={cn(
-                          "text-[10px] font-bold truncate max-w-[180px]",
-                          (isNuvemGroup || isNuvemSub || hasExterno) ? "text-red-700/70" : "text-muted-foreground"
+                          "text-[9px] font-bold truncate max-w-[180px]",
+                          isCritical ? "text-red-700/70" : "text-muted-foreground"
                         )}>
                           {isNuvemGroup ? "Sem RT Atribuído" : `RT: ${rtId}`}
                         </p>
@@ -170,14 +190,14 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
                         onClick={() => setManagingRt(rtId)}
                         className={cn(
                           "h-7 text-[9px] font-bold uppercase tracking-tight rounded-full border-primary/20 hover:bg-primary/5 gap-1",
-                          (isNuvemGroup || isNuvemSub || hasExterno) ? "text-red-700 border-red-200 hover:bg-red-200" : "text-primary"
+                          isCritical ? "text-red-700 border-red-200 hover:bg-red-200" : "text-primary"
                         )}
                       >
                         <Settings2 className="h-3 w-3" /> Gerenciar
                       </Button>
                       <div className={cn(
                         "w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold border",
-                        (isNuvemGroup || isNuvemSub || hasExterno) ? "bg-red-500/20 text-red-700 border-red-300" : "bg-blue-500/10 text-blue-600 border-blue-200"
+                        isCritical ? "bg-red-500/20 text-red-700 border-red-300" : "bg-blue-500/10 text-blue-600 border-blue-200"
                       )}>
                         {orders.length}
                       </div>
@@ -187,14 +207,13 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
                   <div className="p-3 space-y-2">
                     {orders.slice(0, 3).map((order, idx) => {
                       const isExterno = String(order.estado_detallado_actual || "").includes('EXTERNO❌');
-                      const highlightRed = isExterno;
                       
                       return (
                         <div 
                           key={idx} 
                           className={cn(
                             "p-3 rounded-xl border transition-all",
-                            highlightRed ? "bg-red-600/20 border-red-400 shadow-inner" : "bg-muted/10 border-border/40",
+                            isExterno ? "bg-red-600/20 border-red-400 shadow-inner" : "bg-muted/10 border-border/40",
                             "flex items-center justify-between"
                           )}
                         >
@@ -219,7 +238,7 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
                                 "h-8 w-8 rounded-full shadow-sm",
                                 isExterno ? "bg-red-600 hover:bg-red-700 text-white" : "bg-primary text-white hover:bg-primary/90"
                               )}
-                              onClick={() => handleCopyAndGo(order.order_id)}
+                              onClick={() => handleCopyAndGo(order.order_id, rtId)}
                             >
                               <Send className="h-3.5 w-3.5" />
                             </Button>
@@ -227,11 +246,6 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
                         </div>
                       );
                     })}
-                    {orders.length > 3 && (
-                      <p className="text-center text-[9px] text-muted-foreground font-bold uppercase pt-1">
-                        + {orders.length - 3} pedidos no gerenciamento
-                      </p>
-                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -256,12 +270,11 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
           <div className="p-4 max-h-[60vh] overflow-y-auto space-y-3 no-scrollbar">
             {rtOrdersToManage.map((order, idx) => {
                const isExterno = String(order.estado_detallado_actual || "").includes('EXTERNO❌');
-               const highlightRed = isExterno;
 
                return (
                 <div key={idx} className={cn(
                   "p-4 rounded-2xl border space-y-3",
-                  highlightRed ? "bg-red-500/10 border-red-300" : "bg-muted/30 border-border/40"
+                  isExterno ? "bg-red-500/10 border-red-300" : "bg-muted/30 border-border/40"
                 )}>
                   <div className="flex justify-between items-start">
                     <div className="space-y-1">
@@ -270,7 +283,7 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
                     </div>
                     <Badge variant="outline" className={cn(
                       "text-[8px] uppercase font-bold py-0 h-4",
-                      highlightRed ? "border-red-400 text-red-700 bg-red-100" : "border-primary/20 text-primary"
+                      isExterno ? "border-red-400 text-red-700 bg-red-100" : "border-primary/20 text-primary"
                     )}>
                       {order.estado_detallado_actual}
                     </Badge>
@@ -283,6 +296,7 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
                       className="h-9 text-[10px] font-bold uppercase gap-1.5 rounded-xl border-blue-200 text-blue-600 hover:bg-blue-50"
                       onClick={() => {
                         navigator.clipboard.writeText(String(order.order_id));
+                        recordLog(String(order.order_id), managingRt!, 'copy_id');
                         toast({ title: "Copiado!", description: "ID enviado para área de transferência." });
                       }}
                     >
@@ -292,7 +306,7 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
                       size="sm" 
                       className={cn(
                         "h-9 text-[10px] font-bold uppercase gap-1.5 rounded-xl",
-                        highlightRed ? "bg-red-600 hover:bg-red-700" : "bg-orange-600 hover:bg-orange-700"
+                        isExterno ? "bg-red-600 hover:bg-red-700" : "bg-orange-600 hover:bg-orange-700"
                       )}
                       onClick={() => handleForzaBr(String(order.order_id), managingRt!)}
                     >

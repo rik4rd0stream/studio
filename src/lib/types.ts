@@ -31,4 +31,14 @@ export interface OrderRequest {
   updatedAt?: string;
 }
 
+export interface OperationLog {
+  id?: string;
+  orderId: string;
+  rtId: string;
+  action: 'copy_id' | 'cheguei';
+  userName: string;
+  userEmail: string;
+  timestamp: string;
+}
+
 export type AppView = 'send-order' | 'request-order' | 'active-orders' | 'admin-users' | 'admin-couriers';
