@@ -29,7 +29,6 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
   const [loading, setLoading] = useState(false);
   const [allOrders, setAllOrders] = useState<RedashOrder[]>([]);
   
-  // Estado para o popup de gerenciamento
   const [managingRt, setManagingRt] = useState<string | null>(null);
   
   const couriersQuery = useMemoFirebase(() => collection(db, 'entregadores'), [db]);
@@ -75,9 +74,10 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
       const isGeo = Object.entries(row).some(([key, val]) => 
         key.toLowerCase().includes('trusted') && String(val).includes('GEO⚡')
       );
-      const isExterno = Object.entries(row).some(([key, val]) => 
-        key.toLowerCase().includes('trusted') && String(val).includes('EXTERNO❌')
-      );
+      const isExterno = String(row.estado_detallado_actual || "").includes('EXTERNO❌') || 
+                       Object.entries(row).some(([key, val]) => 
+                         key.toLowerCase().includes('trusted') && String(val).includes('EXTERNO❌')
+                       );
       return isPoint9944 && (isGeo || isExterno);
     });
   }, [allOrders]);
@@ -95,7 +95,7 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
   const getCourierName = (id: string) => {
     if (id === "Sem ID") return "Nuvem";
     const courier = couriers?.find(c => String(c.id_motoboy || c.id) === String(id));
-    return courier ? (courier.nome || courier.name) : "Motoboy não identificado";
+    return courier ? (courier.nome || courier.name) : "Nuvem";
   };
 
   const rtOrdersToManage = managingRt ? groupedOrders[managingRt] || [] : [];
@@ -126,34 +126,37 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
             <h3 className="text-xs font-medium text-muted-foreground">Nenhum pedido GEO/EXTERNO</h3>
           </div>
         ) : (
-          Object.entries(groupedOrders).map(([rtId, orders]) => {
-            const isNuvem = rtId === "Sem ID";
+          Object.entries(groupedOrders).sort((a, b) => a[0].localeCompare(b[0])).map(([rtId, orders]) => {
+            const isNuvemGroup = rtId === "Sem ID";
+            const courierName = getCourierName(rtId);
+            const isNuvemSub = courierName === "Nuvem";
+            
             return (
               <Card key={rtId} className={cn(
                 "border border-border/60 shadow-sm overflow-hidden rounded-2xl transition-colors",
-                isNuvem ? "bg-amber-500/5" : "bg-card/80"
+                isNuvemGroup || isNuvemSub ? "bg-amber-500/5" : "bg-card/80"
               )}>
                 <CardContent className="p-0">
                   <div className={cn(
                     "p-4 flex items-center justify-between border-b border-border/40",
-                    isNuvem ? "bg-amber-500/10" : "bg-muted/30"
+                    isNuvemGroup || isNuvemSub ? "bg-amber-500/10" : "bg-muted/30"
                   )}>
                     <div className="flex items-center gap-3">
                       <div className={cn(
                         "w-8 h-8 rounded-full flex items-center justify-center",
-                        isNuvem ? "bg-amber-500/20" : "bg-primary/10"
+                        isNuvemGroup || isNuvemSub ? "bg-amber-500/20" : "bg-primary/10"
                       )}>
-                        {isNuvem ? <Cloud className="h-4 w-4 text-amber-600" /> : <User className="h-4 w-4 text-primary" />}
+                        {isNuvemGroup || isNuvemSub ? <Cloud className="h-4 w-4 text-amber-600" /> : <User className="h-4 w-4 text-primary" />}
                       </div>
-                      <div>
-                        <h3 className="text-sm font-bold text-foreground">
-                          {isNuvem ? "Operação em Aberto" : `RT: ${rtId}`}
+                      <div className="overflow-hidden">
+                        <h3 className="text-sm font-bold text-foreground truncate">
+                          {isNuvemGroup ? "Operação em Aberto" : `RT: ${rtId}`}
                         </h3>
                         <p className={cn(
-                          "text-[10px] font-bold truncate max-w-[150px]",
-                          isNuvem ? "text-amber-700" : "text-muted-foreground"
+                          "text-[10px] font-bold truncate max-w-[180px]",
+                          isNuvemGroup || isNuvemSub ? "text-amber-700" : "text-muted-foreground"
                         )}>
-                          {getCourierName(rtId)}
+                          {courierName}
                         </p>
                       </div>
                     </div>
@@ -164,14 +167,14 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
                         onClick={() => setManagingRt(rtId)}
                         className={cn(
                           "h-7 text-[9px] font-bold uppercase tracking-tight rounded-full border-primary/20 hover:bg-primary/5 gap-1",
-                          isNuvem ? "text-amber-700 border-amber-200 hover:bg-amber-100" : "text-primary"
+                          isNuvemGroup || isNuvemSub ? "text-amber-700 border-amber-200 hover:bg-amber-100" : "text-primary"
                         )}
                       >
                         <Settings2 className="h-3 w-3" /> Gerenciar
                       </Button>
                       <div className={cn(
                         "w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold border",
-                        isNuvem ? "bg-amber-500/20 text-amber-700 border-amber-300" : "bg-blue-500/10 text-blue-600 border-blue-200"
+                        isNuvemGroup || isNuvemSub ? "bg-amber-500/20 text-amber-700 border-amber-300" : "bg-blue-500/10 text-blue-600 border-blue-200"
                       )}>
                         {orders.length}
                       </div>
@@ -180,9 +183,8 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
 
                   <div className="p-3 space-y-2">
                     {orders.slice(0, 3).map((order, idx) => {
-                      const isExterno = Object.values(order).some(val => String(val).includes('EXTERNO❌'));
-                      // Highlight reddish background if Nuvem AND Externo
-                      const highlightRed = isNuvem && isExterno;
+                      const isExterno = String(order.estado_detallado_actual || "").includes('EXTERNO❌');
+                      const highlightRed = isNuvemSub && isExterno;
                       
                       return (
                         <div 
@@ -236,25 +238,24 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
         )}
       </div>
 
-      {/* Dialog de Gerenciamento do RT */}
       <Dialog open={!!managingRt} onOpenChange={(open) => !open && setManagingRt(null)}>
         <DialogContent className="max-w-[340px] rounded-3xl p-0 border-none shadow-2xl overflow-hidden">
           <DialogHeader className={cn(
             "p-6 pb-4 text-white",
-            managingRt === "Sem ID" ? "bg-amber-600" : "bg-primary"
+            managingRt === "Sem ID" || getCourierName(managingRt || "") === "Nuvem" ? "bg-amber-600" : "bg-primary"
           )}>
             <DialogTitle className="text-lg flex items-center gap-2">
               <Settings2 className="h-5 w-5" /> {managingRt === "Sem ID" ? "Gerenciar Nuvem" : `Gerenciar RT: ${managingRt}`}
             </DialogTitle>
-            <DialogDescription className="text-white/80 text-xs">
+            <DialogDescription className="text-white/80 text-xs font-bold">
               {getCourierName(managingRt || "")}
             </DialogDescription>
           </DialogHeader>
           <div className="p-4 max-h-[60vh] overflow-y-auto space-y-3 no-scrollbar">
             {rtOrdersToManage.map((order, idx) => {
-               const isExterno = Object.values(order).some(val => String(val).includes('EXTERNO❌'));
-               const isNuvem = managingRt === "Sem ID";
-               const highlightRed = isNuvem && isExterno;
+               const isExterno = String(order.estado_detallado_actual || "").includes('EXTERNO❌');
+               const isNuvemSub = getCourierName(managingRt || "") === "Nuvem";
+               const highlightRed = isNuvemSub && isExterno;
 
                return (
                 <div key={idx} className={cn(
