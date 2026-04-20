@@ -134,29 +134,29 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
             return (
               <Card key={rtId} className={cn(
                 "border border-border/60 shadow-sm overflow-hidden rounded-2xl transition-colors",
-                isNuvemGroup || isNuvemSub ? "bg-amber-500/5" : "bg-card/80"
+                isNuvemGroup || isNuvemSub ? "bg-red-500/10 border-red-200/50" : "bg-card/80"
               )}>
                 <CardContent className="p-0">
                   <div className={cn(
                     "p-4 flex items-center justify-between border-b border-border/40",
-                    isNuvemGroup || isNuvemSub ? "bg-amber-500/10" : "bg-muted/30"
+                    isNuvemGroup || isNuvemSub ? "bg-red-500/15" : "bg-muted/30"
                   )}>
                     <div className="flex items-center gap-3">
                       <div className={cn(
                         "w-8 h-8 rounded-full flex items-center justify-center",
-                        isNuvemGroup || isNuvemSub ? "bg-amber-500/20" : "bg-primary/10"
+                        isNuvemGroup || isNuvemSub ? "bg-red-500/20" : "bg-primary/10"
                       )}>
-                        {isNuvemGroup || isNuvemSub ? <Cloud className="h-4 w-4 text-amber-600" /> : <User className="h-4 w-4 text-primary" />}
+                        {isNuvemGroup || isNuvemSub ? <Cloud className="h-4 w-4 text-red-600" /> : <User className="h-4 w-4 text-primary" />}
                       </div>
                       <div className="overflow-hidden">
                         <h3 className="text-sm font-bold text-foreground truncate">
-                          {isNuvemGroup ? "Operação em Aberto" : `RT: ${rtId}`}
+                          {courierName}
                         </h3>
                         <p className={cn(
                           "text-[10px] font-bold truncate max-w-[180px]",
-                          isNuvemGroup || isNuvemSub ? "text-amber-700" : "text-muted-foreground"
+                          isNuvemGroup || isNuvemSub ? "text-red-700/70" : "text-muted-foreground"
                         )}>
-                          {courierName}
+                          {isNuvemGroup ? "Sem RT Atribuído" : `RT: ${rtId}`}
                         </p>
                       </div>
                     </div>
@@ -167,14 +167,14 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
                         onClick={() => setManagingRt(rtId)}
                         className={cn(
                           "h-7 text-[9px] font-bold uppercase tracking-tight rounded-full border-primary/20 hover:bg-primary/5 gap-1",
-                          isNuvemGroup || isNuvemSub ? "text-amber-700 border-amber-200 hover:bg-amber-100" : "text-primary"
+                          isNuvemGroup || isNuvemSub ? "text-red-700 border-red-200 hover:bg-red-200" : "text-primary"
                         )}
                       >
                         <Settings2 className="h-3 w-3" /> Gerenciar
                       </Button>
                       <div className={cn(
                         "w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold border",
-                        isNuvemGroup || isNuvemSub ? "bg-amber-500/20 text-amber-700 border-amber-300" : "bg-blue-500/10 text-blue-600 border-blue-200"
+                        isNuvemGroup || isNuvemSub ? "bg-red-500/20 text-red-700 border-red-300" : "bg-blue-500/10 text-blue-600 border-blue-200"
                       )}>
                         {orders.length}
                       </div>
@@ -184,15 +184,15 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
                   <div className="p-3 space-y-2">
                     {orders.slice(0, 3).map((order, idx) => {
                       const isExterno = String(order.estado_detallado_actual || "").includes('EXTERNO❌');
-                      const highlightRed = isNuvemSub && isExterno;
+                      const highlightRed = (isNuvemSub || isNuvemGroup) && isExterno;
                       
                       return (
                         <div 
                           key={idx} 
                           className={cn(
                             "p-3 rounded-xl border transition-all",
-                            highlightRed ? "bg-red-500/15 border-red-300 shadow-inner" : 
-                            isExterno ? "bg-red-500/5 border-red-200/50" : "bg-muted/10 border-border/40",
+                            highlightRed ? "bg-red-600/20 border-red-400 shadow-inner" : 
+                            isExterno ? "bg-red-500/10 border-red-200/50" : "bg-muted/10 border-border/40",
                             "flex items-center justify-between"
                           )}
                         >
@@ -205,7 +205,7 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
                               <span className="text-[10px] font-mono font-bold text-muted-foreground">#{order.order_id}</span>
                               <span className={cn(
                                 "text-[8px] font-bold uppercase mt-0.5 tracking-tight",
-                                highlightRed ? "text-red-700" : "text-muted-foreground/70"
+                                isExterno ? "text-red-700" : "text-muted-foreground/70"
                               )}>
                                 {order.estado_detallado_actual}
                               </span>
@@ -215,7 +215,7 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
                               size="icon"
                               className={cn(
                                 "h-8 w-8 rounded-full shadow-sm",
-                                highlightRed ? "bg-red-600 hover:bg-red-700 text-white" : "bg-primary text-white hover:bg-primary/90"
+                                isExterno ? "bg-red-600 hover:bg-red-700 text-white" : "bg-primary text-white hover:bg-primary/90"
                               )}
                               onClick={() => handleCopyAndGo(order.order_id)}
                             >
@@ -242,20 +242,20 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
         <DialogContent className="max-w-[340px] rounded-3xl p-0 border-none shadow-2xl overflow-hidden">
           <DialogHeader className={cn(
             "p-6 pb-4 text-white",
-            managingRt === "Sem ID" || getCourierName(managingRt || "") === "Nuvem" ? "bg-amber-600" : "bg-primary"
+            managingRt === "Sem ID" || getCourierName(managingRt || "") === "Nuvem" ? "bg-red-600" : "bg-primary"
           )}>
             <DialogTitle className="text-lg flex items-center gap-2">
-              <Settings2 className="h-5 w-5" /> {managingRt === "Sem ID" ? "Gerenciar Nuvem" : `Gerenciar RT: ${managingRt}`}
+              <Settings2 className="h-5 w-5" /> {getCourierName(managingRt || "")}
             </DialogTitle>
             <DialogDescription className="text-white/80 text-xs font-bold">
-              {getCourierName(managingRt || "")}
+              {managingRt === "Sem ID" ? "Sem RT Atribuído" : `RT: ${managingRt}`}
             </DialogDescription>
           </DialogHeader>
           <div className="p-4 max-h-[60vh] overflow-y-auto space-y-3 no-scrollbar">
             {rtOrdersToManage.map((order, idx) => {
                const isExterno = String(order.estado_detallado_actual || "").includes('EXTERNO❌');
                const isNuvemSub = getCourierName(managingRt || "") === "Nuvem";
-               const highlightRed = isNuvemSub && isExterno;
+               const highlightRed = isExterno;
 
                return (
                 <div key={idx} className={cn(
