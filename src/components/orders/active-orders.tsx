@@ -242,7 +242,7 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
                     className="h-9 text-[10px] font-bold uppercase gap-1.5 rounded-xl bg-orange-600 hover:bg-orange-700"
                     onClick={() => handleForzaBr(String(order.order_id), managingRt!)}
                   >
-                    <Zap className="h-3.5 w-3.5" /> Força BR
+                    <Zap className="h-3.5 w-3.5" /> Cheguei
                   </Button>
                 </div>
               </div>
