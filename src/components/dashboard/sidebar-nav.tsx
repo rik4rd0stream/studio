@@ -9,7 +9,8 @@ import {
   Users, 
   Bike, 
   LogOut,
-  ChevronRight
+  ChevronRight,
+  ClipboardList
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,7 @@ export function SidebarNav({ currentView, setView, user, onLogout }: SidebarNavP
   ];
 
   const adminItems = [
+    { id: 'operation-logs', label: 'Log de Operações', icon: ClipboardList, masterOnly: true },
     { id: 'admin-users', label: 'Gestão de Usuários', icon: Users, masterOnly: true },
     { id: 'admin-couriers', label: 'Gestão de Entregadores', icon: Bike, masterOnly: false },
   ];

@@ -11,6 +11,7 @@ import { CreateOrder } from "@/components/orders/create-order";
 import { ActiveOrders } from "@/components/orders/active-orders";
 import { RequestOrder } from "@/components/orders/request-order";
 import { Registration } from "@/components/admin/registration";
+import { OperationLogs } from "@/components/admin/operation-logs";
 import { PushListener } from "@/components/notifications/push-listener";
 import { 
   Sheet, 
@@ -77,6 +78,8 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
         return <Registration type="users" />;
       case 'admin-couriers':
         return <Registration type="couriers" />;
+      case 'operation-logs':
+        return <OperationLogs />;
       default:
         return <CreateOrder onOrderCreated={() => setView('active-orders')} />;
     }

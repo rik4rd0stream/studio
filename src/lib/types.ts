@@ -41,4 +41,4 @@ export interface OperationLog {
   timestamp: string;
 }
 
-export type AppView = 'send-order' | 'request-order' | 'active-orders' | 'admin-users' | 'admin-couriers';
+export type AppView = 'send-order' | 'request-order' | 'active-orders' | 'admin-users' | 'admin-couriers' | 'operation-logs';
