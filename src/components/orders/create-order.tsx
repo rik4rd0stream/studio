@@ -58,12 +58,14 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
 
   const redashOrders = useMemo(() => {
     return allOrders.filter(row => {
-      // Filtro estrito pelo point_id 9944
-      const isPoint9944 = String(row.point_id || row.point || '').includes('9944');
+      const pointValue = String(row.point_id || row.point || '').trim();
+      const isPoint9944 = pointValue === '9944' || pointValue.includes('9944');
       
-      const isSinRT = Object.entries(row).some(([key, val]) => 
-        key.toLowerCase().includes('trusted') && String(val).includes('Sin RT')
-      );
+      const isSinRT = Object.values(row).some(val => {
+        const sVal = String(val).toUpperCase();
+        return sVal.includes('SIN RT') || sVal.includes('GEO⚡');
+      });
+
       return isPoint9944 && isSinRT;
     });
   }, [allOrders]);
@@ -194,7 +196,7 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
                   <h3 className="text-xs font-bold group-hover:text-primary">{order.store_name}</h3>
                   <div className="flex flex-col items-end">
                     <span className="text-[9px] font-mono font-bold text-muted-foreground">#{order.order_id}</span>
-                    <span className="text-[8px] text-primary font-bold uppercase">{order.estado_detallado_actual}</span>
+                    <span className="text-[8px] text-primary font-bold uppercase">{order.estado_detallado_actual || order.estado}</span>
                   </div>
                 </div>
                 <div className="flex items-start gap-1.5 text-muted-foreground">

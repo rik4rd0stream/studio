@@ -92,26 +92,31 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
 
   const filteredOrders = useMemo(() => {
     return allOrders.filter(row => {
-      // Filtro pelo point_id 9944 (mais flexível para capturar variações do Redash)
-      const pointValue = String(row.point_id || row.point || '');
-      const isPoint9944 = pointValue.includes('9944');
+      const pointValue = String(row.point_id || row.point || '').trim();
+      const isPoint9944 = pointValue === '9944' || pointValue.includes('9944');
       
-      const isGeo = Object.entries(row).some(([key, val]) => 
-        key.toLowerCase().includes('trusted') && String(val).includes('GEO⚡')
-      );
+      if (!isPoint9944) return false;
+
+      // Busca flexível por EXTERNO
+      const estadoActual = String(row.estado_detallado_actual || row.estado || "").toUpperCase();
+      const isExterno = estadoActual.includes('EXTERNO');
       
-      // Busca a tag EXTERNO de forma mais flexível (sem depender apenas do emoji)
-      const isExterno = String(row.estado_detallado_actual || "").toUpperCase().includes('EXTERNO');
-      
-      return isPoint9944 && (isGeo || isExterno);
+      // Busca por GEO ou Sin RT em qualquer campo
+      const isSpecial = Object.values(row).some(val => {
+        const sVal = String(val).toUpperCase();
+        return sVal.includes('GEO⚡') || sVal.includes('SIN RT') || sVal.includes('EXTERNO');
+      });
+
+      const hasRT = !!row.rt_asignado_orden;
+
+      return isExterno || isSpecial || hasRT;
     });
   }, [allOrders]);
 
   const groupedOrders = useMemo(() => {
     const groups: { [key: string]: RedashOrder[] } = {};
     filteredOrders.forEach(order => {
-      // Se não tem RT atribuído ou é nulo, agrupa como "Sem ID" (Nuvem)
-      const rtId = order.rt_asignado_orden || "Sem ID";
+      const rtId = String(order.rt_asignado_orden || "Sem ID").trim();
       if (!groups[rtId]) groups[rtId] = [];
       groups[rtId].push(order);
     });
@@ -119,7 +124,7 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
   }, [filteredOrders]);
 
   const getCourierName = (id: string) => {
-    if (id === "Sem ID") return "Nuvem";
+    if (id === "Sem ID" || id === "0" || !id) return "Nuvem";
     const courier = couriers?.find(c => String(c.id_motoboy || c.id) === String(id));
     return courier ? (courier.nome || courier.name) : "Nuvem";
   };
@@ -149,49 +154,49 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
         {Object.keys(groupedOrders).length === 0 && !loading ? (
           <div className="text-center py-16 bg-muted/20 rounded-2xl border border-dashed flex flex-col items-center">
             <Package className="h-8 w-8 text-muted-foreground/30 mb-2" />
-            <h3 className="text-xs font-medium text-muted-foreground">Nenhum pedido GEO ou EXTERNO no Point 9944</h3>
+            <h3 className="text-xs font-medium text-muted-foreground">Nenhum pedido no Point 9944</h3>
           </div>
         ) : (
           Object.entries(groupedOrders)
             .sort((a, b) => {
-              // Garante que a "Nuvem" (Sem ID) apareça sempre no topo
-              if (a[0] === "Sem ID") return -1;
-              if (b[0] === "Sem ID") return 1;
-              return a[0].localeCompare(b[0]);
+              const nameA = getCourierName(a[0]);
+              const nameB = getCourierName(b[0]);
+              if (nameA === "Nuvem") return -1;
+              if (nameB === "Nuvem") return 1;
+              return nameA.localeCompare(nameB);
             })
             .map(([rtId, orders]) => {
-              const isNuvemGroup = rtId === "Sem ID";
               const courierName = getCourierName(rtId);
-              const isNuvemSub = courierName === "Nuvem";
-              const hasExterno = orders.some(o => String(o.estado_detallado_actual || "").toUpperCase().includes('EXTERNO'));
-              const isCritical = isNuvemGroup || isNuvemSub || hasExterno;
+              const isNuvem = courierName === "Nuvem";
+              const hasExterno = orders.some(o => String(o.estado_detallado_actual || o.estado || "").toUpperCase().includes('EXTERNO'));
+              const isAlert = isNuvem || hasExterno;
               
               return (
                 <Card key={rtId} className={cn(
-                  "border border-border/60 shadow-sm overflow-hidden rounded-2xl transition-colors",
-                  isCritical ? "bg-red-500/10 border-red-200/50" : "bg-card/80"
+                  "border shadow-sm overflow-hidden rounded-2xl transition-all",
+                  isAlert ? "bg-red-500/[0.08] border-red-200" : "bg-card/80 border-border/60"
                 )}>
                   <CardContent className="p-0">
                     <div className={cn(
-                      "p-4 flex items-center justify-between border-b border-border/40",
-                      isCritical ? "bg-red-500/15" : "bg-muted/30"
+                      "p-4 flex items-center justify-between border-b",
+                      isAlert ? "bg-red-500/[0.12] border-red-200/50" : "bg-muted/30 border-border/40"
                     )}>
                       <div className="flex items-center gap-3">
                         <div className={cn(
-                          "w-8 h-8 rounded-full flex items-center justify-center",
-                          isCritical ? "bg-red-500/20" : "bg-primary/10"
+                          "w-9 h-9 rounded-full flex items-center justify-center shadow-sm",
+                          isAlert ? "bg-red-100 text-red-600" : "bg-primary/10 text-primary"
                         )}>
-                          {isNuvemGroup || isNuvemSub ? <Cloud className="h-4 w-4 text-red-600" /> : <User className="h-4 w-4 text-primary" />}
+                          {isNuvem ? <Cloud className="h-5 w-5" /> : <User className="h-5 w-5" />}
                         </div>
                         <div className="overflow-hidden">
-                          <h3 className="text-sm font-bold text-foreground truncate">
+                          <h3 className={cn(
+                            "text-sm font-black tracking-tight leading-none mb-1",
+                            isAlert ? "text-red-700" : "text-foreground"
+                          )}>
                             {courierName}
                           </h3>
-                          <p className={cn(
-                            "text-[9px] font-bold truncate max-w-[180px]",
-                            isCritical ? "text-red-700/70" : "text-muted-foreground"
-                          )}>
-                            {isNuvemGroup ? "Sem RT Atribuído" : `RT: ${rtId}`}
+                          <p className="text-[8px] font-bold uppercase tracking-widest text-muted-foreground/70">
+                            {rtId === "Sem ID" ? "SEM RT ATRIBUÍDO" : `RT: ${rtId}`}
                           </p>
                         </div>
                       </div>
@@ -201,15 +206,15 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
                           size="sm" 
                           onClick={() => setManagingRt(rtId)}
                           className={cn(
-                            "h-7 text-[9px] font-bold uppercase tracking-tight rounded-full border-primary/20 hover:bg-primary/5 gap-1",
-                            isCritical ? "text-red-700 border-red-200 hover:bg-red-200" : "text-primary"
+                            "h-7 text-[9px] font-bold uppercase tracking-tight rounded-full gap-1 px-3",
+                            isAlert ? "text-red-700 border-red-300 bg-red-50 hover:bg-red-100" : "text-primary border-primary/20 hover:bg-primary/5"
                           )}
                         >
                           <Settings2 className="h-3 w-3" /> Gerenciar
                         </Button>
                         <div className={cn(
-                          "w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold border",
-                          isCritical ? "bg-red-500/20 text-red-700 border-red-300" : "bg-blue-500/10 text-blue-600 border-blue-200"
+                          "min-w-[24px] h-6 px-1.5 rounded-full flex items-center justify-center text-[10px] font-black border",
+                          isAlert ? "bg-red-600 text-white border-red-400" : "bg-primary text-white border-primary-foreground/20"
                         )}>
                           {orders.length}
                         </div>
@@ -217,38 +222,43 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
                     </div>
 
                     <div className="p-3 space-y-2">
-                      {orders.slice(0, 3).map((order, idx) => {
-                        const isExternoOrder = String(order.estado_detallado_actual || "").toUpperCase().includes('EXTERNO');
+                      {orders.map((order, idx) => {
+                        const isExternoOrder = String(order.estado_detallado_actual || order.estado || "").toUpperCase().includes('EXTERNO');
                         
                         return (
                           <div 
                             key={idx} 
                             className={cn(
-                              "p-3 rounded-xl border transition-all",
-                              isExternoOrder ? "bg-red-600/20 border-red-400 shadow-inner" : "bg-muted/10 border-border/40",
-                              "flex items-center justify-between"
+                              "p-3 rounded-xl border transition-all flex items-center justify-between group",
+                              isExternoOrder ? "bg-red-600/10 border-red-300 shadow-inner" : "bg-muted/5 border-border/40 hover:bg-muted/10"
                             )}
                           >
-                            <div className="space-y-1">
-                              <p className="text-[11px] font-bold text-foreground leading-tight">{order.store_name}</p>
-                              <p className="text-[10px] text-muted-foreground truncate max-w-[180px]">{order.direccion_entrega}</p>
+                            <div className="space-y-0.5 overflow-hidden">
+                              <p className={cn(
+                                "text-[11px] font-bold leading-tight truncate",
+                                isExternoOrder ? "text-red-700" : "text-foreground"
+                              )}>{order.store_name}</p>
+                              <p className="text-[9px] text-muted-foreground truncate max-w-[200px]">{order.direccion_entrega}</p>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 shrink-0 ml-2">
                               <div className="flex flex-col items-end mr-1">
-                                <span className="text-[10px] font-mono font-bold text-muted-foreground">#{order.order_id}</span>
                                 <span className={cn(
-                                  "text-[8px] font-bold uppercase mt-0.5 tracking-tight",
-                                  isExternoOrder ? "text-red-700" : "text-muted-foreground/70"
+                                  "text-[9px] font-mono font-bold",
+                                  isExternoOrder ? "text-red-700" : "text-muted-foreground"
+                                )}>#{order.order_id}</span>
+                                <span className={cn(
+                                  "text-[7px] font-bold uppercase tracking-tighter px-1 rounded",
+                                  isExternoOrder ? "bg-red-600 text-white" : "bg-muted text-muted-foreground"
                                 )}>
-                                  {order.estado_detallado_actual}
+                                  {order.estado_detallado_actual || order.estado}
                                 </span>
                               </div>
                               <Button
                                 variant="default"
                                 size="icon"
                                 className={cn(
-                                  "h-8 w-8 rounded-full shadow-sm",
-                                  isExternoOrder ? "bg-red-600 hover:bg-red-700 text-white" : "bg-primary text-white hover:bg-primary/90"
+                                  "h-8 w-8 rounded-full shadow-md transition-transform group-hover:scale-105",
+                                  isExternoOrder ? "bg-red-600 hover:bg-red-700 text-white" : "bg-primary text-white"
                                 )}
                                 onClick={() => handleCopyAndGo(order.order_id, rtId)}
                               >
@@ -272,16 +282,16 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
             "p-6 pb-4 text-white",
             (managingRt === "Sem ID" || getCourierName(managingRt || "") === "Nuvem" || rtOrdersToManage.some(o => String(o.estado_detallado_actual || "").toUpperCase().includes('EXTERNO'))) ? "bg-red-600" : "bg-primary"
           )}>
-            <DialogTitle className="text-lg flex items-center gap-2">
+            <DialogTitle className="text-lg font-black flex items-center gap-2">
               <Settings2 className="h-5 w-5" /> {getCourierName(managingRt || "")}
             </DialogTitle>
-            <DialogDescription className="text-white/80 text-xs font-bold">
-              {managingRt === "Sem ID" ? "Sem RT Atribuído" : `RT: ${managingRt}`}
+            <DialogDescription className="text-white/80 text-[10px] font-bold uppercase tracking-widest">
+              {managingRt === "Sem ID" ? "Nuvem - Point 9944" : `RT: ${managingRt}`}
             </DialogDescription>
           </DialogHeader>
           <div className="p-4 max-h-[60vh] overflow-y-auto space-y-3 no-scrollbar">
             {rtOrdersToManage.map((order, idx) => {
-               const isExternoOrder = String(order.estado_detallado_actual || "").toUpperCase().includes('EXTERNO');
+               const isExternoOrder = String(order.estado_detallado_actual || order.estado || "").toUpperCase().includes('EXTERNO');
 
                return (
                 <div key={idx} className={cn(
@@ -291,13 +301,13 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
                   <div className="flex justify-between items-start">
                     <div className="space-y-1">
                       <p className="text-xs font-bold leading-tight">{order.store_name}</p>
-                      <p className="text-[10px] text-muted-foreground font-mono font-bold">#{order.order_id}</p>
+                      <p className="text-[10px] font-mono font-bold text-muted-foreground">#{order.order_id}</p>
                     </div>
                     <Badge variant="outline" className={cn(
-                      "text-[8px] uppercase font-bold py-0 h-4",
-                      isExternoOrder ? "border-red-400 text-red-700 bg-red-100" : "border-primary/20 text-primary"
+                      "text-[8px] uppercase font-bold py-0 h-4 border-none",
+                      isExternoOrder ? "text-white bg-red-600" : "text-primary bg-primary/10"
                     )}>
-                      {order.estado_detallado_actual}
+                      {order.estado_detallado_actual || order.estado}
                     </Badge>
                   </div>
                   
@@ -317,7 +327,7 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
                     <Button 
                       size="sm" 
                       className={cn(
-                        "h-9 text-[10px] font-bold uppercase gap-1.5 rounded-xl",
+                        "h-9 text-[10px] font-bold uppercase gap-1.5 rounded-xl text-white shadow-lg",
                         isExternoOrder ? "bg-red-600 hover:bg-red-700" : "bg-orange-600 hover:bg-orange-700"
                       )}
                       onClick={() => handleForzaBr(String(order.order_id), managingRt!)}
@@ -330,7 +340,7 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
             })}
           </div>
           <div className="p-4 bg-muted/20 border-t flex justify-center">
-            <Button variant="ghost" onClick={() => setManagingRt(null)} className="text-xs font-bold uppercase text-muted-foreground">
+            <Button variant="ghost" onClick={() => setManagingRt(null)} className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">
               Fechar Janela
             </Button>
           </div>
@@ -339,3 +349,4 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
     </div>
   );
 }
+
