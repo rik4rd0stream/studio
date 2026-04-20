@@ -61,10 +61,8 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
       const pointValue = String(row.point_id || row.point || '').trim();
       const isPoint9944 = pointValue === '9944' || pointValue.includes('9944');
       
-      const isSinRT = Object.values(row).some(val => {
-        const sVal = String(val).toUpperCase();
-        return sVal.includes('SIN RT') || sVal.includes('GEO⚡');
-      });
+      const esTrusted = String(row.es_trusted || '').toUpperCase();
+      const isSinRT = esTrusted.includes('SIN RT');
 
       return isPoint9944 && isSinRT;
     });

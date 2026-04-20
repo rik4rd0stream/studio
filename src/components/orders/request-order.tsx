@@ -99,17 +99,13 @@ export function RequestOrder({ sender }: { sender: UserType }) {
 
   const redashOrders = useMemo(() => {
     return allOrders.filter(row => {
-      // Filtro estrito pelo point_id 9944
       const isPoint9944 = String(row.point_id || row.point || '').includes('9944');
-      
-      const isSinRT = Object.entries(row).some(([key, val]) => 
-        key.toLowerCase().includes('trusted') && String(val).includes('Sin RT')
-      );
+      const esTrusted = String(row.es_trusted || '').toUpperCase();
+      const isSinRT = esTrusted.includes('SIN RT');
       return isPoint9944 && isSinRT;
     });
   }, [allOrders]);
 
-  // Filtro inteligente de operadores: apenas quem tem notificações ativadas e ordenado por nome
   const usersQuery = useMemoFirebase(() => query(
     collection(db, 'userProfiles'), 
     where('notificationsEnabled', '==', true)
@@ -218,7 +214,6 @@ export function RequestOrder({ sender }: { sender: UserType }) {
 
   return (
     <div className="space-y-6 max-w-md mx-auto p-4 pb-24 animate-fade-in">
-      {/* STATUS DAS SOLICITAÇÕES */}
       <div className="space-y-3">
         <div className="flex items-center gap-2 text-primary px-1">
           <History className="h-4 w-4" />
@@ -275,7 +270,6 @@ export function RequestOrder({ sender }: { sender: UserType }) {
 
       <div className="h-px bg-border/40 my-2" />
 
-      {/* PEDIDOS DO REDASH */}
       <div className="space-y-3">
         <div className="flex items-center justify-between px-1">
           <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Pedidos Disponíveis ({redashOrders.length})</h3>
@@ -325,9 +319,7 @@ export function RequestOrder({ sender }: { sender: UserType }) {
         )}
       </div>
 
-      {/* SELETORES EM POPUP */}
       <div className="grid grid-cols-1 gap-3">
-        {/* SELECIONAR ENTREGADOR */}
         <div className="space-y-1.5">
           <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider px-1">Entregador</p>
           <Button 
@@ -354,7 +346,6 @@ export function RequestOrder({ sender }: { sender: UserType }) {
           </Button>
         </div>
 
-        {/* SELECIONAR OPERADOR */}
         <div className="space-y-1.5">
           <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider px-1">Operador (Quem recebe)</p>
           <Button 
@@ -392,7 +383,6 @@ export function RequestOrder({ sender }: { sender: UserType }) {
         )}
       </Button>
 
-      {/* POPUP SELEÇÃO ENTREGADOR */}
       <Dialog open={isCourierPopupOpen} onOpenChange={setIsCourierPopupOpen}>
         <DialogContent className="max-w-[320px] rounded-3xl p-6 gap-4">
           <DialogHeader>
@@ -433,7 +423,6 @@ export function RequestOrder({ sender }: { sender: UserType }) {
         </DialogContent>
       </Dialog>
 
-      {/* POPUP SELEÇÃO OPERADOR */}
       <Dialog open={isUserPopupOpen} onOpenChange={setIsUserPopupOpen}>
         <DialogContent className="max-w-[320px] rounded-3xl p-6 gap-4">
           <DialogHeader>
