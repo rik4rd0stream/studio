@@ -5,7 +5,7 @@ import { useState, useEffect, useMemo } from "react";
 import { redashService, RedashOrder } from "@/lib/api/redash-service";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { RefreshCw, Loader2, Package, User, Send, Settings2, ClipboardCopy, Zap } from "lucide-react";
+import { RefreshCw, Loader2, Package, User, Send, Settings2, ClipboardCopy, Zap, Cloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { collection } from "firebase/firestore";
@@ -93,6 +93,7 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
   }, [filteredOrders]);
 
   const getCourierName = (id: string) => {
+    if (id === "Sem ID") return "Nuvem";
     const courier = couriers?.find(c => String(c.id_motoboy || c.id) === String(id));
     return courier ? (courier.nome || courier.name) : "Motoboy não identificado";
   };
@@ -125,128 +126,180 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
             <h3 className="text-xs font-medium text-muted-foreground">Nenhum pedido GEO/EXTERNO</h3>
           </div>
         ) : (
-          Object.entries(groupedOrders).map(([rtId, orders]) => (
-            <Card key={rtId} className="border border-border/60 bg-card/80 shadow-sm overflow-hidden rounded-2xl">
-              <CardContent className="p-0">
-                <div className="p-4 bg-muted/30 flex items-center justify-between border-b border-border/40">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                      <User className="h-4 w-4 text-primary" />
+          Object.entries(groupedOrders).map(([rtId, orders]) => {
+            const isNuvem = rtId === "Sem ID";
+            return (
+              <Card key={rtId} className={cn(
+                "border border-border/60 shadow-sm overflow-hidden rounded-2xl transition-colors",
+                isNuvem ? "bg-amber-500/5" : "bg-card/80"
+              )}>
+                <CardContent className="p-0">
+                  <div className={cn(
+                    "p-4 flex items-center justify-between border-b border-border/40",
+                    isNuvem ? "bg-amber-500/10" : "bg-muted/30"
+                  )}>
+                    <div className="flex items-center gap-3">
+                      <div className={cn(
+                        "w-8 h-8 rounded-full flex items-center justify-center",
+                        isNuvem ? "bg-amber-500/20" : "bg-primary/10"
+                      )}>
+                        {isNuvem ? <Cloud className="h-4 w-4 text-amber-600" /> : <User className="h-4 w-4 text-primary" />}
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-bold text-foreground">
+                          {isNuvem ? "Operação em Aberto" : `RT: ${rtId}`}
+                        </h3>
+                        <p className={cn(
+                          "text-[10px] font-bold truncate max-w-[150px]",
+                          isNuvem ? "text-amber-700" : "text-muted-foreground"
+                        )}>
+                          {getCourierName(rtId)}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="text-sm font-bold text-foreground">RT: {rtId}</h3>
-                      <p className="text-[10px] text-muted-foreground font-medium truncate max-w-[150px]">
-                        {getCourierName(rtId)}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => setManagingRt(rtId)}
-                      className="h-7 text-[9px] font-bold uppercase tracking-tight rounded-full border-primary/20 hover:bg-primary/5 text-primary gap-1"
-                    >
-                      <Settings2 className="h-3 w-3" /> Gerenciar
-                    </Button>
-                    <div className="w-7 h-7 rounded-full bg-blue-500/10 text-blue-600 flex items-center justify-center text-[10px] font-bold border border-blue-200">
-                      {orders.length}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="p-3 space-y-2">
-                  {orders.slice(0, 3).map((order, idx) => {
-                    const isExterno = Object.values(order).some(val => String(val).includes('EXTERNO❌'));
-                    return (
-                      <div 
-                        key={idx} 
+                    <div className="flex items-center gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => setManagingRt(rtId)}
                         className={cn(
-                          "p-3 rounded-xl border border-border/40 flex items-center justify-between transition-all",
-                          isExterno ? "bg-red-500/5 border-red-200/50" : "bg-muted/10"
+                          "h-7 text-[9px] font-bold uppercase tracking-tight rounded-full border-primary/20 hover:bg-primary/5 gap-1",
+                          isNuvem ? "text-amber-700 border-amber-200 hover:bg-amber-100" : "text-primary"
                         )}
                       >
-                        <div className="space-y-1">
-                          <p className="text-[11px] font-bold text-foreground leading-tight">{order.store_name}</p>
-                          <p className="text-[10px] text-muted-foreground truncate max-w-[180px]">{order.direccion_entrega}</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="flex flex-col items-end mr-1">
-                            <span className="text-[10px] font-mono font-bold text-muted-foreground">#{order.order_id}</span>
-                            <span className="text-[8px] text-muted-foreground/70 font-bold uppercase mt-0.5 tracking-tight">
-                              {order.estado_detallado_actual}
-                            </span>
-                          </div>
-                          <Button
-                            variant="default"
-                            size="icon"
-                            className="h-8 w-8 bg-primary text-white hover:bg-primary/90 rounded-full shadow-sm"
-                            onClick={() => handleCopyAndGo(order.order_id)}
-                          >
-                            <Send className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
+                        <Settings2 className="h-3 w-3" /> Gerenciar
+                      </Button>
+                      <div className={cn(
+                        "w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold border",
+                        isNuvem ? "bg-amber-500/20 text-amber-700 border-amber-300" : "bg-blue-500/10 text-blue-600 border-blue-200"
+                      )}>
+                        {orders.length}
                       </div>
-                    );
-                  })}
-                  {orders.length > 3 && (
-                    <p className="text-center text-[9px] text-muted-foreground font-bold uppercase pt-1">
-                      + {orders.length - 3} pedidos no gerenciamento
-                    </p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))
+                    </div>
+                  </div>
+
+                  <div className="p-3 space-y-2">
+                    {orders.slice(0, 3).map((order, idx) => {
+                      const isExterno = Object.values(order).some(val => String(val).includes('EXTERNO❌'));
+                      // Highlight reddish background if Nuvem AND Externo
+                      const highlightRed = isNuvem && isExterno;
+                      
+                      return (
+                        <div 
+                          key={idx} 
+                          className={cn(
+                            "p-3 rounded-xl border transition-all",
+                            highlightRed ? "bg-red-500/15 border-red-300 shadow-inner" : 
+                            isExterno ? "bg-red-500/5 border-red-200/50" : "bg-muted/10 border-border/40",
+                            "flex items-center justify-between"
+                          )}
+                        >
+                          <div className="space-y-1">
+                            <p className="text-[11px] font-bold text-foreground leading-tight">{order.store_name}</p>
+                            <p className="text-[10px] text-muted-foreground truncate max-w-[180px]">{order.direccion_entrega}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="flex flex-col items-end mr-1">
+                              <span className="text-[10px] font-mono font-bold text-muted-foreground">#{order.order_id}</span>
+                              <span className={cn(
+                                "text-[8px] font-bold uppercase mt-0.5 tracking-tight",
+                                highlightRed ? "text-red-700" : "text-muted-foreground/70"
+                              )}>
+                                {order.estado_detallado_actual}
+                              </span>
+                            </div>
+                            <Button
+                              variant="default"
+                              size="icon"
+                              className={cn(
+                                "h-8 w-8 rounded-full shadow-sm",
+                                highlightRed ? "bg-red-600 hover:bg-red-700 text-white" : "bg-primary text-white hover:bg-primary/90"
+                              )}
+                              onClick={() => handleCopyAndGo(order.order_id)}
+                            >
+                              <Send className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {orders.length > 3 && (
+                      <p className="text-center text-[9px] text-muted-foreground font-bold uppercase pt-1">
+                        + {orders.length - 3} pedidos no gerenciamento
+                      </p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })
         )}
       </div>
 
       {/* Dialog de Gerenciamento do RT */}
       <Dialog open={!!managingRt} onOpenChange={(open) => !open && setManagingRt(null)}>
         <DialogContent className="max-w-[340px] rounded-3xl p-0 border-none shadow-2xl overflow-hidden">
-          <DialogHeader className="p-6 pb-4 bg-primary text-white">
+          <DialogHeader className={cn(
+            "p-6 pb-4 text-white",
+            managingRt === "Sem ID" ? "bg-amber-600" : "bg-primary"
+          )}>
             <DialogTitle className="text-lg flex items-center gap-2">
-              <Settings2 className="h-5 w-5" /> Gerenciar RT: {managingRt}
+              <Settings2 className="h-5 w-5" /> {managingRt === "Sem ID" ? "Gerenciar Nuvem" : `Gerenciar RT: ${managingRt}`}
             </DialogTitle>
             <DialogDescription className="text-white/80 text-xs">
               {getCourierName(managingRt || "")}
             </DialogDescription>
           </DialogHeader>
           <div className="p-4 max-h-[60vh] overflow-y-auto space-y-3 no-scrollbar">
-            {rtOrdersToManage.map((order, idx) => (
-              <div key={idx} className="p-4 bg-muted/30 rounded-2xl border border-border/40 space-y-3">
-                <div className="flex justify-between items-start">
-                  <div className="space-y-1">
-                    <p className="text-xs font-bold leading-tight">{order.store_name}</p>
-                    <p className="text-[10px] text-muted-foreground font-mono font-bold">#{order.order_id}</p>
+            {rtOrdersToManage.map((order, idx) => {
+               const isExterno = Object.values(order).some(val => String(val).includes('EXTERNO❌'));
+               const isNuvem = managingRt === "Sem ID";
+               const highlightRed = isNuvem && isExterno;
+
+               return (
+                <div key={idx} className={cn(
+                  "p-4 rounded-2xl border space-y-3",
+                  highlightRed ? "bg-red-500/10 border-red-300" : "bg-muted/30 border-border/40"
+                )}>
+                  <div className="flex justify-between items-start">
+                    <div className="space-y-1">
+                      <p className="text-xs font-bold leading-tight">{order.store_name}</p>
+                      <p className="text-[10px] text-muted-foreground font-mono font-bold">#{order.order_id}</p>
+                    </div>
+                    <Badge variant="outline" className={cn(
+                      "text-[8px] uppercase font-bold py-0 h-4",
+                      highlightRed ? "border-red-400 text-red-700 bg-red-100" : "border-primary/20 text-primary"
+                    )}>
+                      {order.estado_detallado_actual}
+                    </Badge>
                   </div>
-                  <Badge variant="outline" className="text-[8px] uppercase font-bold py-0 h-4 border-primary/20 text-primary">
-                    {order.estado_detallado_actual}
-                  </Badge>
+                  
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      className="h-9 text-[10px] font-bold uppercase gap-1.5 rounded-xl border-blue-200 text-blue-600 hover:bg-blue-50"
+                      onClick={() => {
+                        navigator.clipboard.writeText(String(order.order_id));
+                        toast({ title: "Copiado!", description: "ID enviado para área de transferência." });
+                      }}
+                    >
+                      <ClipboardCopy className="h-3.5 w-3.5" /> Copiar ID
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      className={cn(
+                        "h-9 text-[10px] font-bold uppercase gap-1.5 rounded-xl",
+                        highlightRed ? "bg-red-600 hover:bg-red-700" : "bg-orange-600 hover:bg-orange-700"
+                      )}
+                      onClick={() => handleForzaBr(String(order.order_id), managingRt!)}
+                    >
+                      <Zap className="h-3.5 w-3.5" /> Cheguei
+                    </Button>
+                  </div>
                 </div>
-                
-                <div className="grid grid-cols-2 gap-2">
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    className="h-9 text-[10px] font-bold uppercase gap-1.5 rounded-xl border-blue-200 text-blue-600 hover:bg-blue-50"
-                    onClick={() => {
-                      navigator.clipboard.writeText(String(order.order_id));
-                      toast({ title: "Copiado!", description: "ID enviado para área de transferência." });
-                    }}
-                  >
-                    <ClipboardCopy className="h-3.5 w-3.5" /> Copiar ID
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    className="h-9 text-[10px] font-bold uppercase gap-1.5 rounded-xl bg-orange-600 hover:bg-orange-700"
-                    onClick={() => handleForzaBr(String(order.order_id), managingRt!)}
-                  >
-                    <Zap className="h-3.5 w-3.5" /> Cheguei
-                  </Button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
           <div className="p-4 bg-muted/20 border-t flex justify-center">
             <Button variant="ghost" onClick={() => setManagingRt(null)} className="text-xs font-bold uppercase text-muted-foreground">
