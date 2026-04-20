@@ -6,7 +6,7 @@ import { AppView, User } from "@/lib/types";
 import { SidebarNav } from "./sidebar-nav";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
-import { Send, Bell, Activity, Menu, WifiOff } from "lucide-react";
+import { Send, Bell, Activity, Menu, WifiOff, Bot } from "lucide-react";
 import { CreateOrder } from "@/components/orders/create-order";
 import { ActiveOrders } from "@/components/orders/active-orders";
 import { RequestOrder } from "@/components/orders/request-order";
@@ -55,7 +55,6 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
   };
 
   const handleSelectOrderFromActive = (orderId: string) => {
-    // Garante que o ID seja sempre uma string ao ser passado para o estado
     setPrefilledOrderId(String(orderId));
     setView('send-order');
   };
@@ -97,8 +96,8 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
             <div className="md:hidden">
               <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
                 <SheetTrigger asChild>
-                  <Button variant="ghost" size="icon" className="rounded-full">
-                    <Menu className="h-5 w-5 text-primary" />
+                  <Button variant="ghost" size="icon" className="rounded-full text-primary">
+                    <Menu className="h-5 w-5" />
                   </Button>
                 </SheetTrigger>
                 <SheetContent side="left" className="p-0 w-72 border-none">
@@ -116,7 +115,10 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
               </Sheet>
             </div>
 
-            <div className="hidden sm:block font-bold text-primary text-xl">RC</div>
+            <div className="flex items-center gap-1">
+              <Bot className="h-5 w-5 text-primary animate-pulse" />
+              <div className="hidden sm:block font-bold text-primary text-xl tracking-tighter">RC</div>
+            </div>
             
             <div className="flex gap-1.5 items-center">
               <Button 

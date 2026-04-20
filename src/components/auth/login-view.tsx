@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -5,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
+import { Loader2, Bot } from "lucide-react";
 
 interface LoginViewProps {
   onLogin: (email: string, pass: string) => void;
@@ -19,7 +20,6 @@ export function LoginView({ onLogin }: LoginViewProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    // Simulate auth delay
     setTimeout(() => {
       onLogin(email, password);
       setLoading(false);
@@ -30,6 +30,12 @@ export function LoginView({ onLogin }: LoginViewProps) {
     <div className="flex min-h-screen items-center justify-center p-4 bg-background">
       <Card className="w-full max-w-md border-none shadow-none bg-transparent">
         <CardHeader className="text-center space-y-1">
+          <div className="flex flex-col items-center gap-2 mb-2">
+            <div className="bg-primary/10 p-4 rounded-full">
+              <Bot className="h-12 w-12 text-primary animate-pulse" />
+            </div>
+            <p className="text-xs font-bold text-red-500 uppercase tracking-widest">Robot ta on</p>
+          </div>
           <CardTitle className="text-4xl font-headline font-bold text-primary tracking-tight">
             Rappi Commander
           </CardTitle>
