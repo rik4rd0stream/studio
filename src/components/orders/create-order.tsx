@@ -94,7 +94,7 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
 
   useEffect(() => {
     loadData();
-    const interval = setInterval(() => loadData(true), 20000); 
+    const interval = setInterval(() => loadData(true), 15000); 
     return () => clearInterval(interval);
   }, []);
 

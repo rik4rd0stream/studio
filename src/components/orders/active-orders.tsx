@@ -94,22 +94,17 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
     return allOrders.filter(row => {
       const pointValue = String(row.point_id || row.point || '').trim();
       const isPoint9944 = pointValue === '9944' || pointValue.includes('9944');
-      
       if (!isPoint9944) return false;
 
-      // Busca flexível por EXTERNO
+      const esTrusted = String(row.es_trusted || '').toUpperCase();
+      if (esTrusted.includes('SIN RT')) return false;
+
       const estadoActual = String(row.estado_detallado_actual || row.estado || "").toUpperCase();
-      const isExterno = estadoActual.includes('EXTERNO');
+      const hasRT = !!String(row.rt_asignado_orden || "").trim();
       
-      // Busca por GEO ou Sin RT em qualquer campo
-      const isSpecial = Object.values(row).some(val => {
-        const sVal = String(val).toUpperCase();
-        return sVal.includes('GEO⚡') || sVal.includes('SIN RT') || sVal.includes('EXTERNO');
-      });
+      const isExterno = estadoActual.includes('EXTERNO');
 
-      const hasRT = !!row.rt_asignado_orden;
-
-      return isExterno || isSpecial || hasRT;
+      return hasRT || isExterno;
     });
   }, [allOrders]);
 
@@ -117,19 +112,23 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
     const groups: { [key: string]: RedashOrder[] } = {};
     filteredOrders.forEach(order => {
       const rtId = String(order.rt_asignado_orden || "Sem ID").trim();
-      if (!groups[rtId]) groups[rtId] = [];
-      groups[rtId].push(order);
+      const displayRt = rtId === "Sem ID" || rtId === "" ? "Nuvem" : rtId;
+      
+      if (!groups[displayRt]) groups[displayRt] = [];
+      groups[displayRt].push(order);
     });
     return groups;
   }, [filteredOrders]);
 
+  const rtOrdersToManage = useMemo(() => {
+    return managingRt ? groupedOrders[managingRt] || [] : [];
+  }, [managingRt, groupedOrders]);
+
   const getCourierName = (id: string) => {
-    if (id === "Sem ID" || id === "0" || !id) return "Nuvem";
+    if (id === "Sem ID" || id === "0" || id === "Nuvem" || !id) return "Nuvem";
     const courier = couriers?.find(c => String(c.id_motoboy || c.id) === String(id));
     return courier ? (courier.nome || courier.name) : "Nuvem";
   };
-
-  const rtOrdersToManage = managingRt ? groupedOrders[managingRt] || [] : [];
 
   return (
     <div className="space-y-6 animate-slide-up max-w-2xl mx-auto pb-20">
@@ -154,7 +153,7 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
         {Object.keys(groupedOrders).length === 0 && !loading ? (
           <div className="text-center py-16 bg-muted/20 rounded-2xl border border-dashed flex flex-col items-center">
             <Package className="h-8 w-8 text-muted-foreground/30 mb-2" />
-            <h3 className="text-xs font-medium text-muted-foreground">Nenhum pedido no Point 9944</h3>
+            <h3 className="text-xs font-medium text-muted-foreground">Nenhum pedido ativo no Point 9944</h3>
           </div>
         ) : (
           Object.entries(groupedOrders)
@@ -168,18 +167,21 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
             .map(([rtId, orders]) => {
               const courierName = getCourierName(rtId);
               const isNuvem = courierName === "Nuvem";
-              const hasExterno = orders.some(o => String(o.estado_detallado_actual || o.estado || "").toUpperCase().includes('EXTERNO'));
+              const hasExterno = orders.some(o => {
+                const s = String(o.estado_detallado_actual || o.estado || "").toUpperCase();
+                return s.includes('EXTERNO');
+              });
               const isAlert = isNuvem || hasExterno;
               
               return (
                 <Card key={rtId} className={cn(
                   "border shadow-sm overflow-hidden rounded-2xl transition-all",
-                  isAlert ? "bg-red-500/[0.08] border-red-200" : "bg-card/80 border-border/60"
+                  isAlert ? "bg-red-500/[0.05] border-red-200" : "bg-card/80 border-border/60"
                 )}>
                   <CardContent className="p-0">
                     <div className={cn(
                       "p-4 flex items-center justify-between border-b",
-                      isAlert ? "bg-red-500/[0.12] border-red-200/50" : "bg-muted/30 border-border/40"
+                      isAlert ? "bg-red-500/[0.1] border-red-200/50" : "bg-muted/30 border-border/40"
                     )}>
                       <div className="flex items-center gap-3">
                         <div className={cn(
@@ -196,7 +198,7 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
                             {courierName}
                           </h3>
                           <p className="text-[8px] font-bold uppercase tracking-widest text-muted-foreground/70">
-                            {rtId === "Sem ID" ? "SEM RT ATRIBUÍDO" : `RT: ${rtId}`}
+                            {rtId === "Nuvem" ? "DESPACHO MANUAL / POINT" : `RT: ${rtId}`}
                           </p>
                         </div>
                       </div>
@@ -280,13 +282,13 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
         <DialogContent className="max-w-[340px] rounded-3xl p-0 border-none shadow-2xl overflow-hidden">
           <DialogHeader className={cn(
             "p-6 pb-4 text-white",
-            (managingRt === "Sem ID" || getCourierName(managingRt || "") === "Nuvem" || rtOrdersToManage.some(o => String(o.estado_detallado_actual || "").toUpperCase().includes('EXTERNO'))) ? "bg-red-600" : "bg-primary"
+            (managingRt === "Nuvem" || rtOrdersToManage.some(o => String(o.estado_detallado_actual || "").toUpperCase().includes('EXTERNO'))) ? "bg-red-600" : "bg-primary"
           )}>
             <DialogTitle className="text-lg font-black flex items-center gap-2">
               <Settings2 className="h-5 w-5" /> {getCourierName(managingRt || "")}
             </DialogTitle>
             <DialogDescription className="text-white/80 text-[10px] font-bold uppercase tracking-widest">
-              {managingRt === "Sem ID" ? "Nuvem - Point 9944" : `RT: ${managingRt}`}
+              {managingRt === "Nuvem" ? "Nuvem - Point 9944" : `RT: ${managingRt}`}
             </DialogDescription>
           </DialogHeader>
           <div className="p-4 max-h-[60vh] overflow-y-auto space-y-3 no-scrollbar">
@@ -349,4 +351,3 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
     </div>
   );
 }
-

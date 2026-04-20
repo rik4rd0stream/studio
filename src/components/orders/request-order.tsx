@@ -93,7 +93,7 @@ export function RequestOrder({ sender }: { sender: UserType }) {
 
   useEffect(() => {
     loadRedashData();
-    const interval = setInterval(() => loadRedashData(true), 20000);
+    const interval = setInterval(() => loadRedashData(true), 15000);
     return () => clearInterval(interval);
   }, []);
 
