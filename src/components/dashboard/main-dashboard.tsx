@@ -6,12 +6,13 @@ import { AppView, User } from "@/lib/types";
 import { SidebarNav } from "./sidebar-nav";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
-import { Send, Bell, Activity, Menu, WifiOff, Bot } from "lucide-react";
+import { Send, Bell, Activity, Menu, WifiOff } from "lucide-react";
 import { CreateOrder } from "@/components/orders/create-order";
 import { ActiveOrders } from "@/components/orders/active-orders";
 import { RequestOrder } from "@/components/orders/request-order";
 import { Registration } from "@/components/admin/registration";
 import { PushListener } from "@/components/notifications/push-listener";
+import Image from "next/image";
 import { 
   Sheet, 
   SheetContent, 
@@ -116,7 +117,17 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
             </div>
 
             <div className="flex items-center gap-1">
-              <Bot className="h-5 w-5 text-primary animate-pulse" />
+              <Image 
+                src="/logo.png" 
+                alt="RC" 
+                width={32} 
+                height={32} 
+                className="animate-pulse object-contain"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = "https://picsum.photos/seed/robot-icon/32/32";
+                }}
+              />
               <div className="hidden sm:block font-bold text-primary text-xl tracking-tighter">RC</div>
             </div>
             

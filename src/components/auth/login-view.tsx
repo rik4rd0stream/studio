@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Loader2, Bot } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import Image from "next/image";
 
 interface LoginViewProps {
   onLogin: (email: string, pass: string) => void;
@@ -31,8 +32,19 @@ export function LoginView({ onLogin }: LoginViewProps) {
       <Card className="w-full max-w-md border-none shadow-none bg-transparent">
         <CardHeader className="text-center space-y-1">
           <div className="flex flex-col items-center gap-2 mb-2">
-            <div className="bg-primary/10 p-4 rounded-full">
-              <Bot className="h-12 w-12 text-primary animate-pulse" />
+            <div className="bg-primary/10 p-4 rounded-full overflow-hidden flex items-center justify-center w-24 h-24">
+              <Image 
+                src="/logo.png" 
+                alt="Logo" 
+                width={80} 
+                height={80} 
+                className="object-contain animate-pulse"
+                onError={(e) => {
+                  // Fallback para o ícone se a imagem não existir
+                  const target = e.target as HTMLImageElement;
+                  target.src = "https://picsum.photos/seed/robot/80/80";
+                }}
+              />
             </div>
             <p className="text-xs font-bold text-red-500 uppercase tracking-widest">Robot ta on</p>
           </div>
