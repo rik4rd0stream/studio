@@ -99,7 +99,9 @@ export function RequestOrder({ sender }: { sender: UserType }) {
 
   const redashOrders = useMemo(() => {
     return allOrders.filter(row => {
-      const isPoint9944 = Object.values(row).some(val => String(val).includes('9944'));
+      // Filtro estrito pelo point_id 9944
+      const isPoint9944 = String(row.point_id || row.point || '').includes('9944');
+      
       const isSinRT = Object.entries(row).some(([key, val]) => 
         key.toLowerCase().includes('trusted') && String(val).includes('Sin RT')
       );

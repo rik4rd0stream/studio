@@ -70,7 +70,9 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
 
   const filteredOrders = useMemo(() => {
     return allOrders.filter(row => {
-      const isPoint9944 = Object.values(row).some(val => String(val).includes('9944'));
+      // Filtro estrito pelo point_id 9944
+      const isPoint9944 = String(row.point_id || row.point || '').includes('9944');
+      
       const isGeo = Object.entries(row).some(([key, val]) => 
         key.toLowerCase().includes('trusted') && String(val).includes('GEO⚡')
       );
@@ -130,21 +132,22 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
             const isNuvemGroup = rtId === "Sem ID";
             const courierName = getCourierName(rtId);
             const isNuvemSub = courierName === "Nuvem";
+            const hasExterno = orders.some(o => String(o.estado_detallado_actual || "").includes('EXTERNO❌'));
             
             return (
               <Card key={rtId} className={cn(
                 "border border-border/60 shadow-sm overflow-hidden rounded-2xl transition-colors",
-                isNuvemGroup || isNuvemSub ? "bg-red-500/10 border-red-200/50" : "bg-card/80"
+                (isNuvemGroup || isNuvemSub || hasExterno) ? "bg-red-500/10 border-red-200/50" : "bg-card/80"
               )}>
                 <CardContent className="p-0">
                   <div className={cn(
                     "p-4 flex items-center justify-between border-b border-border/40",
-                    isNuvemGroup || isNuvemSub ? "bg-red-500/15" : "bg-muted/30"
+                    (isNuvemGroup || isNuvemSub || hasExterno) ? "bg-red-500/15" : "bg-muted/30"
                   )}>
                     <div className="flex items-center gap-3">
                       <div className={cn(
                         "w-8 h-8 rounded-full flex items-center justify-center",
-                        isNuvemGroup || isNuvemSub ? "bg-red-500/20" : "bg-primary/10"
+                        (isNuvemGroup || isNuvemSub || hasExterno) ? "bg-red-500/20" : "bg-primary/10"
                       )}>
                         {isNuvemGroup || isNuvemSub ? <Cloud className="h-4 w-4 text-red-600" /> : <User className="h-4 w-4 text-primary" />}
                       </div>
@@ -154,7 +157,7 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
                         </h3>
                         <p className={cn(
                           "text-[10px] font-bold truncate max-w-[180px]",
-                          isNuvemGroup || isNuvemSub ? "text-red-700/70" : "text-muted-foreground"
+                          (isNuvemGroup || isNuvemSub || hasExterno) ? "text-red-700/70" : "text-muted-foreground"
                         )}>
                           {isNuvemGroup ? "Sem RT Atribuído" : `RT: ${rtId}`}
                         </p>
@@ -167,14 +170,14 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
                         onClick={() => setManagingRt(rtId)}
                         className={cn(
                           "h-7 text-[9px] font-bold uppercase tracking-tight rounded-full border-primary/20 hover:bg-primary/5 gap-1",
-                          isNuvemGroup || isNuvemSub ? "text-red-700 border-red-200 hover:bg-red-200" : "text-primary"
+                          (isNuvemGroup || isNuvemSub || hasExterno) ? "text-red-700 border-red-200 hover:bg-red-200" : "text-primary"
                         )}
                       >
                         <Settings2 className="h-3 w-3" /> Gerenciar
                       </Button>
                       <div className={cn(
                         "w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold border",
-                        isNuvemGroup || isNuvemSub ? "bg-red-500/20 text-red-700 border-red-300" : "bg-blue-500/10 text-blue-600 border-blue-200"
+                        (isNuvemGroup || isNuvemSub || hasExterno) ? "bg-red-500/20 text-red-700 border-red-300" : "bg-blue-500/10 text-blue-600 border-blue-200"
                       )}>
                         {orders.length}
                       </div>
@@ -184,15 +187,14 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
                   <div className="p-3 space-y-2">
                     {orders.slice(0, 3).map((order, idx) => {
                       const isExterno = String(order.estado_detallado_actual || "").includes('EXTERNO❌');
-                      const highlightRed = (isNuvemSub || isNuvemGroup) && isExterno;
+                      const highlightRed = isExterno;
                       
                       return (
                         <div 
                           key={idx} 
                           className={cn(
                             "p-3 rounded-xl border transition-all",
-                            highlightRed ? "bg-red-600/20 border-red-400 shadow-inner" : 
-                            isExterno ? "bg-red-500/10 border-red-200/50" : "bg-muted/10 border-border/40",
+                            highlightRed ? "bg-red-600/20 border-red-400 shadow-inner" : "bg-muted/10 border-border/40",
                             "flex items-center justify-between"
                           )}
                         >
@@ -242,7 +244,7 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
         <DialogContent className="max-w-[340px] rounded-3xl p-0 border-none shadow-2xl overflow-hidden">
           <DialogHeader className={cn(
             "p-6 pb-4 text-white",
-            managingRt === "Sem ID" || getCourierName(managingRt || "") === "Nuvem" ? "bg-red-600" : "bg-primary"
+            (managingRt === "Sem ID" || getCourierName(managingRt || "") === "Nuvem" || rtOrdersToManage.some(o => String(o.estado_detallado_actual || "").includes('EXTERNO❌'))) ? "bg-red-600" : "bg-primary"
           )}>
             <DialogTitle className="text-lg flex items-center gap-2">
               <Settings2 className="h-5 w-5" /> {getCourierName(managingRt || "")}
@@ -254,7 +256,6 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
           <div className="p-4 max-h-[60vh] overflow-y-auto space-y-3 no-scrollbar">
             {rtOrdersToManage.map((order, idx) => {
                const isExterno = String(order.estado_detallado_actual || "").includes('EXTERNO❌');
-               const isNuvemSub = getCourierName(managingRt || "") === "Nuvem";
                const highlightRed = isExterno;
 
                return (

@@ -58,7 +58,9 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
 
   const redashOrders = useMemo(() => {
     return allOrders.filter(row => {
-      const isPoint9944 = Object.values(row).some(val => String(val).includes('9944'));
+      // Filtro estrito pelo point_id 9944
+      const isPoint9944 = String(row.point_id || row.point || '').includes('9944');
+      
       const isSinRT = Object.entries(row).some(([key, val]) => 
         key.toLowerCase().includes('trusted') && String(val).includes('Sin RT')
       );
@@ -240,7 +242,7 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
 
       <Dialog open={isCourierDialogOpen} onOpenChange={setIsCourierDialogOpen}>
         <DialogContent 
-          className="max-w-md rounded-3xl p-0 border-none shadow-2xl overflow-hidden"
+          className="max-md rounded-3xl p-0 border-none shadow-2xl overflow-hidden"
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
           <DialogHeader className="p-6 pb-2">
