@@ -50,13 +50,13 @@ export function SidebarNav({ currentView, setView, user, onLogout }: SidebarNavP
         key={item.id}
         variant="ghost"
         className={cn(
-          "w-full justify-start gap-3 h-12 px-4 transition-all duration-200",
+          "w-full justify-start gap-3 h-12 px-4 transition-all duration-200 rounded-xl mb-1",
           active ? "bg-primary text-primary-foreground font-semibold shadow-md" : "hover:bg-muted"
         )}
         onClick={() => setView(item.id as AppView)}
       >
         <item.icon className={cn("h-5 w-5", active ? "text-white" : "text-primary")} />
-        <span className="flex-1 text-left">{item.label}</span>
+        <span className="flex-1 text-left text-sm">{item.label}</span>
         {active && <ChevronRight className="h-4 w-4" />}
       </Button>
     );
@@ -65,47 +65,51 @@ export function SidebarNav({ currentView, setView, user, onLogout }: SidebarNavP
   return (
     <div className="flex flex-col h-full bg-card border-r" data-sidebar="sidebar">
       <div className="p-6">
-        <div className="flex items-center gap-2">
-          <Image 
-            src="/logo.png" 
-            alt="Robot" 
-            width={32} 
-            height={32} 
-            className="animate-pulse object-contain"
-            onError={(e) => {
-              const target = e.target as HTMLImageElement;
-              target.src = "https://picsum.photos/seed/robot-sidebar/32/32";
-            }}
-          />
-          <h2 className="text-xl font-headline font-bold text-primary tracking-tight">Rappi Commander</h2>
+        <div className="flex items-center gap-3">
+          <div className="bg-primary/5 p-1 rounded-lg">
+            <Image 
+              src="/logo.png" 
+              alt="Robot Logo" 
+              width={38} 
+              height={38} 
+              className="animate-pulse object-contain"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.src = "https://picsum.photos/seed/robot-sidebar/38/38";
+              }}
+            />
+          </div>
+          <div>
+            <h2 className="text-lg font-headline font-bold text-primary tracking-tight leading-none">Rappi Commander</h2>
+            <p className="text-[9px] font-bold text-primary/80 uppercase tracking-tighter mt-1">Robot ta on</p>
+          </div>
         </div>
-        <div className="flex flex-col mt-1">
-          <p className="text-[10px] font-bold text-red-500 uppercase tracking-tighter">Robot ta on</p>
-          <p className="text-xs text-muted-foreground">Olá, {firstName}</p>
+        <div className="mt-4 px-1">
+          <p className="text-xs text-muted-foreground font-medium">Olá, <span className="text-foreground font-bold">{firstName}</span></p>
         </div>
       </div>
-      <div className="flex-1 px-2 space-y-1">
+      <div className="flex-1 px-3 space-y-1">
         <div className="py-2">
-          <p className="px-4 mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Operação</p>
+          <p className="px-4 mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">Operação</p>
           {navItems.map(renderItem)}
         </div>
-        <div className="py-2 border-t">
-          <p className="px-4 mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Administração</p>
+        <div className="py-2 border-t border-muted/50">
+          <p className="px-4 mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">Administração</p>
           {adminItems.map(renderItem)}
         </div>
       </div>
-      <div className="p-4 border-t space-y-2 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
-        <div className="flex items-center gap-3 px-4 py-2 bg-muted/30 rounded-lg">
-          <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white font-bold text-xs">
+      <div className="p-4 border-t border-muted/50 space-y-2 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
+        <div className="flex items-center gap-3 px-3 py-2 bg-muted/30 rounded-2xl">
+          <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white font-bold text-xs shadow-inner">
             {userName.charAt(0)}
           </div>
           <div className="flex-1 overflow-hidden">
-            <p className="text-sm font-medium truncate">{userName}</p>
-            <p className="text-[10px] text-muted-foreground uppercase font-bold">{user.role}</p>
+            <p className="text-sm font-bold truncate text-foreground">{userName}</p>
+            <p className="text-[9px] text-muted-foreground uppercase font-bold tracking-widest">{user.role}</p>
           </div>
         </div>
-        <Button variant="outline" className="w-full justify-start gap-3 h-10 border-none text-destructive hover:bg-destructive/10" onClick={onLogout}>
-          <LogOut className="h-4 w-4" /> Sair
+        <Button variant="ghost" className="w-full justify-start gap-3 h-10 border-none text-destructive hover:bg-destructive/10 rounded-xl" onClick={onLogout}>
+          <LogOut className="h-4 w-4" /> Sair do Sistema
         </Button>
       </div>
     </div>

@@ -32,21 +32,21 @@ export function LoginView({ onLogin }: LoginViewProps) {
       <Card className="w-full max-w-md border-none shadow-none bg-transparent">
         <CardHeader className="text-center space-y-1">
           <div className="flex flex-col items-center gap-2 mb-2">
-            <div className="bg-primary/10 p-4 rounded-full overflow-hidden flex items-center justify-center w-24 h-24">
+            <div className="bg-primary/5 p-4 rounded-full overflow-hidden flex items-center justify-center w-28 h-28 mb-2">
               <Image 
                 src="/logo.png" 
-                alt="Logo" 
-                width={80} 
-                height={80} 
+                alt="Rappi Commander Logo" 
+                width={100} 
+                height={100} 
                 className="object-contain animate-pulse"
+                priority
                 onError={(e) => {
-                  // Fallback para o ícone se a imagem não existir
                   const target = e.target as HTMLImageElement;
-                  target.src = "https://picsum.photos/seed/robot/80/80";
+                  target.src = "https://picsum.photos/seed/robot-login/100/100";
                 }}
               />
             </div>
-            <p className="text-xs font-bold text-red-500 uppercase tracking-widest">Robot ta on</p>
+            <p className="text-sm font-bold text-primary uppercase tracking-widest">Robot ta on</p>
           </div>
           <CardTitle className="text-4xl font-headline font-bold text-primary tracking-tight">
             Rappi Commander
@@ -58,7 +58,7 @@ export function LoginView({ onLogin }: LoginViewProps) {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email" className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground ml-1">Email</Label>
               <Input
                 id="email"
                 type="email"
@@ -66,28 +66,28 @@ export function LoginView({ onLogin }: LoginViewProps) {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="bg-muted border-none"
+                className="bg-muted/50 border-none h-12 rounded-2xl"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Senha</Label>
+              <Label htmlFor="password" title="password" className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground ml-1">Senha</Label>
               <Input
                 id="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="bg-muted border-none"
+                className="bg-muted/50 border-none h-12 rounded-2xl"
               />
             </div>
-            <Button type="submit" className="w-full text-lg h-12" disabled={loading}>
-              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Acessar Sistema"}
+            <Button type="submit" className="w-full text-lg h-14 rounded-2xl font-bold shadow-lg mt-4" disabled={loading}>
+              {loading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : "Acessar Sistema"}
             </Button>
-            <div className="text-center mt-4">
+            <div className="text-center mt-6">
               <button
                 type="button"
-                className="text-sm text-primary hover:underline font-medium"
-                onClick={() => alert("Funcionalidade de recuperação enviada para o email cadastrado.")}
+                className="text-xs text-muted-foreground hover:text-primary transition-colors font-medium"
+                onClick={() => alert("Acesse o painel master para redefinir senhas.")}
               >
                 Esqueceu a senha?
               </button>
