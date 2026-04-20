@@ -42,7 +42,13 @@ export function Registration({ type }: RegistrationProps) {
     try {
       const result = await getCollectionBridge(collectionName);
       if (result.success) {
-        setItems(result.data || []);
+        // Ordenação alfabética pelo nome
+        const sortedData = (result.data || []).sort((a: any, b: any) => {
+          const nameA = (a.name || a.nome || "").toLowerCase();
+          const nameB = (b.name || b.nome || "").toLowerCase();
+          return nameA.localeCompare(nameB);
+        });
+        setItems(sortedData);
       } else {
         toast({ variant: "destructive", title: "Erro na Ponte", description: result.error });
       }
@@ -104,7 +110,6 @@ export function Registration({ type }: RegistrationProps) {
       return;
     }
 
-    // Se for usuário, primeiro tentamos criar no Auth se for novo
     if (isUser && !editingId) {
       if (password.length < 6) {
         toast({ variant: "destructive", title: "Senha Curta", description: "A senha deve ter no mínimo 6 caracteres." });

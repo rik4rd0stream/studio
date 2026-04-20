@@ -5,12 +5,19 @@ import { useState, useEffect, useMemo } from "react";
 import { redashService, RedashOrder } from "@/lib/api/redash-service";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { RefreshCw, Loader2, Package, User, Send } from "lucide-react";
+import { RefreshCw, Loader2, Package, User, Send, Settings2, ClipboardCopy, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { collection } from "firebase/firestore";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 interface ActiveOrdersProps {
   onSelectOrder?: (orderId: string) => void;
@@ -21,6 +28,9 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
   const db = useFirestore();
   const [loading, setLoading] = useState(false);
   const [allOrders, setAllOrders] = useState<RedashOrder[]>([]);
+  
+  // Estado para o popup de gerenciamento
+  const [managingRt, setManagingRt] = useState<string | null>(null);
   
   const couriersQuery = useMemoFirebase(() => collection(db, 'entregadores'), [db]);
   const { data: couriers } = useCollection<any>(couriersQuery);
@@ -41,7 +51,6 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
   }, []);
 
   const handleCopyAndGo = (id: any) => {
-    // Garante que o ID seja sempre string para evitar erros no resto do sistema
     const stringId = String(id);
     navigator.clipboard.writeText(stringId).then(() => {
       toast({
@@ -53,6 +62,11 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
         onSelectOrder(stringId);
       }
     });
+  };
+
+  const handleForzaBr = (orderId: string, rtId: string) => {
+    const command = `!!forzabr ${orderId} ${rtId}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(command)}`, '_blank');
   };
 
   const filteredOrders = useMemo(() => {
@@ -82,6 +96,8 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
     const courier = couriers?.find(c => String(c.id_motoboy || c.id) === String(id));
     return courier ? (courier.nome || courier.name) : "Motoboy não identificado";
   };
+
+  const rtOrdersToManage = managingRt ? groupedOrders[managingRt] || [] : [];
 
   return (
     <div className="space-y-6 animate-slide-up max-w-2xl mx-auto pb-20">
@@ -118,16 +134,29 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
                       <User className="h-4 w-4 text-primary" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-bold text-foreground">RT: {rtId} - {getCourierName(rtId)}</h3>
+                      <h3 className="text-sm font-bold text-foreground">RT: {rtId}</h3>
+                      <p className="text-[10px] text-muted-foreground font-medium truncate max-w-[150px]">
+                        {getCourierName(rtId)}
+                      </p>
                     </div>
                   </div>
-                  <div className="w-7 h-7 rounded-full bg-blue-500/10 text-blue-600 flex items-center justify-center text-[10px] font-bold border border-blue-200">
-                    {orders.length}
+                  <div className="flex items-center gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => setManagingRt(rtId)}
+                      className="h-7 text-[9px] font-bold uppercase tracking-tight rounded-full border-primary/20 hover:bg-primary/5 text-primary gap-1"
+                    >
+                      <Settings2 className="h-3 w-3" /> Gerenciar
+                    </Button>
+                    <div className="w-7 h-7 rounded-full bg-blue-500/10 text-blue-600 flex items-center justify-center text-[10px] font-bold border border-blue-200">
+                      {orders.length}
+                    </div>
                   </div>
                 </div>
 
                 <div className="p-3 space-y-2">
-                  {orders.map((order, idx) => {
+                  {orders.slice(0, 3).map((order, idx) => {
                     const isExterno = Object.values(order).some(val => String(val).includes('EXTERNO❌'));
                     return (
                       <div 
@@ -139,18 +168,11 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
                       >
                         <div className="space-y-1">
                           <p className="text-[11px] font-bold text-foreground leading-tight">{order.store_name}</p>
-                          <p className="text-[10px] text-muted-foreground truncate max-w-[200px]">{order.direccion_entrega}</p>
+                          <p className="text-[10px] text-muted-foreground truncate max-w-[180px]">{order.direccion_entrega}</p>
                         </div>
                         <div className="flex items-center gap-2">
                           <div className="flex flex-col items-end mr-1">
-                            <div className="flex items-center gap-2">
-                              {isExterno && (
-                                <Badge className="h-5 px-1.5 text-[8px] font-bold bg-red-500 text-white border-none uppercase">
-                                  Externo
-                                </Badge>
-                              )}
-                              <span className="text-[10px] font-mono font-bold text-muted-foreground">#{order.order_id}</span>
-                            </div>
+                            <span className="text-[10px] font-mono font-bold text-muted-foreground">#{order.order_id}</span>
                             <span className="text-[8px] text-muted-foreground/70 font-bold uppercase mt-0.5 tracking-tight">
                               {order.estado_detallado_actual}
                             </span>
@@ -158,9 +180,8 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
                           <Button
                             variant="default"
                             size="icon"
-                            className="h-8 w-8 bg-primary text-white hover:bg-primary/90 rounded-full shadow-sm animate-pulse"
+                            className="h-8 w-8 bg-primary text-white hover:bg-primary/90 rounded-full shadow-sm"
                             onClick={() => handleCopyAndGo(order.order_id)}
-                            title="Despachar"
                           >
                             <Send className="h-3.5 w-3.5" />
                           </Button>
@@ -168,12 +189,72 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
                       </div>
                     );
                   })}
+                  {orders.length > 3 && (
+                    <p className="text-center text-[9px] text-muted-foreground font-bold uppercase pt-1">
+                      + {orders.length - 3} pedidos no gerenciamento
+                    </p>
+                  )}
                 </div>
               </CardContent>
             </Card>
           ))
         )}
       </div>
+
+      {/* Dialog de Gerenciamento do RT */}
+      <Dialog open={!!managingRt} onOpenChange={(open) => !open && setManagingRt(null)}>
+        <DialogContent className="max-w-[340px] rounded-3xl p-0 border-none shadow-2xl overflow-hidden">
+          <DialogHeader className="p-6 pb-4 bg-primary text-white">
+            <DialogTitle className="text-lg flex items-center gap-2">
+              <Settings2 className="h-5 w-5" /> Gerenciar RT: {managingRt}
+            </DialogTitle>
+            <DialogDescription className="text-white/80 text-xs">
+              {getCourierName(managingRt || "")}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="p-4 max-h-[60vh] overflow-y-auto space-y-3 no-scrollbar">
+            {rtOrdersToManage.map((order, idx) => (
+              <div key={idx} className="p-4 bg-muted/30 rounded-2xl border border-border/40 space-y-3">
+                <div className="flex justify-between items-start">
+                  <div className="space-y-1">
+                    <p className="text-xs font-bold leading-tight">{order.store_name}</p>
+                    <p className="text-[10px] text-muted-foreground font-mono font-bold">#{order.order_id}</p>
+                  </div>
+                  <Badge variant="outline" className="text-[8px] uppercase font-bold py-0 h-4 border-primary/20 text-primary">
+                    {order.estado_detallado_actual}
+                  </Badge>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-2">
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    className="h-9 text-[10px] font-bold uppercase gap-1.5 rounded-xl border-blue-200 text-blue-600 hover:bg-blue-50"
+                    onClick={() => {
+                      navigator.clipboard.writeText(String(order.order_id));
+                      toast({ title: "Copiado!", description: "ID enviado para área de transferência." });
+                    }}
+                  >
+                    <ClipboardCopy className="h-3.5 w-3.5" /> Copiar ID
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    className="h-9 text-[10px] font-bold uppercase gap-1.5 rounded-xl bg-orange-600 hover:bg-orange-700"
+                    onClick={() => handleForzaBr(String(order.order_id), managingRt!)}
+                  >
+                    <Zap className="h-3.5 w-3.5" /> Força BR
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="p-4 bg-muted/20 border-t flex justify-center">
+            <Button variant="ghost" onClick={() => setManagingRt(null)} className="text-xs font-bold uppercase text-muted-foreground">
+              Fechar Janela
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

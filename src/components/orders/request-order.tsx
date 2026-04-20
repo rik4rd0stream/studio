@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -54,7 +55,6 @@ export function RequestOrder({ sender }: { sender: UserType }) {
   const [isCourierPopupOpen, setIsCourierPopupOpen] = useState(false);
   const [isUserPopupOpen, setIsUserPopupOpen] = useState(false);
 
-  // Carregar última seleção do localStorage ao montar
   useEffect(() => {
     const savedUser = localStorage.getItem(STORAGE_LAST_USER);
     const savedCourier = localStorage.getItem(STORAGE_LAST_COURIER);
@@ -70,7 +70,6 @@ export function RequestOrder({ sender }: { sender: UserType }) {
     return () => clearInterval(timer);
   }, []);
 
-  // Salvar seleções no localStorage quando mudarem
   useEffect(() => {
     if (selectedUser) {
       localStorage.setItem(STORAGE_LAST_USER, JSON.stringify(selectedUser));
@@ -108,13 +107,21 @@ export function RequestOrder({ sender }: { sender: UserType }) {
     });
   }, [allOrders]);
 
-  const usersQuery = useMemoFirebase(() => query(collection(db, 'userProfiles'), where('role', '==', 'normal')), [db]);
+  // Filtro inteligente de operadores: apenas quem tem notificações ativadas e ordenado por nome
+  const usersQuery = useMemoFirebase(() => query(
+    collection(db, 'userProfiles'), 
+    where('notificationsEnabled', '==', true)
+  ), [db]);
   const { data: usersData } = useCollection<UserType>(usersQuery);
-  const users = usersData || [];
+  const users = useMemo(() => {
+    return [...(usersData || [])].sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+  }, [usersData]);
 
   const couriersQuery = useMemoFirebase(() => query(collection(db, 'entregadores')), [db]);
   const { data: couriersData } = useCollection<Courier>(couriersQuery);
-  const couriers = couriersData || [];
+  const couriers = useMemo(() => {
+    return [...(couriersData || [])].sort((a, b) => (a.nome || "").localeCompare(b.nome || ""));
+  }, [couriersData]);
 
   const myRequestsQuery = useMemoFirebase(() => {
     if (!sender?.email) return null;
@@ -168,7 +175,6 @@ export function RequestOrder({ sender }: { sender: UserType }) {
 
       await addDoc(collection(db, 'orderRequests'), newRequest);
       setManualOrderId('');
-      // Não resetamos selectedUser nem selectedCourier para manter a memória
     } catch (e) {
       console.error(e);
     } finally {
@@ -210,11 +216,11 @@ export function RequestOrder({ sender }: { sender: UserType }) {
 
   return (
     <div className="space-y-6 max-w-md mx-auto p-4 pb-24 animate-fade-in">
-      {/* HISTÓRICO RECENTE */}
+      {/* STATUS DAS SOLICITAÇÕES */}
       <div className="space-y-3">
         <div className="flex items-center gap-2 text-primary px-1">
           <History className="h-4 w-4" />
-          <h3 className="text-[10px] font-bold uppercase tracking-wider">Estados das Solicitações (Recentes)</h3>
+          <h3 className="text-[10px] font-bold uppercase tracking-wider">Status das Solicitações</h3>
         </div>
         
         {loadingMyRequests ? (
@@ -303,16 +309,16 @@ export function RequestOrder({ sender }: { sender: UserType }) {
         </div>
       </div>
 
-      <div className="relative">
+      <div className="relative max-w-[200px] mx-auto">
         <Input
           placeholder="ID DO PEDIDO"
           value={manualOrderId}
           onChange={(e) => setManualOrderId(e.target.value)}
-          className="h-14 text-lg font-bold rounded-2xl border-none bg-muted/40 shadow-inner text-center tracking-widest"
+          className="h-10 text-sm font-bold rounded-xl border-none bg-muted/40 shadow-inner text-center tracking-widest"
         />
         {manualOrderId && (
-          <button onClick={() => setManualOrderId('')} className="absolute right-4 top-1/2 -translate-y-1/2 p-1.5 bg-muted rounded-full text-muted-foreground hover:text-destructive">
-            <X className="h-4 w-4" />
+          <button onClick={() => setManualOrderId('')} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 bg-muted rounded-full text-muted-foreground hover:text-destructive">
+            <X className="h-3 w-3" />
           </button>
         )}
       </div>
@@ -321,61 +327,55 @@ export function RequestOrder({ sender }: { sender: UserType }) {
       <div className="grid grid-cols-1 gap-3">
         {/* SELECIONAR ENTREGADOR */}
         <div className="space-y-1.5">
-          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider px-1">Entregador (Quem vai levar)</p>
+          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider px-1">Entregador</p>
           <Button 
             variant="outline" 
             onClick={() => setIsCourierPopupOpen(true)}
             className={cn(
-              "w-full h-14 justify-between rounded-2xl border-none bg-card shadow-sm px-4",
+              "w-full h-12 justify-between rounded-2xl border-none bg-card shadow-sm px-4",
               selectedCourier ? "ring-1 ring-primary/20" : ""
             )}
           >
             <div className="flex items-center gap-3">
-              <div className={cn("p-2 rounded-xl", selectedCourier ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>
-                <Bike className="h-5 w-5" />
+              <div className={cn("p-1.5 rounded-lg", selectedCourier ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>
+                <Bike className="h-4 w-4" />
               </div>
               <div className="text-left">
                 {selectedCourier ? (
-                  <>
-                    <p className="text-xs font-bold leading-tight">{selectedCourier.nome}</p>
-                    <p className="text-[10px] font-mono text-primary font-bold">RT {selectedCourier.id_motoboy}</p>
-                  </>
+                  <p className="text-xs font-bold leading-tight">{selectedCourier.nome}</p>
                 ) : (
-                  <p className="text-sm font-medium text-muted-foreground">Escolher Motoboy</p>
+                  <p className="text-xs font-medium text-muted-foreground">Escolher Motoboy</p>
                 )}
               </div>
             </div>
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            <ChevronRight className="h-3 w-3 text-muted-foreground" />
           </Button>
         </div>
 
         {/* SELECIONAR OPERADOR */}
         <div className="space-y-1.5">
-          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider px-1">Operador (Quem despacha)</p>
+          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider px-1">Operador (Quem recebe)</p>
           <Button 
             variant="outline" 
             onClick={() => setIsUserPopupOpen(true)}
             className={cn(
-              "w-full h-14 justify-between rounded-2xl border-none bg-card shadow-sm px-4",
+              "w-full h-12 justify-between rounded-2xl border-none bg-card shadow-sm px-4",
               selectedUser ? "ring-1 ring-primary/20" : ""
             )}
           >
             <div className="flex items-center gap-3">
-              <div className={cn("p-2 rounded-xl", selectedUser ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>
-                <UserCheck className="h-5 w-5" />
+              <div className={cn("p-1.5 rounded-lg", selectedUser ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>
+                <UserCheck className="h-4 w-4" />
               </div>
               <div className="text-left">
                 {selectedUser ? (
-                  <>
-                    <p className="text-xs font-bold leading-tight">{selectedUser.name}</p>
-                    <p className="text-[10px] text-muted-foreground">{selectedUser.email.split('@')[0]}</p>
-                  </>
+                  <p className="text-xs font-bold leading-tight">{selectedUser.name}</p>
                 ) : (
-                  <p className="text-sm font-medium text-muted-foreground">Escolher Operador</p>
+                  <p className="text-xs font-medium text-muted-foreground">Escolher Operador</p>
                 )}
               </div>
             </div>
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            <ChevronRight className="h-3 w-3 text-muted-foreground" />
           </Button>
         </div>
       </div>
