@@ -83,8 +83,8 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
     });
   };
 
-  const handleForzaBr = (orderId: string, rtId: string) => {
-    const command = `!!forzabr ${orderId} ${rtId}`;
+  const handleForzarBr = (orderId: string, rtId: string) => {
+    const command = `!!forzarbr ${orderId} ${rtId}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(command)}`, '_blank');
     
     recordLog(orderId, rtId, 'cheguei');
@@ -96,15 +96,17 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
       const isPoint9944 = pointValue === '9944' || pointValue.includes('9944');
       if (!isPoint9944) return false;
 
+      // Ignora pedidos pendentes de despacho (Sin RT)
       const esTrusted = String(row.es_trusted || '').toUpperCase();
       if (esTrusted.includes('SIN RT')) return false;
 
+      const rtId = String(row.rt_asignado_orden || "").trim();
       const estadoActual = String(row.estado_detallado_actual || row.estado || "").toUpperCase();
-      const hasRT = !!String(row.rt_asignado_orden || "").trim();
       
       const isExterno = estadoActual.includes('EXTERNO');
 
-      return hasRT || isExterno;
+      // Só mostra se tiver RT ou for Externo (Nuvem)
+      return rtId !== "" || isExterno;
     });
   }, [allOrders]);
 
@@ -121,7 +123,8 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
   }, [filteredOrders]);
 
   const rtOrdersToManage = useMemo(() => {
-    return managingRt ? groupedOrders[managingRt] || [] : [];
+    if (!managingRt) return [];
+    return groupedOrders[managingRt] || [];
   }, [managingRt, groupedOrders]);
 
   const getCourierName = (id: string) => {
@@ -332,7 +335,7 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
                         "h-9 text-[10px] font-bold uppercase gap-1.5 rounded-xl text-white shadow-lg",
                         isExternoOrder ? "bg-red-600 hover:bg-red-700" : "bg-orange-600 hover:bg-orange-700"
                       )}
-                      onClick={() => handleForzaBr(String(order.order_id), managingRt!)}
+                      onClick={() => handleForzarBr(String(order.order_id), managingRt!)}
                     >
                       <Zap className="h-3.5 w-3.5" /> Cheguei
                     </Button>

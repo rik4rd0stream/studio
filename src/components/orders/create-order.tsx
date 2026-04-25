@@ -30,7 +30,7 @@ import { collection, query } from "firebase/firestore";
 import { cn } from "@/lib/utils";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
-const COMMANDS = ["!!bundleBR", "!!rebr", "!!Br", "!!forzabr"];
+const COMMANDS = ["!!bundleBR", "!!rebr", "!!Br", "!!forzarbr"];
 
 export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }: { 
   onOrderCreated: (order: any) => void;
