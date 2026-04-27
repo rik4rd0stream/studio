@@ -111,14 +111,16 @@ export function RequestOrder({ sender }: { sender: UserType }) {
   const couriers = useMemo(() => [...(couriersData || [])].sort((a, b) => (a.nome || "").localeCompare(b.nome || "")), [couriersData]);
 
   const myRequestsQuery = useMemoFirebase(() => {
-    if (!sender?.email) return null;
+    // Verificação rígida: só cria a query se o e-mail do remetente estiver pronto
+    if (!sender || !sender.email) return null;
+    
     return query(
       collection(db, 'orderRequests'),
       where('senderEmail', '==', sender.email.toLowerCase().trim()),
       orderBy('createdAt', 'desc'),
       limit(10)
     );
-  }, [db, sender?.email]);
+  }, [db, sender]);
 
   const { data: myRequestsData, isLoading: loadingMyRequests } = useCollection<OrderRequest>(myRequestsQuery);
 

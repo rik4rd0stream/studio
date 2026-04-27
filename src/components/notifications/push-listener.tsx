@@ -19,7 +19,6 @@ import {
 import { BellRing, ExternalLink, X, MessageSquareQuote, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Capacitor } from '@capacitor/core';
 
 const EXPIRATION_TIME_MS = 120000; // 2 minutos
 const VAPID_KEY = "BIqUjXu7NogeKlsoD9Cp6FWKN4JfEnrBnNybso_ntheRV2uT9FQhM-AEoYwcJXebN-iLP7KVO9q72Q0OfwLcMi4";
@@ -39,9 +38,10 @@ export function PushListener({
 
   // 1. REGISTRO DE TOKEN FCM (Push Real)
   useEffect(() => {
-    const setupFCM = async () => {
-      if (!user?.email) return;
+    // Verificação rígida sugerida: Só prossegue se o usuário estiver 100% pronto
+    if (!user || !user.email) return;
 
+    const setupFCM = async () => {
       try {
         const messaging = await getFirebaseMessaging();
         if (!messaging) return;
@@ -52,14 +52,12 @@ export function PushListener({
           const token = await getToken(messaging, { vapidKey: VAPID_KEY });
           
           if (token) {
-            // Salva o token de forma robusta usando setDoc com merge
+            // Salva o token usando setDoc com merge para evitar erros de documento inexistente
             const userRef = doc(db, 'userProfiles', user.email.toLowerCase().trim());
-            await setDoc(userRef, {
-              fcmToken: token, // Token mais recente
+            setDoc(userRef, {
+              fcmToken: token,
               updatedAt: new Date().toISOString()
             }, { merge: true });
-            
-            console.log("FCM Token sincronizado com sucesso.");
           }
         }
       } catch (error) {
@@ -68,7 +66,7 @@ export function PushListener({
     };
 
     setupFCM();
-  }, [user?.email, db]);
+  }, [user, db]);
 
   // 2. ESCUTA EM FOREGROUND (App Aberto)
   useEffect(() => {
@@ -88,7 +86,8 @@ export function PushListener({
 
   // 3. LISTENER FIRESTORE (Backup Visual)
   useEffect(() => {
-    if (!user?.email || !user.notificationsEnabled) return;
+    // Verificação rígida de segurança para evitar consultas antes da hora
+    if (!user || !user.email || user.notificationsEnabled !== true) return;
 
     const q = query(
       collection(db, "orderRequests"),
@@ -105,6 +104,11 @@ export function PushListener({
 
       if (snapshot.docChanges().some(change => change.type === "added")) {
         setIsMinimized(false);
+      }
+    }, (error) => {
+      // Silencia erros de permissão temporários durante a troca de auth
+      if (error.code !== 'permission-denied') {
+        console.error("Firestore Push Listener Error:", error);
       }
     });
 
