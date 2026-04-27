@@ -3,27 +3,10 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     /**
-     * REGRAS DE ACESSO - Rappi Commander v2.2
-     * Permissões globais para operação em modo dashboard.
+     * REGRAS DE ACESSO TOTAIS - Rappi Commander v2.4 (FORCED SYNC)
+     * Permite leitura e escrita em qualquer coleção para operação sem bloqueios.
      */
     match /{document=**} {
-      allow read, write: if true;
-    }
-
-    // Regras explícitas para coleções principais
-    match /orderRequests/{id} {
-      allow read, write: if true;
-    }
-
-    match /userProfiles/{id} {
-      allow read, write: if true;
-    }
-
-    match /operationLogs/{id} {
-      allow read, write: if true;
-    }
-    
-    match /entregadores/{id} {
       allow read, write: if true;
     }
   }

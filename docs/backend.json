@@ -5,7 +5,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "UserProfile",
       "type": "object",
-      "description": "Represents a user of the Rappi Commander system, including their profile details and access role.",
+      "description": "Perfil do usuário do sistema Rappi Commander.",
       "properties": {
         "id": { "type": "string" },
         "name": { "type": "string" },
@@ -24,7 +24,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "OrderRequest",
       "type": "object",
-      "description": "Represents a request for an order to be dispatched by a specific operator.",
+      "description": "Solicitação de despacho de pedido.",
       "properties": {
         "id": { "type": "string" },
         "orderId": { "type": "string" },
@@ -44,7 +44,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "OperationLog",
       "type": "object",
-      "description": "Logs system actions like copying IDs or sending 'Cheguei' commands for audit purposes.",
+      "description": "Log de auditoria das ações dos operadores.",
       "properties": {
         "id": { "type": "string" },
         "orderId": { "type": "string" },
@@ -60,7 +60,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Courier",
       "type": "object",
-      "description": "Represents a courier (motoboy) registered in the system.",
+      "description": "Entregador (motoboy) cadastrado no sistema.",
       "properties": {
         "id": { "type": "string" },
         "nome": { "type": "string" },
@@ -76,23 +76,23 @@
   "firestore": {
     "userProfiles": {
       "schema": "#/backend/entities/UserProfile",
-      "description": "User profile data."
+      "description": "Documentos de perfis de usuário."
     },
     "orderRequests": {
       "schema": "#/backend/entities/OrderRequest",
-      "description": "Dispatch requests between users."
+      "description": "Solicitações de pedidos entre operadores."
     },
     "operationLogs": {
       "schema": "#/backend/entities/OperationLog",
-      "description": "Audit logs of operator actions."
+      "description": "Histórico de ações de auditoria."
     },
     "entregadores": {
       "schema": "#/backend/entities/Courier",
-      "description": "Registered couriers."
+      "description": "Lista de entregadores cadastrados."
     },
     "rt_registry": {
       "schema": { "type": "object" },
-      "description": "RT registration bridge data."
+      "description": "Ponte de registro de RT."
     }
   }
 }
