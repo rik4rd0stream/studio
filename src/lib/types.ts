@@ -30,6 +30,7 @@ export interface OrderRequest {
   status: 'pending' | 'accepted' | 'rejected' | 'unavailable';
   createdAt: string;
   updatedAt?: string;
+  statusNote?: string;
 }
 
 export interface OperationLog {

@@ -3,7 +3,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, addDoc, query, where, limit, doc, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, query, where, limit, doc, updateDoc, orderBy } from 'firebase/firestore';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -126,6 +126,7 @@ export function RequestOrder({ sender }: { sender: UserType }) {
     return query(
       collection(db, 'orderRequests'),
       where('senderEmail', '==', sender.email.toLowerCase().trim()),
+      orderBy('createdAt', 'desc'),
       limit(10)
     );
   }, [db, sender?.email]);
@@ -133,14 +134,11 @@ export function RequestOrder({ sender }: { sender: UserType }) {
   const { data: myRequestsData, isLoading: loadingMyRequests } = useCollection<OrderRequest>(myRequestsQuery);
   
   const lastThreeRequests = useMemo(() => {
-    const requests = myRequestsData || [];
-    return [...requests]
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, 3);
+    return (myRequestsData || []).slice(0, 3);
   }, [myRequestsData]);
 
   const filteredUsers = users.filter(u => 
-    (u.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (u.name || u.nome || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
     (u.email || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -453,7 +451,7 @@ export function RequestOrder({ sender }: { sender: UserType }) {
                 )}
               >
                 <div className="text-left overflow-hidden">
-                  <p className="text-xs font-bold truncate">{u.name}</p>
+                  <p className="text-xs font-bold truncate">{u.name || u.nome}</p>
                   <p className="text-[10px] text-muted-foreground">{u.email}</p>
                 </div>
                 <ChevronRight className="h-4 w-4 text-primary/40" />
