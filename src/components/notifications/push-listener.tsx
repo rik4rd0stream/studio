@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -41,7 +40,7 @@ export function PushListener({
 
     const setupFCM = async () => {
       try {
-        const messaging = await getFirebaseMessaging();
+        const messaging = getFirebaseMessaging();
         if (!messaging) return;
 
         const permission = await Notification.requestPermission();
@@ -66,7 +65,7 @@ export function PushListener({
 
   useEffect(() => {
     const setupForegroundListener = async () => {
-      const messaging = await getFirebaseMessaging();
+      const messaging = getFirebaseMessaging();
       if (!messaging) return;
 
       onMessage(messaging, (payload) => {
@@ -80,7 +79,6 @@ export function PushListener({
   }, [toast]);
 
   useEffect(() => {
-    // Filtro rígido: só escuta se o usuário estiver pronto e for o dono das notificações
     if (!user || !user.email || user.notificationsEnabled !== true) return;
 
     const userEmail = user.email.toLowerCase().trim();
@@ -102,7 +100,7 @@ export function PushListener({
         setIsMinimized(false);
       }
     }, (error) => {
-      // Silencia erros de permissão durante o carregamento inicial
+      // Ignora erro inicial de permissão enquanto as regras propagam
       if (error.code !== 'permission-denied') {
         console.error("Firestore Listener Error:", error);
       }
