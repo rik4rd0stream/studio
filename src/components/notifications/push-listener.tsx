@@ -36,9 +36,7 @@ export function PushListener({
   const [isMinimized, setIsMinimized] = useState(false);
   const [timeLeft, setTimeLeft] = useState<string>("");
 
-  // 1. REGISTRO DE TOKEN FCM (Push Real)
   useEffect(() => {
-    // Verificação rígida sugerida: Só prossegue se o usuário estiver 100% pronto
     if (!user || !user.email) return;
 
     const setupFCM = async () => {
@@ -46,13 +44,11 @@ export function PushListener({
         const messaging = await getFirebaseMessaging();
         if (!messaging) return;
 
-        // Solicita permissão do sistema
         const permission = await Notification.requestPermission();
         if (permission === 'granted') {
           const token = await getToken(messaging, { vapidKey: VAPID_KEY });
           
           if (token) {
-            // Salva o token usando setDoc com merge para evitar erros de documento inexistente
             const userRef = doc(db, 'userProfiles', user.email.toLowerCase().trim());
             setDoc(userRef, {
               fcmToken: token,
@@ -61,14 +57,13 @@ export function PushListener({
           }
         }
       } catch (error) {
-        console.error("Erro ao configurar FCM:", error);
+        console.error("Erro FCM:", error);
       }
     };
 
     setupFCM();
   }, [user, db]);
 
-  // 2. ESCUTA EM FOREGROUND (App Aberto)
   useEffect(() => {
     const setupForegroundListener = async () => {
       const messaging = await getFirebaseMessaging();
@@ -84,14 +79,15 @@ export function PushListener({
     setupForegroundListener();
   }, [toast]);
 
-  // 3. LISTENER FIRESTORE (Backup Visual)
   useEffect(() => {
-    // Verificação rígida de segurança para evitar consultas antes da hora
+    // Filtro rígido: só escuta se o usuário estiver pronto e for o dono das notificações
     if (!user || !user.email || user.notificationsEnabled !== true) return;
+
+    const userEmail = user.email.toLowerCase().trim();
 
     const q = query(
       collection(db, "orderRequests"),
-      where("targetUserEmail", "==", user.email.toLowerCase().trim()),
+      where("targetUserEmail", "==", userEmail),
       where("status", "==", "pending")
     );
 
@@ -106,16 +102,15 @@ export function PushListener({
         setIsMinimized(false);
       }
     }, (error) => {
-      // Silencia erros de permissão temporários durante a troca de auth
+      // Silencia erros de permissão durante o carregamento inicial
       if (error.code !== 'permission-denied') {
-        console.error("Firestore Push Listener Error:", error);
+        console.error("Firestore Listener Error:", error);
       }
     });
 
     return () => unsubscribe();
   }, [db, user, onPendingCountChange]);
 
-  // Cronômetro de expiração (2 min)
   useEffect(() => {
     if (pendingRequests.length === 0) return;
     const interval = setInterval(() => {

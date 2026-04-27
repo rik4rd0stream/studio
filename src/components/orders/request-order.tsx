@@ -26,6 +26,7 @@ import {
 import { OrderRequest, User as UserType, Courier } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { redashService, RedashOrder } from '@/lib/api/redash-service';
+import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
   DialogContent,
@@ -39,6 +40,7 @@ const STORAGE_LAST_COURIER = 'rappi_commander_last_courier_v1';
 
 export function RequestOrder({ sender }: { sender: UserType }) {
   const db = useFirestore();
+  const { toast } = useToast();
   const [manualOrderId, setManualOrderId] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchCourierQuery, setSearchCourierQuery] = useState('');
@@ -99,7 +101,6 @@ export function RequestOrder({ sender }: { sender: UserType }) {
     });
   }, [allOrders]);
 
-  // Consulta de usuários simplificada para evitar erros de permissão em massa
   const usersQuery = useMemoFirebase(() => {
     return query(collection(db, 'userProfiles'), limit(50));
   }, [db]);
@@ -116,13 +117,13 @@ export function RequestOrder({ sender }: { sender: UserType }) {
   const { data: couriersData } = useCollection<Courier>(couriersQuery);
   const couriers = useMemo(() => [...(couriersData || [])].sort((a, b) => (a.nome || "").localeCompare(b.nome || "")), [couriersData]);
 
-  // Query principal protegida: só ativa se o sender estiver 100% carregado
   const myRequestsQuery = useMemoFirebase(() => {
     if (!sender || !sender.email || !sender.email.includes('@')) return null;
     
+    const senderEmail = sender.email.toLowerCase().trim();
     return query(
       collection(db, 'orderRequests'),
-      where('senderEmail', '==', sender.email.toLowerCase().trim()),
+      where('senderEmail', '==', senderEmail),
       orderBy('createdAt', 'desc'),
       limit(10)
     );
@@ -157,6 +158,7 @@ export function RequestOrder({ sender }: { sender: UserType }) {
       toast({ title: "Solicitado!", description: `Aguardando ${selectedUser.name}` });
     } catch (e) {
       console.error(e);
+      toast({ variant: "destructive", title: "Erro ao enviar", description: "Verifique sua conexão." });
     } finally {
       setIsSubmitting(false);
     }
@@ -242,7 +244,7 @@ export function RequestOrder({ sender }: { sender: UserType }) {
           </Button>
         </div>
 
-        <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1 no-scrollbar">
+        <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1 no-scrollbar">
           {redashOrders.map((order, idx) => (
             <Card key={idx} className={cn("border-none bg-card shadow-sm hover:shadow-md transition-all cursor-pointer rounded-2xl group", manualOrderId === String(order.order_id) ? "ring-2 ring-primary" : "")} onClick={() => setManualOrderId(String(order.order_id))}>
               <CardContent className="p-3 flex justify-between items-center">

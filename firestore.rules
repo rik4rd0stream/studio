@@ -3,8 +3,8 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     /**
-     * REGRAS EXPLÍCITAS - Rappi Commander v3.0
-     * Mapeamento direto das coleções para garantir propagação imediata.
+     * REGRAS EXPLÍCITAS - Rappi Commander v3.1
+     * Forçando propagação para a nova coleção limpa.
      */
     
     match /userProfiles/{docId} {
@@ -27,7 +27,7 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
-    // Fallback de segurança para novas coleções
+    // Fallback de segurança
     match /{document=**} {
       allow read, write: if request.auth != null;
     }
