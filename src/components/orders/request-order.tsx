@@ -37,12 +37,14 @@ import {
 
 const STORAGE_LAST_USER = 'rappi_commander_last_user_v1';
 const STORAGE_LAST_COURIER = 'rappi_commander_last_courier_v1';
+const COMMANDS = ["!!bundleBR", "!!rebr", "!!Br", "!!forzarbr"];
 
 export function RequestOrder({ sender }: { sender: UserType }) {
   const db = useFirestore();
   const { toast } = useToast();
   const { user: authUser } = useUser();
   const [manualOrderId, setManualOrderId] = useState('');
+  const [selectedCommand, setSelectedCommand] = useState("!!bundleBR");
   const [searchQuery, setSearchQuery] = useState('');
   const [searchCourierQuery, setSearchCourierQuery] = useState('');
   const [selectedUser, setSelectedUser] = useState<UserType | null>(null);
@@ -129,7 +131,7 @@ export function RequestOrder({ sender }: { sender: UserType }) {
     return [...myRequestsData]
       .filter(req => req.senderEmail === email)
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, 3); // Exibe apenas os últimos 3 pedidos
+      .slice(0, 3);
   }, [myRequestsData, authUser?.email]);
 
   const handleSendRequest = async () => {
@@ -141,7 +143,7 @@ export function RequestOrder({ sender }: { sender: UserType }) {
       const matchedOrder = redashOrders.find(o => String(o.order_id) === cleanId);
       const storeName = matchedOrder?.store_name || 'Pedido Manual';
       
-      const fullCommand = `!!forzarbr ${cleanId} ${selectedCourier.id_motoboy}`;
+      const fullCommand = `${selectedCommand} ${cleanId} ${selectedCourier.id_motoboy}`;
       
       const newRequest: OrderRequest = {
         orderId: cleanId,
@@ -254,6 +256,25 @@ export function RequestOrder({ sender }: { sender: UserType }) {
       </div>
 
       <div className="h-px bg-border/40 my-2" />
+
+      <div className="bg-card p-3 rounded-2xl border border-border/40 shadow-sm space-y-2">
+        <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-1">Comando de Solicitação</p>
+        <div className="flex flex-wrap gap-1.5">
+          {COMMANDS.map((cmd) => (
+            <Button
+              key={cmd}
+              variant="default"
+              onClick={() => setSelectedCommand(cmd)}
+              className={cn(
+                "h-8 px-4 font-bold text-xs rounded-xl transition-all",
+                selectedCommand === cmd ? "bg-primary text-primary-foreground shadow-lg" : "bg-muted text-muted-foreground"
+              )}
+            >
+              {cmd}
+            </Button>
+          ))}
+        </div>
+      </div>
 
       <div className="space-y-3">
         <div className="flex items-center justify-between px-1">
