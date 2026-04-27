@@ -13,10 +13,32 @@
         "role": { "type": "string" },
         "notificationsEnabled": { "type": "boolean" },
         "hasRequestAccess": { "type": "boolean" },
+        "fcmToken": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "password": { "type": "string" }
       },
       "required": ["id", "name", "email", "role", "createdAt", "updatedAt"]
+    },
+    "OrderRequest": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "OrderRequest",
+      "type": "object",
+      "description": "Represents a request for an order to be dispatched by a specific operator.",
+      "properties": {
+        "id": { "type": "string" },
+        "orderId": { "type": "string" },
+        "storeName": { "type": "string" },
+        "command": { "type": "string" },
+        "targetUserEmail": { "type": "string", "format": "email" },
+        "senderName": { "type": "string" },
+        "senderEmail": { "type": "string", "format": "email" },
+        "status": { "type": "string", "enum": ["pending", "accepted", "rejected", "unavailable"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "statusNote": { "type": "string" }
+      },
+      "required": ["orderId", "storeName", "command", "targetUserEmail", "senderName", "status", "createdAt"]
     },
     "OperationLog": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -33,29 +55,44 @@
         "timestamp": { "type": "string", "format": "date-time" }
       },
       "required": ["orderId", "action", "userEmail", "timestamp"]
+    },
+    "Courier": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Courier",
+      "type": "object",
+      "description": "Represents a courier (motoboy) registered in the system.",
+      "properties": {
+        "id": { "type": "string" },
+        "nome": { "type": "string" },
+        "id_motoboy": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["nome", "id_motoboy"]
     }
   },
   "auth": {
     "providers": ["password", "anonymous"]
   },
   "firestore": {
-    "structure": [
-      {
-        "path": "/userProfiles/{userId}",
-        "definition": {
-          "entityName": "UserProfile",
-          "schema": { "$ref": "#/backend/entities/UserProfile" },
-          "description": "User profile data."
-        }
-      },
-      {
-        "path": "/operationLogs/{logId}",
-        "definition": {
-          "entityName": "OperationLog",
-          "schema": { "$ref": "#/backend/entities/OperationLog" },
-          "description": "Historical log of actions performed in the Active Orders view."
-        }
-      }
-    ]
+    "userProfiles": {
+      "schema": "#/backend/entities/UserProfile",
+      "description": "User profile data."
+    },
+    "orderRequests": {
+      "schema": "#/backend/entities/OrderRequest",
+      "description": "Dispatch requests between users."
+    },
+    "operationLogs": {
+      "schema": "#/backend/entities/OperationLog",
+      "description": "Audit logs of operator actions."
+    },
+    "entregadores": {
+      "schema": "#/backend/entities/Courier",
+      "description": "Registered couriers."
+    },
+    "rt_registry": {
+      "schema": { "type": "object" },
+      "description": "RT registration bridge data."
+    }
   }
 }

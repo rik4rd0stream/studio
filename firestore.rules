@@ -3,10 +3,23 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     /**
-     * REGRAS DE ACESSO SIMPLIFICADAS
-     * Permissão total para desenvolvimento e testes rápidos.
+     * REGRAS DE ACESSO - Rappi Commander v2.1
+     * Forçando atualização para permitir acesso a coleções como orderRequests.
      */
     match /{document=**} {
+      allow read, write: if true;
+    }
+    
+    // Regras explícitas para coleções de operação
+    match /orderRequests/{id} {
+      allow read, write: if true;
+    }
+    
+    match /userProfiles/{id} {
+      allow read, write: if true;
+    }
+    
+    match /operationLogs/{id} {
       allow read, write: if true;
     }
   }
