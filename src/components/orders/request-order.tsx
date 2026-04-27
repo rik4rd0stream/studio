@@ -3,7 +3,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, addDoc, query, where, limit, doc, setDoc, orderBy } from 'firebase/firestore';
+import { collection, addDoc, doc, getDoc, setDoc } from 'firebase/firestore';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -41,6 +41,7 @@ const STORAGE_LAST_COURIER = 'rappi_commander_last_courier_v1';
 export function RequestOrder({ sender }: { sender: UserType }) {
   const db = useFirestore();
   const { toast } = useToast();
+  const { user: authUser } = useUser();
   const [manualOrderId, setManualOrderId] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchCourierQuery, setSearchCourierQuery] = useState('');
@@ -101,11 +102,9 @@ export function RequestOrder({ sender }: { sender: UserType }) {
     });
   }, [allOrders]);
 
-  const usersQuery = useMemoFirebase(() => {
-    return query(collection(db, 'userProfiles'), limit(50));
-  }, [db]);
-  
+  const usersQuery = useMemoFirebase(() => collection(db, 'userProfiles'), [db]);
   const { data: usersData } = useCollection<UserType>(usersQuery);
+  
   const users = useMemo(() => 
     (usersData || [])
       .filter(u => u.notificationsEnabled === true)
@@ -113,29 +112,26 @@ export function RequestOrder({ sender }: { sender: UserType }) {
     [usersData]
   );
 
-  const couriersQuery = useMemoFirebase(() => query(collection(db, 'entregadores')), [db]);
+  const couriersQuery = useMemoFirebase(() => collection(db, 'entregadores'), [db]);
   const { data: couriersData } = useCollection<Courier>(couriersQuery);
   const couriers = useMemo(() => [...(couriersData || [])].sort((a, b) => (a.nome || "").localeCompare(b.nome || "")), [couriersData]);
 
-  // Query simplificada para evitar necessidade imediata de índices compostos
-  const myRequestsQuery = useMemoFirebase(() => {
-    if (!sender || !sender.email || !sender.email.includes('@')) return null;
-    const senderEmail = sender.email.toLowerCase().trim();
-    return query(
-      collection(db, 'orderRequests'),
-      where('senderEmail', '==', senderEmail),
-      limit(10)
-    );
-  }, [db, sender?.email]);
+  // Query simplificada: Lê a coleção e filtra no cliente para evitar erros de índice (que parecem erros de permissão)
+  const allRequestsQuery = useMemoFirebase(() => {
+    if (!authUser?.email) return null;
+    return collection(db, 'orderRequests');
+  }, [db, authUser?.email]);
 
-  const { data: myRequestsData, isLoading: loadingMyRequests } = useCollection<OrderRequest>(myRequestsQuery);
+  const { data: myRequestsData, isLoading: loadingMyRequests } = useCollection<OrderRequest>(allRequestsQuery);
 
-  // Ordenação manual no lado do cliente para evitar erro de índice
   const sortedRequests = useMemo(() => {
-    return [...(myRequestsData || [])].sort((a, b) => 
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
-  }, [myRequestsData]);
+    if (!myRequestsData || !authUser?.email) return [];
+    const email = authUser.email.toLowerCase().trim();
+    return [...myRequestsData]
+      .filter(req => req.senderEmail === email)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 10);
+  }, [myRequestsData, authUser?.email]);
 
   const handleSendRequest = async () => {
     if (!db || !sender || !selectedUser || !selectedCourier || !manualOrderId.trim()) return;
@@ -159,7 +155,27 @@ export function RequestOrder({ sender }: { sender: UserType }) {
         createdAt: new Date().toISOString(),
       };
 
+      // 1. Salva no Firestore (Gatilho para UI aberta)
       await addDoc(collection(db, 'orderRequests'), newRequest);
+      
+      // 2. Dispara Push Real (Gatilho para App Fechado)
+      const userRef = doc(db, 'userProfiles', selectedUser.email.toLowerCase().trim());
+      const userSnap = await getDoc(userRef);
+      const tokens = userSnap.data()?.fcmTokens || [];
+
+      if (tokens.length > 0) {
+        fetch('/api/send-push', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tokens,
+            title: "Novo Pedido de Despacho!",
+            body: `${sender.name} enviou: ${storeName} (#${cleanId})`,
+            data: { orderId: cleanId, command: fullCommand }
+          })
+        }).catch(err => console.error("Erro ao chamar API de Push:", err));
+      }
+      
       setManualOrderId('');
       toast({ title: "Solicitado!", description: `Aguardando ${selectedUser.name}` });
     } catch (e) {
