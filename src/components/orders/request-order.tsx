@@ -117,20 +117,25 @@ export function RequestOrder({ sender }: { sender: UserType }) {
   const { data: couriersData } = useCollection<Courier>(couriersQuery);
   const couriers = useMemo(() => [...(couriersData || [])].sort((a, b) => (a.nome || "").localeCompare(b.nome || "")), [couriersData]);
 
-  // Consulta robusta: só dispara quando o senderEmail está 100% pronto
+  // Query simplificada para evitar necessidade imediata de índices compostos
   const myRequestsQuery = useMemoFirebase(() => {
     if (!sender || !sender.email || !sender.email.includes('@')) return null;
-    
     const senderEmail = sender.email.toLowerCase().trim();
     return query(
       collection(db, 'orderRequests'),
       where('senderEmail', '==', senderEmail),
-      orderBy('createdAt', 'desc'),
       limit(10)
     );
   }, [db, sender?.email]);
 
   const { data: myRequestsData, isLoading: loadingMyRequests } = useCollection<OrderRequest>(myRequestsQuery);
+
+  // Ordenação manual no lado do cliente para evitar erro de índice
+  const sortedRequests = useMemo(() => {
+    return [...(myRequestsData || [])].sort((a, b) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }, [myRequestsData]);
 
   const handleSendRequest = async () => {
     if (!db || !sender || !selectedUser || !selectedCourier || !manualOrderId.trim()) return;
@@ -202,11 +207,11 @@ export function RequestOrder({ sender }: { sender: UserType }) {
         
         {loadingMyRequests ? (
           <div className="py-4 text-center"><Loader2 className="h-5 w-5 animate-spin mx-auto text-muted-foreground opacity-30" /></div>
-        ) : (myRequestsData || []).length === 0 ? (
-          <div className="bg-muted/10 border border-dashed rounded-2xl p-6 text-center text-[10px] text-muted-foreground italic">Nenhuma solicitação encontrada na nova coleção.</div>
+        ) : sortedRequests.length === 0 ? (
+          <div className="bg-muted/10 border border-dashed rounded-2xl p-6 text-center text-[10px] text-muted-foreground italic">Nenhuma solicitação encontrada.</div>
         ) : (
           <div className="space-y-2">
-            {(myRequestsData || []).map((req) => {
+            {sortedRequests.map((req) => {
               const status = getStatusInfo(req);
               const Icon = status.icon;
               return (
