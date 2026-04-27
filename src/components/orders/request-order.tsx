@@ -99,20 +99,26 @@ export function RequestOrder({ sender }: { sender: UserType }) {
     });
   }, [allOrders]);
 
-  const usersQuery = useMemoFirebase(() => query(
-    collection(db, 'userProfiles'), 
-    where('notificationsEnabled', '==', true)
-  ), [db]);
+  // Consulta de usuários simplificada para evitar erros de permissão em massa
+  const usersQuery = useMemoFirebase(() => {
+    return query(collection(db, 'userProfiles'), limit(50));
+  }, [db]);
+  
   const { data: usersData } = useCollection<UserType>(usersQuery);
-  const users = useMemo(() => [...(usersData || [])].sort((a, b) => (a.name || "").localeCompare(b.name || "")), [usersData]);
+  const users = useMemo(() => 
+    (usersData || [])
+      .filter(u => u.notificationsEnabled === true)
+      .sort((a, b) => (a.name || "").localeCompare(b.name || "")), 
+    [usersData]
+  );
 
   const couriersQuery = useMemoFirebase(() => query(collection(db, 'entregadores')), [db]);
   const { data: couriersData } = useCollection<Courier>(couriersQuery);
   const couriers = useMemo(() => [...(couriersData || [])].sort((a, b) => (a.nome || "").localeCompare(b.nome || "")), [couriersData]);
 
+  // Query principal protegida: só ativa se o sender estiver 100% carregado
   const myRequestsQuery = useMemoFirebase(() => {
-    // Verificação rígida: só cria a query se o e-mail do remetente estiver pronto
-    if (!sender || !sender.email) return null;
+    if (!sender || !sender.email || !sender.email.includes('@')) return null;
     
     return query(
       collection(db, 'orderRequests'),
@@ -120,7 +126,7 @@ export function RequestOrder({ sender }: { sender: UserType }) {
       orderBy('createdAt', 'desc'),
       limit(10)
     );
-  }, [db, sender]);
+  }, [db, sender?.email]);
 
   const { data: myRequestsData, isLoading: loadingMyRequests } = useCollection<OrderRequest>(myRequestsQuery);
 
@@ -148,6 +154,7 @@ export function RequestOrder({ sender }: { sender: UserType }) {
 
       await addDoc(collection(db, 'orderRequests'), newRequest);
       setManualOrderId('');
+      toast({ title: "Solicitado!", description: `Aguardando ${selectedUser.name}` });
     } catch (e) {
       console.error(e);
     } finally {
