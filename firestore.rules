@@ -1,56 +1,8 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    /**
-     * Rappi Commander - Regras v4.2
-     * Acesso liberado para usuários autenticados enquanto debugamos o push.
-     */
-
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    match /users/{userId} {
-      allow read, write: if isSignedIn();
-    }
-    
-    match /userProfiles/{email} {
-      allow read, write: if isSignedIn();
-    }
-
-    match /roles_master/{userId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn();
-    }
-
-    match /deliveryPersons/{deliveryPersonId} {
-      allow read, write: if isSignedIn();
-    }
-    
-    match /entregadores/{id} {
-      allow read, write: if isSignedIn();
-    }
-
-    match /orders/{orderId} {
-      allow read, write: if isSignedIn();
-    }
-
-    match /orderRequests/{requestId} {
-      allow read, write: if isSignedIn();
-    }
-    
-    match /rt_registry/{id} {
-      allow read, write: if isSignedIn();
-    }
-    
-    match /operationLogs/{id} {
-      allow read, write: if isSignedIn();
-    }
-
-    // Fallback de segurança para novas coleções
     match /{document=**} {
-      allow read, write: if isSignedIn();
+      allow read, write: if true;
     }
   }
 }
