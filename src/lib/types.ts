@@ -9,6 +9,7 @@ export interface User {
   role: UserRole;
   notificationsEnabled?: boolean;
   hasRequestAccess?: boolean;
+  fcmTokens?: string[]; // Lista de tokens de dispositivos do usuário
 }
 
 export interface Courier {

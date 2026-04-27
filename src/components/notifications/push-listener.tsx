@@ -2,8 +2,9 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useFirestore } from "@/firebase";
-import { collection, query, where, onSnapshot, doc, updateDoc } from "firebase/firestore";
+import { useFirestore, getFirebaseMessaging } from "@/firebase";
+import { collection, query, where, onSnapshot, doc, updateDoc, arrayUnion } from "firebase/firestore";
+import { getToken, onMessage } from "firebase/messaging";
 import { User, OrderRequest } from "@/lib/types";
 import { 
   AlertDialog, 
@@ -15,14 +16,14 @@ import {
   AlertDialogHeader, 
   AlertDialogTitle 
 } from "@/components/ui/alert-dialog";
-import { BellRing, ExternalLink, X, MessageSquareQuote, Clock, Timer } from "lucide-react";
+import { BellRing, ExternalLink, X, MessageSquareQuote, Clock, Zap } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Capacitor } from '@capacitor/core';
-import { redashService } from "@/lib/api/redash-service";
 
 const EXPIRATION_TIME_MS = 120000; // 2 minutos
+const VAPID_KEY = "SUA_VAPID_KEY_AQUI"; // RICARDO: Pegar no Console do Firebase
 
 export function PushListener({ 
   user, 
@@ -37,103 +38,68 @@ export function PushListener({
   const [isMinimized, setIsMinimized] = useState(false);
   const [timeLeft, setTimeLeft] = useState<string>("");
 
-  // Inicialização de Notificações
+  // 1. GESTÃO DE TOKENS (PUSH REAL)
   useEffect(() => {
-    const setupNotifications = async () => {
-      // 1. Permissões Nativas (Android/iOS)
+    const setupFCM = async () => {
+      if (!user?.email) return;
+
+      try {
+        const messaging = await getFirebaseMessaging();
+        if (!messaging) return;
+
+        // Solicita permissão
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+          const token = await getToken(messaging, { vapidKey: VAPID_KEY });
+          
+          if (token) {
+            // Salva o token no Firestore para que o backend saiba para onde enviar
+            const userRef = doc(db, 'userProfiles', user.email.toLowerCase().trim());
+            await updateDoc(userRef, {
+              fcmTokens: arrayUnion(token)
+            });
+            console.log("FCM Token registrado:", token);
+          }
+        }
+
+        // Listener para mensagens com app aberto (Foreground)
+        onMessage(messaging, (payload) => {
+          console.log("Mensagem FCM recebida em foreground:", payload);
+          toast({
+            title: payload.notification?.title || "Novo Pedido!",
+            description: payload.notification?.body,
+          });
+        });
+
+      } catch (error) {
+        console.error("Erro ao configurar FCM:", error);
+      }
+    };
+
+    setupFCM();
+  }, [user?.email, db, toast]);
+
+  // 2. CONFIGURAÇÃO NATIVA (ANDROID)
+  useEffect(() => {
+    const setupNative = async () => {
       if (Capacitor.isNativePlatform()) {
         try {
           const { LocalNotifications } = await import('@capacitor/local-notifications');
-          const perm = await LocalNotifications.requestPermissions();
-          if (perm.display === 'granted') {
-            await LocalNotifications.createChannel({
-              id: 'orders-channel-v1',
-              name: 'Novos Pedidos Rappi',
-              importance: 5,
-              visibility: 1,
-              vibration: true,
-              sound: 'default'
-            });
-          }
-        } catch (e) {
-          console.error("Erro ao configurar notificações nativas:", e);
-        }
-      } 
-      // 2. Permissões Web (PWA)
-      else if (typeof window !== 'undefined' && 'Notification' in window) {
-        if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
-          await Notification.requestPermission();
-        }
+          await LocalNotifications.requestPermissions();
+          await LocalNotifications.createChannel({
+            id: 'orders-channel-v1',
+            name: 'Novos Pedidos Rappi',
+            importance: 5,
+            vibration: true,
+            sound: 'ifood_style.wav' // Opcional se tiver o arquivo
+          });
+        } catch (e) {}
       }
     };
-    setupNotifications();
+    setupNative();
   }, []);
 
-  const sendSystemNotification = useCallback(async (title: string, body: string) => {
-    // Notificação Nativa
-    if (Capacitor.isNativePlatform()) {
-      try {
-        const { LocalNotifications } = await import('@capacitor/local-notifications');
-        await LocalNotifications.schedule({
-          notifications: [{ 
-            title, 
-            body, 
-            id: Date.now(), 
-            channelId: 'orders-channel-v1', 
-            sound: 'default' 
-          }]
-        });
-      } catch (e) {}
-    } 
-    // Notificação Browser (quando app aberto)
-    else if (typeof window !== 'undefined' && Notification.permission === 'granted') {
-      new Notification(title, { body, icon: '/logo.png' });
-    }
-  }, []);
-
-  // Monitor de expiração e disponibilidade
-  useEffect(() => {
-    if (pendingRequests.length === 0) return;
-
-    const interval = setInterval(async () => {
-      const now = new Date().getTime();
-      const firstRequest = pendingRequests[0];
-      if (!firstRequest) return;
-
-      const createdTime = new Date(firstRequest.createdAt).getTime();
-      const diff = (createdTime + EXPIRATION_TIME_MS) - now;
-
-      if (diff <= 0) {
-        if (firstRequest.id) {
-          updateDoc(doc(db, "orderRequests", firstRequest.id), {
-            status: 'rejected',
-            updatedAt: new Date().toISOString(),
-            statusNote: "Time Out"
-          });
-        }
-      } else {
-        const mins = Math.floor(diff / 60000);
-        const secs = Math.floor((diff % 60000) / 1000);
-        setTimeLeft(`${mins}:${secs.toString().padStart(2, '0')}`);
-      }
-
-      // Verificação de Disponibilidade via Redash
-      const redash = await redashService.fetchOrders();
-      if (redash.success && redash.data) {
-        const isStillAvailable = redash.data.some(o => String(o.order_id) === String(firstRequest.orderId));
-        if (!isStillAvailable && firstRequest.id) {
-          updateDoc(doc(db, "orderRequests", firstRequest.id), {
-            status: 'unavailable',
-            updatedAt: new Date().toISOString()
-          });
-        }
-      }
-    }, 2000);
-
-    return () => clearInterval(interval);
-  }, [pendingRequests, db]);
-
-  // Listener de Pedidos no Firestore
+  // 3. LISTENER FIRESTORE (BACKUP/FOREGROUND)
   useEffect(() => {
     if (!user?.email || !user.notificationsEnabled) return;
 
@@ -152,15 +118,37 @@ export function PushListener({
 
       if (snapshot.docChanges().some(change => change.type === "added")) {
         setIsMinimized(false);
-        const lastRequest = requests[0];
-        if (lastRequest) {
-          sendSystemNotification("NOVA SOLICITAÇÃO", `${lastRequest.senderName}: #${lastRequest.orderId}`);
-        }
       }
     });
 
     return () => unsubscribe();
-  }, [db, user, onPendingCountChange, sendSystemNotification]);
+  }, [db, user, onPendingCountChange]);
+
+  // Monitor de expiração
+  useEffect(() => {
+    if (pendingRequests.length === 0) return;
+    const interval = setInterval(() => {
+      const now = new Date().getTime();
+      const firstRequest = pendingRequests[0];
+      if (!firstRequest) return;
+      const createdTime = new Date(firstRequest.createdAt).getTime();
+      const diff = (createdTime + EXPIRATION_TIME_MS) - now;
+      if (diff <= 0) {
+        if (firstRequest.id) {
+          updateDoc(doc(db, "orderRequests", firstRequest.id), {
+            status: 'rejected',
+            updatedAt: new Date().toISOString(),
+            statusNote: "Time Out"
+          });
+        }
+      } else {
+        const mins = Math.floor(diff / 60000);
+        const secs = Math.floor((diff % 60000) / 1000);
+        setTimeLeft(`${mins}:${secs.toString().padStart(2, '0')}`);
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [pendingRequests, db]);
 
   const activeRequest = pendingRequests[0];
 

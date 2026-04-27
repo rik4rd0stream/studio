@@ -18,7 +18,6 @@ let messagingInstance: Messaging | null = null;
 
 /**
  * Inicialização Singleton do Firebase Otimizada para Mobile.
- * Ativa persistência offline agressiva para performance em 4G.
  */
 export function initializeFirebase() {
   if (!appInstance) {
@@ -32,18 +31,16 @@ export function initializeFirebase() {
       firestoreInstance = getFirestoreInstance(appInstance);
     } else {
       try {
-        // Configuração para redes móveis instáveis
         firestoreInstance = initializeFirestore(appInstance, {
           experimentalAutoDetectLongPolling: true,
           cacheSizeBytes: CACHE_SIZE_UNLIMITED
         });
         
-        // Ativa persistência offline (Cache no HD do Celular)
         enableIndexedDbPersistence(firestoreInstance).catch((err) => {
           if (err.code === 'failed-precondition') {
-            console.warn("Múltiplas abas: persistência desativada para evitar conflito.");
+            console.warn("Múltiplas abas: persistência desativada.");
           } else if (err.code === 'unimplemented') {
-            console.warn("Navegador sem suporte a persistência offline.");
+            console.warn("Navegador sem suporte a persistência.");
           }
         });
       } catch (e) {
@@ -64,7 +61,7 @@ export function initializeFirebase() {
 }
 
 /**
- * Obtém a instância de Messaging se suportada pelo ambiente.
+ * Obtém a instância de Messaging se suportada.
  */
 export async function getFirebaseMessaging() {
   const { firebaseApp } = initializeFirebase();
