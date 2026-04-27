@@ -1,9 +1,9 @@
 
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { useFirestore, getFirebaseMessaging } from "@/firebase";
-import { collection, query, where, onSnapshot, doc, updateDoc, arrayUnion } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, setDoc } from "firebase/firestore";
 import { getToken, onMessage } from "firebase/messaging";
 import { User, OrderRequest } from "@/lib/types";
 import { 
@@ -16,14 +16,13 @@ import {
   AlertDialogHeader, 
   AlertDialogTitle 
 } from "@/components/ui/alert-dialog";
-import { BellRing, ExternalLink, X, MessageSquareQuote, Clock, Zap } from "lucide-react";
+import { BellRing, ExternalLink, X, MessageSquareQuote, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { Capacitor } from '@capacitor/core';
 
 const EXPIRATION_TIME_MS = 120000; // 2 minutos
-const VAPID_KEY = "SUA_VAPID_KEY_AQUI"; // RICARDO: Pegar no Console do Firebase
+const VAPID_KEY = "BIqUjXu7NogeKlsoD9Cp6FWKN4JfEnrBnNybso_ntheRV2uT9FQhM-AEoYwcJXebN-iLP7KVO9q72Q0OfwLcMi4";
 
 export function PushListener({ 
   user, 
@@ -38,7 +37,7 @@ export function PushListener({
   const [isMinimized, setIsMinimized] = useState(false);
   const [timeLeft, setTimeLeft] = useState<string>("");
 
-  // 1. GESTÃO DE TOKENS (PUSH REAL)
+  // 1. REGISTRO DE TOKEN FCM (Push Real)
   useEffect(() => {
     const setupFCM = async () => {
       if (!user?.email) return;
@@ -47,59 +46,47 @@ export function PushListener({
         const messaging = await getFirebaseMessaging();
         if (!messaging) return;
 
-        // Solicita permissão
+        // Solicita permissão do sistema
         const permission = await Notification.requestPermission();
         if (permission === 'granted') {
           const token = await getToken(messaging, { vapidKey: VAPID_KEY });
           
           if (token) {
-            // Salva o token no Firestore para que o backend saiba para onde enviar
+            // Salva o token de forma robusta usando setDoc com merge
             const userRef = doc(db, 'userProfiles', user.email.toLowerCase().trim());
-            await updateDoc(userRef, {
-              fcmTokens: arrayUnion(token)
-            });
-            console.log("FCM Token registrado:", token);
+            await setDoc(userRef, {
+              fcmToken: token, // Token mais recente
+              updatedAt: new Date().toISOString()
+            }, { merge: true });
+            
+            console.log("FCM Token sincronizado com sucesso.");
           }
         }
-
-        // Listener para mensagens com app aberto (Foreground)
-        onMessage(messaging, (payload) => {
-          console.log("Mensagem FCM recebida em foreground:", payload);
-          toast({
-            title: payload.notification?.title || "Novo Pedido!",
-            description: payload.notification?.body,
-          });
-        });
-
       } catch (error) {
         console.error("Erro ao configurar FCM:", error);
       }
     };
 
     setupFCM();
-  }, [user?.email, db, toast]);
+  }, [user?.email, db]);
 
-  // 2. CONFIGURAÇÃO NATIVA (ANDROID)
+  // 2. ESCUTA EM FOREGROUND (App Aberto)
   useEffect(() => {
-    const setupNative = async () => {
-      if (Capacitor.isNativePlatform()) {
-        try {
-          const { LocalNotifications } = await import('@capacitor/local-notifications');
-          await LocalNotifications.requestPermissions();
-          await LocalNotifications.createChannel({
-            id: 'orders-channel-v1',
-            name: 'Novos Pedidos Rappi',
-            importance: 5,
-            vibration: true,
-            sound: 'ifood_style.wav' // Opcional se tiver o arquivo
-          });
-        } catch (e) {}
-      }
-    };
-    setupNative();
-  }, []);
+    const setupForegroundListener = async () => {
+      const messaging = await getFirebaseMessaging();
+      if (!messaging) return;
 
-  // 3. LISTENER FIRESTORE (BACKUP/FOREGROUND)
+      onMessage(messaging, (payload) => {
+        toast({
+          title: payload.notification?.title || "Novo Pedido!",
+          description: payload.notification?.body,
+        });
+      });
+    };
+    setupForegroundListener();
+  }, [toast]);
+
+  // 3. LISTENER FIRESTORE (Backup Visual)
   useEffect(() => {
     if (!user?.email || !user.notificationsEnabled) return;
 
@@ -124,7 +111,7 @@ export function PushListener({
     return () => unsubscribe();
   }, [db, user, onPendingCountChange]);
 
-  // Monitor de expiração
+  // Cronômetro de expiração (2 min)
   useEffect(() => {
     if (pendingRequests.length === 0) return;
     const interval = setInterval(() => {
@@ -133,13 +120,14 @@ export function PushListener({
       if (!firstRequest) return;
       const createdTime = new Date(firstRequest.createdAt).getTime();
       const diff = (createdTime + EXPIRATION_TIME_MS) - now;
+      
       if (diff <= 0) {
         if (firstRequest.id) {
-          updateDoc(doc(db, "orderRequests", firstRequest.id), {
+          setDoc(doc(db, "orderRequests", firstRequest.id), {
             status: 'rejected',
             updatedAt: new Date().toISOString(),
             statusNote: "Time Out"
-          });
+          }, { merge: true });
         }
       } else {
         const mins = Math.floor(diff / 60000);
@@ -180,10 +168,10 @@ export function PushListener({
             <AlertDialogAction 
               onClick={() => {
                 if (activeRequest?.id) {
-                  updateDoc(doc(db, "orderRequests", activeRequest.id), { 
+                  setDoc(doc(db, "orderRequests", activeRequest.id), { 
                     status: 'accepted', 
                     updatedAt: new Date().toISOString() 
-                  });
+                  }, { merge: true });
                   const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(activeRequest.command)}`;
                   window.open(whatsappUrl, '_blank');
                 }
@@ -196,10 +184,10 @@ export function PushListener({
               variant="ghost" 
               onClick={() => {
                 if (activeRequest?.id) {
-                  updateDoc(doc(db, "orderRequests", activeRequest.id), { 
+                  setDoc(doc(db, "orderRequests", activeRequest.id), { 
                     status: 'rejected', 
                     updatedAt: new Date().toISOString() 
-                  });
+                  }, { merge: true });
                 }
               }} 
               className="h-10 text-destructive text-xs hover:bg-destructive/10 rounded-xl"

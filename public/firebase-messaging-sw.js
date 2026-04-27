@@ -1,11 +1,8 @@
 
-/**
- * Service Worker para Firebase Cloud Messaging (FCM).
- * Este arquivo permite que o navegador ou o Android recebam notificações em BACKGROUND.
- */
 importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js');
 
+// Configurações do Firebase para o Service Worker
 firebase.initializeApp({
   apiKey: "AIzaSyB8ojoSzZRfgw6PRPTZ-fF3NfZRCJArt5M",
   authDomain: "motoboy-13742.firebaseapp.com",
@@ -17,15 +14,13 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// Escuta mensagens quando o app está FECHADO
+// Escuta notificações em Segundo Plano / App Fechado
 self.addEventListener('push', function(event) {
-  if (!event.data) return;
-
-  try {
+  if (event.data) {
     const data = event.data.json();
-    const title = data.notification?.title || "Nova Solicitação Rappi";
+    const title = data.notification?.title || "Novo Pedido Rappi!";
     const options = {
-      body: data.notification?.body || "Você tem um novo pedido para despachar.",
+      body: data.notification?.body || "Você tem uma nova solicitação de despacho.",
       icon: '/logo.png',
       badge: '/logo.png',
       vibrate: [200, 100, 200],
@@ -37,15 +32,13 @@ self.addEventListener('push', function(event) {
     event.waitUntil(
       self.registration.showNotification(title, options)
     );
-  } catch (e) {
-    console.error("Erro ao processar push notification:", e);
   }
 });
 
-// Abre o app ao clicar na notificação
+// Ação ao clicar na notificação
 self.addEventListener('notificationclick', function(event) {
   event.notification.close();
   event.waitUntil(
-    clients.openWindow('/')
+    clients.openWindow(event.notification.data.url || '/')
   );
 });
