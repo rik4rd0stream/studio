@@ -1,32 +1,133 @@
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
     /**
-     * RESET TOTAL DE SEGURANÇA - v4.0
-     * Liberando acesso total para depuração de nova coleção limpa.
-     * Isso força a propagação das regras nos servidores do Google.
+     * Rappi Commander Security Rules
+     *
+     * Core Philosophy:
+     * This ruleset implements a robust, multi-tier authorization model for a delivery management system.
+     * It leverages "Authorization Independence" by denormalizing roles and ownership IDs directly 
+     * onto documents, minimizing the need for expensive cross-document lookups.
+     *
+     * Data Structure:
+     * - /users/{userId}: Private user profiles.
+     * - /roles_master/{userId}: A marker collection for administrative 'master' accounts.
+     * - /deliveryPersons/{deliveryPersonId}: Profiles for drivers, indexed by their Auth UID.
+     * - /orders/{orderId}: Centralized order tracking.
+     *
+     * Key Security Decisions:
+     * 1. Master Role Verification: Administrative access is verified using an existence check 
+     *    on the /roles_master collection, which is more performant than reading a field on the user profile.
+     * 2. Strict Ownership: Users can generally only see and modify their own data.
+     * 3. Relational Integrity: On order creation, the system enforces that the 'creatorUserId' 
+     *    matches the authenticated user's ID.
+     * 4. State-Based Access: Delivery personnel are granted update access to orders specifically 
+     *    assigned to them.
      */
-    
-    match /{document=**} {
-      allow read, write: if true;
+
+    // --- Helper Functions ---
+
+    /** @description Checks if the request is from an authenticated user. */
+    function isSignedIn() {
+      return request.auth != null;
     }
 
-    // Regras específicas mantidas para documentação do blueprint
-    match /userProfiles/{docId} {
-      allow read, write: if true;
+    /** @description Checks if the user's UID matches the provided ID. */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
     }
-    
-    match /orderRequests/{docId} {
-      allow read, write: if true;
+
+    /** @description Checks if the user exists in the master roles collection for administrative access. */
+    function isMaster() {
+      return isSignedIn() && exists(/databases/$(database)/documents/roles_master/$(request.auth.uid));
     }
-    
-    match /operationLogs/{docId} {
-      allow read, write: if true;
+
+    // The 'isExistingOwner' function was unused and also contained an invalid
+    // reference to 'resource' within its scope, leading to warnings.
+    // Its functionality (checking for existing resource and ownership) is
+    // already handled directly in the `match` blocks where `isOwner` is used
+    // in conjunction with `resource != null` checks.
+    // Therefore, it has been removed.
+
+    // --- Collection Rules ---
+
+    /**
+     * @description Rules for user profiles. Access is limited to the profile owner or master admins.
+     * @path /users/{userId}
+     * @allow (get) If the user is viewing their own profile or is a master admin.
+     * @deny (list) If a user attempts to list all profiles without master privileges.
+     * @principle Restricts access to a user's own data tree.
+     */
+    match /users/{userId} {
+      allow get, list: if isOwner(userId) || isMaster();
+      allow create: if isOwner(userId);
+      allow update: if (isOwner(userId) || isMaster()) && resource != null;
+      allow delete: if isMaster() && resource != null;
     }
-    
-    match /entregadores/{docId} {
-      allow read, write: if true;
+
+    /**
+     * @description Rules for the master role marker collection. Read-only for the public to verify roles; writes reserved for master admins.
+     * @path /roles_master/{userId}
+     * @allow (get) If a user checks their own role status.
+     * @deny (update) If a non-master user attempts to grant themselves administrative privileges.
+     * @principle Uses structural segregation for role-based access control.
+     */
+    match /roles_master/{userId} {
+      allow get: if isSignedIn();
+      allow list: if isMaster();
+      allow create, update, delete: if isMaster();
+    }
+
+    /**
+     * @description Rules for delivery personnel profiles.
+     * @path /deliveryPersons/{deliveryPersonId}
+     * @allow (update) If the delivery person is updating their own status (e.g., toggling 'available').
+     * @deny (create) If a standard user tries to register themselves as a delivery person without master approval.
+     * @principle Enforces document ownership for status updates.
+     */
+    match /deliveryPersons/{deliveryPersonId} {
+      allow get, list: if isSignedIn();
+      allow create: if isMaster();
+      allow update: if (isOwner(deliveryPersonId) || isMaster()) && resource != null;
+      allow delete: if isMaster() && resource != null;
+    }
+
+    /**
+     * @description Rules for delivery orders. Supports creators, assigned drivers, and master admins.
+     * @path /orders/{orderId}
+     * @allow (create) If a signed-in user sets themselves as the creatorUserId.
+     * @deny (update) If a driver attempts to modify an order they are not assigned to.
+     * @principle Validates relational integrity and ownership via denormalized fields.
+     */
+    match /orders/{orderId} {
+      allow list: if isSignedIn();
+      allow get: if isSignedIn() && (
+        isMaster() || 
+        resource.data.creatorUserId == request.auth.uid || 
+        resource.data.assignedDeliveryPersonId == request.auth.uid
+      );
+      allow create: if isSignedIn() && request.resource.data.creatorUserId == request.auth.uid;
+      allow update: if resource != null && (
+        isMaster() || 
+        resource.data.creatorUserId == request.auth.uid || 
+        resource.data.assignedDeliveryPersonId == request.auth.uid
+      );
+      allow delete: if isMaster() && resource != null;
+    }
+
+    /**
+     * @description Rules for order requests. This handles the specific path requested in the error log.
+     * @path /orderRequests/{requestId}
+     * @allow (list) If the user is authenticated (queries should be filtered by the app).
+     * @deny (get) If a user tries to access a request they did not create.
+     * @principle Ensures authenticated access to order request sequences.
+     */
+    match /orderRequests/{requestId} {
+      allow list: if isSignedIn();
+      allow get: if isSignedIn() && (isMaster() || resource.data.creatorUserId == request.auth.uid);
+      allow create: if isSignedIn() && request.resource.data.creatorUserId == request.auth.uid;
+      allow update, delete: if isMaster() && resource != null;
     }
   }
 }

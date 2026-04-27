@@ -1,64 +1,206 @@
-
 {
   "entities": {
-    "UserProfile": {
+    "User": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "UserProfile",
+      "title": "User",
       "type": "object",
-      "description": "Perfil do usuário do sistema Rappi Commander.",
+      "description": "Represents a user of the Rappi Commander system, including their profile and access role.",
       "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "email": { "type": "string", "format": "email" },
-        "role": { "type": "string" },
-        "notificationsEnabled": { "type": "boolean" },
-        "hasRequestAccess": { "type": "boolean" },
-        "fcmToken": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the User entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The full name of the user."
+        },
+        "email": {
+          "type": "string",
+          "description": "The email address of the user, used for identification and communication. (Not used for direct authentication storage).",
+          "format": "email"
+        },
+        "role": {
+          "type": "string",
+          "description": "The access role of the user (e.g., 'master', 'normal')."
+        }
       },
-      "required": ["id", "name", "email", "role", "createdAt", "updatedAt"]
+      "required": [
+        "id",
+        "name",
+        "email",
+        "role"
+      ]
     },
-    "OrderRequest": {
+    "DeliveryPerson": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "OrderRequest",
+      "title": "DeliveryPerson",
       "type": "object",
-      "description": "Solicitação de despacho de pedido.",
+      "description": "Represents a delivery person registered in the Rappi Commander system.",
       "properties": {
-        "id": { "type": "string" },
-        "orderId": { "type": "string" },
-        "storeName": { "type": "string" },
-        "command": { "type": "string" },
-        "targetUserEmail": { "type": "string", "format": "email" },
-        "senderName": { "type": "string" },
-        "senderEmail": { "type": "string", "format": "email" },
-        "status": { "type": "string", "enum": ["pending", "accepted", "rejected", "unavailable"] },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" },
-        "statusNote": { "type": "string" }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the DeliveryPerson entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The full name of the delivery person."
+        },
+        "status": {
+          "type": "string",
+          "description": "The current operational status of the delivery person (e.g., 'available', 'on_delivery', 'offline')."
+        }
       },
-      "required": ["orderId", "storeName", "command", "targetUserEmail", "senderName", "status", "createdAt"]
+      "required": [
+        "id",
+        "name",
+        "status"
+      ]
+    },
+    "Order": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Order",
+      "type": "object",
+      "description": "Represents a delivery order within the Rappi Commander system, tracking its lifecycle from creation to completion.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Order entity."
+        },
+        "creationDateTime": {
+          "type": "string",
+          "description": "Timestamp indicating when the order was created.",
+          "format": "date-time"
+        },
+        "creatorUserId": {
+          "type": "string",
+          "description": "Reference to the User who created this order. (Relationship: User 1:N Order)"
+        },
+        "pickupLocation": {
+          "type": "string",
+          "description": "Details or address for the pickup location of the order."
+        },
+        "deliveryLocation": {
+          "type": "string",
+          "description": "Details or address for the delivery location of the order."
+        },
+        "itemsDescription": {
+          "type": "string",
+          "description": "A free-text description of the items included in the order."
+        },
+        "refinedItems": {
+          "type": "array",
+          "description": "AI-suggested categorization or extraction of key item details from the itemsDescription.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "specialInstructions": {
+          "type": "string",
+          "description": "Any special instructions for the order delivery or handling."
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status of the order (e.g., 'pending', 'assigned', 'in_transit', 'delivered', 'cancelled')."
+        },
+        "assignedDeliveryPersonId": {
+          "type": "string",
+          "description": "Reference to the DeliveryPerson currently assigned to this order. (Relationship: DeliveryPerson 1:N Order)"
+        },
+        "assignmentDateTime": {
+          "type": "string",
+          "description": "Timestamp indicating when the order was assigned to a delivery person.",
+          "format": "date-time"
+        },
+        "completionDateTime": {
+          "type": "string",
+          "description": "Timestamp indicating when the order was marked as completed.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "creationDateTime",
+        "creatorUserId",
+        "pickupLocation",
+        "deliveryLocation",
+        "itemsDescription",
+        "status"
+      ]
     }
   },
   "auth": {
-    "providers": ["password", "anonymous"]
+    "providers": [
+      "password",
+      "anonymous"
+    ]
   },
   "firestore": {
-    "userProfiles": {
-      "schema": "#/backend/entities/UserProfile",
-      "description": "Documentos de perfis de usuário."
-    },
-    "orderRequests": {
-      "schema": "#/backend/entities/OrderRequest",
-      "description": "Solicitações de pedidos entre operadores."
-    },
-    "operationLogs": {
-      "schema": { "type": "object" },
-      "description": "Histórico de ações de auditoria."
-    },
-    "entregadores": {
-      "schema": { "type": "object" },
-      "description": "Lista de entregadores cadastrados."
-    }
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profiles, including their unique identifier, name, email, and access role. Access is restricted to the owner of the profile or users with 'master' role.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user, matching their Firebase Authentication UID."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/roles_master/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "A dedicated collection used for denormalizing 'master' role assignments. Each document's ID corresponds to a User ID that holds the 'master' role, enabling efficient and authorization-independent permission checks using `exists()` in security rules.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of a user who has been granted the 'master' role."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/deliveryPersons/{deliveryPersonId}",
+        "definition": {
+          "entityName": "DeliveryPerson",
+          "schema": {
+            "$ref": "#/backend/entities/DeliveryPerson"
+          },
+          "description": "Stores profiles of delivery personnel, including their unique ID, name, and current operational status. Creation and management are typically by 'master' users, while a delivery person can update their own status. Includes denormalized 'id' for authorization independence.",
+          "params": [
+            {
+              "name": "deliveryPersonId",
+              "description": "The unique identifier for the delivery person, matching their Firebase Authentication UID."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/orders/{orderId}",
+        "definition": {
+          "entityName": "Order",
+          "schema": {
+            "$ref": "#/backend/entities/Order"
+          },
+          "description": "Stores all delivery orders, tracking details from creation to completion. Includes denormalized 'creatorUserId' and 'assignedDeliveryPersonId' for authorization independence, and 'status' for supporting QAPs and various access patterns (e.g., listing pending orders for assignment).",
+          "params": [
+            {
+              "name": "orderId",
+              "description": "The unique identifier for the specific order."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to be secure, scalable, and debuggable, strictly adhering to the core design principles. The primary goal is to achieve Authorization Independence and robust Query-Applicable Permissions (QAPs) through strategic denormalization and structural segregation.\n\n**Authorization Independence:**\n1.  **Master Role Denormalization:** Instead of relying on `get()` calls to a user's profile to check their `role` (e.g., `get(/users/$(request.auth.uid)).data.role == 'master'`), a dedicated collection `/roles_master/{userId}` is introduced. A document in this collection simply signifies that the `userId` associated with the document ID has the 'master' role. Security rules can then use `exists(/databases/$(database)/documents/roles_master/$(request.auth.uid))` for atomic and independent verification of master privileges. This eliminates the need for `get()` calls, which can break atomic operations and complicate debugging.\n2.  **Order Authorization Fields:** For the `Order` entity, critical authorization fields such as `creatorUserId` and `assignedDeliveryPersonId` are directly embedded within each `/orders/{orderId}` document. This means that rules checking ownership or assignment do not need to fetch data from parent documents or other collections, making them independent and efficient. For instance, a rule can directly compare `request.auth.uid` with `resource.data.creatorUserId` or `resource.data.assignedDeliveryPersonId`.\n\n**Query-Applicable Permissions (QAPs):**\n1.  **Structural Segregation for Roles:** The `/roles_master` collection exemplifies structural segregation, where all documents within it share the homogeneous security posture of being a 'master' user identifier. This naturally supports QAPs for `exists()` checks.\n2.  **Homogeneous Security for Users and DeliveryPersons:** The `/users` and `/deliveryPersons` collections are designed to hold documents with a homogeneous security posture. While `users` contain a `role` field that differentiates access *within* the collection, the collection itself has a clear access pattern (owner can read/write, master can manage all). `deliveryPersons` also follows this, allowing `master` users to manage and delivery persons to update their own status. QAPs will enable efficient listing (e.g., `master` users listing all `users`, delivery persons listing `available` `deliveryPersons` if needed).\n3.  **Order Listing Flexibility:** The `/orders` collection is a prime example of enabling robust QAPs. By including `creatorUserId`, `assignedDeliveryPersonId`, and `status` fields directly in each `Order` document, complex listing requirements can be met with efficient, secure queries without relying on server-side filtering (which rules are not designed for):\n    *   **User's Own Orders:** `db.collection('orders').where('creatorUserId', '==', 'user_id')`\n    *   **Delivery Person's Assigned Orders:** `db.collection('orders').where('assignedDeliveryPersonId', '==', 'delivery_person_id')`\n    *   **Available Orders for Delivery Persons:** `db.collection('orders').where('status', '==', 'pending').where('assignedDeliveryPersonId', '==', null)`\n\nThis design ensures that security rules are straightforward, relying on document-local data or simple `exists()` checks, preventing cascading dependencies and making the system easier to debug and maintain."
   }
 }

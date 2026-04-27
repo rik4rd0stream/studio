@@ -1,89 +1,50 @@
+'use client';
 
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-import { getAuth, Auth } from 'firebase/auth';
-import { 
-  initializeFirestore, 
-  Firestore, 
-  getFirestore as getFirestoreInstance,
-  enableIndexedDbPersistence,
-  CACHE_SIZE_UNLIMITED
-} from 'firebase/firestore';
-import { getMessaging, Messaging, isSupported } from 'firebase/messaging';
+import { getAuth } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore'
 
-let firestoreInstance: Firestore | null = null;
-let authInstance: Auth | null = null;
-let appInstance: FirebaseApp | null = null;
-let messagingInstance: Messaging | null = null;
-
-/**
- * Inicialização Singleton do Firebase Otimizada para Mobile.
- */
+// IMPORTANT: DO NOT MODIFY THIS FUNCTION
 export function initializeFirebase() {
-  if (!appInstance) {
-    appInstance = getApps().length ? getApp() : initializeApp(firebaseConfig);
-  }
-
-  if (!firestoreInstance) {
-    const isServer = typeof window === 'undefined';
-    
-    if (isServer) {
-      firestoreInstance = getFirestoreInstance(appInstance);
-    } else {
-      try {
-        firestoreInstance = initializeFirestore(appInstance, {
-          experimentalAutoDetectLongPolling: true,
-          cacheSizeBytes: CACHE_SIZE_UNLIMITED
-        });
-        
-        enableIndexedDbPersistence(firestoreInstance).catch((err) => {
-          if (err.code === 'failed-precondition') {
-            console.warn("Múltiplas abas: persistência desativada.");
-          } else if (err.code === 'unimplemented') {
-            console.warn("Navegador sem suporte a persistência.");
-          }
-        });
-      } catch (e) {
-        firestoreInstance = getFirestoreInstance(appInstance);
+  if (!getApps().length) {
+    // Important! initializeApp() is called without any arguments because Firebase App Hosting
+    // integrates with the initializeApp() function to provide the environment variables needed to
+    // populate the FirebaseOptions in production. It is critical that we attempt to call initializeApp()
+    // without arguments.
+    let firebaseApp;
+    try {
+      // Attempt to initialize via Firebase App Hosting environment variables
+      firebaseApp = initializeApp();
+    } catch (e) {
+      // Only warn in production because it's normal to use the firebaseConfig to initialize
+      // during development
+      if (process.env.NODE_ENV === "production") {
+        console.warn('Automatic initialization failed. Falling back to firebase config object.', e);
       }
+      firebaseApp = initializeApp(firebaseConfig);
     }
+
+    return getSdks(firebaseApp);
   }
 
-  if (!authInstance) {
-    authInstance = getAuth(appInstance);
-  }
+  // If already initialized, return the SDKs with the already initialized App
+  return getSdks(getApp());
+}
 
+export function getSdks(firebaseApp: FirebaseApp) {
   return {
-    firebaseApp: appInstance,
-    auth: authInstance,
-    firestore: firestoreInstance
+    firebaseApp,
+    auth: getAuth(firebaseApp),
+    firestore: getFirestore(firebaseApp)
   };
 }
 
-/**
- * Obtém a instância de Messaging se suportada.
- */
-export async function getFirebaseMessaging() {
-  const { firebaseApp } = initializeFirebase();
-  if (typeof window !== 'undefined' && await isSupported()) {
-    if (!messagingInstance) {
-      messagingInstance = getMessaging(firebaseApp);
-    }
-    return messagingInstance;
-  }
-  return null;
-}
-
-export { 
-  FirebaseProvider, 
-  useFirebase, 
-  useFirestore, 
-  useAuth, 
-  useFirebaseApp, 
-  useMemoFirebase,
-  useUser 
-} from './provider';
-
-export { FirebaseClientProvider } from './client-provider';
-export { useCollection } from './firestore/use-collection';
-export { useDoc } from './firestore/use-doc';
+export * from './provider';
+export * from './client-provider';
+export * from './firestore/use-collection';
+export * from './firestore/use-doc';
+export * from './non-blocking-updates';
+export * from './non-blocking-login';
+export * from './errors';
+export * from './error-emitter';
