@@ -2,11 +2,11 @@
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { initializeFirestore } from 'firebase/firestore';
 
 /**
  * @fileOverview Inicialização base do Firebase compatível com Server e Client.
- * Este arquivo NÃO contém diretivas 'use client' para permitir importação em Server Actions.
+ * Adicionado forceLongPolling para resolver problemas de conexão em redes restritas.
  */
 
 export function initializeFirebase() {
@@ -14,10 +14,8 @@ export function initializeFirebase() {
   
   if (!getApps().length) {
     try {
-      // Tenta inicialização automática (App Hosting / Produção)
-      firebaseApp = initializeApp();
+      firebaseApp = initializeApp(firebaseConfig);
     } catch (e) {
-      // Fallback para config manual
       firebaseApp = initializeApp(firebaseConfig);
     }
   } else {
@@ -31,6 +29,9 @@ export function getSdks(firebaseApp: FirebaseApp) {
   return {
     firebaseApp,
     auth: getAuth(firebaseApp),
-    firestore: getFirestore(firebaseApp)
+    // Usando initializeFirestore com forceLongPolling para evitar erro [code=unavailable]
+    firestore: initializeFirestore(firebaseApp, {
+      experimentalForceLongPolling: true,
+    })
   };
 }
