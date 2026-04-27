@@ -116,7 +116,6 @@ export function RequestOrder({ sender }: { sender: UserType }) {
   const { data: couriersData } = useCollection<Courier>(couriersQuery);
   const couriers = useMemo(() => [...(couriersData || [])].sort((a, b) => (a.nome || "").localeCompare(b.nome || "")), [couriersData]);
 
-  // Query simplificada: Lê a coleção e filtra no cliente para evitar erros de índice (que parecem erros de permissão)
   const allRequestsQuery = useMemoFirebase(() => {
     if (!authUser?.email) return null;
     return collection(db, 'orderRequests');
@@ -130,7 +129,7 @@ export function RequestOrder({ sender }: { sender: UserType }) {
     return [...myRequestsData]
       .filter(req => req.senderEmail === email)
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, 10);
+      .slice(0, 3); // Exibe apenas os últimos 3 pedidos
   }, [myRequestsData, authUser?.email]);
 
   const handleSendRequest = async () => {
@@ -155,10 +154,8 @@ export function RequestOrder({ sender }: { sender: UserType }) {
         createdAt: new Date().toISOString(),
       };
 
-      // 1. Salva no Firestore (Gatilho para UI aberta)
       await addDoc(collection(db, 'orderRequests'), newRequest);
       
-      // 2. Dispara Push Real (Gatilho para App Fechado)
       const userRef = doc(db, 'userProfiles', selectedUser.email.toLowerCase().trim());
       const userSnap = await getDoc(userRef);
       const tokens = userSnap.data()?.fcmTokens || [];
