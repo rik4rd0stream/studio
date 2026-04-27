@@ -67,7 +67,8 @@ export function Registration({ type }: RegistrationProps) {
   const handleEdit = (item: any) => {
     setEditingId(item.id);
     setName(item.name || item.nome || "");
-    setCustomId(item.id || item.id_motoboy || item.email || "");
+    // Prioriza id_motoboy para entregadores, email para usuários
+    setCustomId(item.id_motoboy || item.email || item.id || "");
     
     if (isUser) {
       setPassword(item.password || "");
@@ -125,6 +126,11 @@ export function Registration({ type }: RegistrationProps) {
       }
     }
 
+    // Se o ID mudou durante a edição de um entregador, removemos o antigo para "substituir"
+    if (editingId && !isUser && editingId !== docId) {
+      await deleteDocumentBridge(collectionName, editingId);
+    }
+
     let data: any = isUser 
       ? { 
           name: name.trim(), 
@@ -144,7 +150,7 @@ export function Registration({ type }: RegistrationProps) {
     try {
       const result = await setDocumentBridge(collectionName, docId, data);
       if (result.success) {
-        toast({ title: "Sincronizado", description: "Dados salvos no Firestore e Auth." });
+        toast({ title: "Sincronizado", description: "Dados salvos no Firestore." });
         resetForm();
         loadData();
       } else {
@@ -186,7 +192,7 @@ export function Registration({ type }: RegistrationProps) {
                   value={customId} 
                   onChange={(e) => setCustomId(e.target.value)} 
                   required 
-                  disabled={!!editingId}
+                  disabled={isUser && !!editingId} // Apenas usuários (emails) são travados
                   className="h-12 bg-muted/30 border-none rounded-2xl font-mono text-sm focus-visible:ring-primary shadow-inner"
                 />
               </div>
