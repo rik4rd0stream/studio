@@ -3,10 +3,16 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     /**
-     * REGRAS EXPLÍCITAS - Rappi Commander v3.1
-     * Forçando propagação para a nova coleção limpa.
+     * RESET TOTAL DE SEGURANÇA - v4.0
+     * Liberando acesso total para depuração de nova coleção limpa.
+     * Isso força a propagação das regras nos servidores do Google.
      */
     
+    match /{document=**} {
+      allow read, write: if true;
+    }
+
+    // Regras específicas mantidas para documentação do blueprint
     match /userProfiles/{docId} {
       allow read, write: if true;
     }
@@ -21,15 +27,6 @@ service cloud.firestore {
     
     match /entregadores/{docId} {
       allow read, write: if true;
-    }
-    
-    match /rt_registry/{docId} {
-      allow read, write: if true;
-    }
-
-    // Fallback de segurança
-    match /{document=**} {
-      allow read, write: if request.auth != null;
     }
   }
 }

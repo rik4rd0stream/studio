@@ -15,8 +15,7 @@
         "hasRequestAccess": { "type": "boolean" },
         "fcmToken": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" },
-        "password": { "type": "string" }
+        "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "name", "email", "role", "createdAt", "updatedAt"]
     },
@@ -39,35 +38,6 @@
         "statusNote": { "type": "string" }
       },
       "required": ["orderId", "storeName", "command", "targetUserEmail", "senderName", "status", "createdAt"]
-    },
-    "OperationLog": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "OperationLog",
-      "type": "object",
-      "description": "Log de auditoria das ações dos operadores.",
-      "properties": {
-        "id": { "type": "string" },
-        "orderId": { "type": "string" },
-        "rtId": { "type": "string" },
-        "action": { "type": "string", "enum": ["copy_id", "cheguei"] },
-        "userName": { "type": "string" },
-        "userEmail": { "type": "string" },
-        "timestamp": { "type": "string", "format": "date-time" }
-      },
-      "required": ["orderId", "action", "userEmail", "timestamp"]
-    },
-    "Courier": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Courier",
-      "type": "object",
-      "description": "Entregador (motoboy) cadastrado no sistema.",
-      "properties": {
-        "id": { "type": "string" },
-        "nome": { "type": "string" },
-        "id_motoboy": { "type": "string" },
-        "updatedAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["nome", "id_motoboy"]
     }
   },
   "auth": {
@@ -83,16 +53,12 @@
       "description": "Solicitações de pedidos entre operadores."
     },
     "operationLogs": {
-      "schema": "#/backend/entities/OperationLog",
+      "schema": { "type": "object" },
       "description": "Histórico de ações de auditoria."
     },
     "entregadores": {
-      "schema": "#/backend/entities/Courier",
-      "description": "Lista de entregadores cadastrados."
-    },
-    "rt_registry": {
       "schema": { "type": "object" },
-      "description": "Ponte de registro de RT."
+      "description": "Lista de entregadores cadastrados."
     }
   }
 }

@@ -117,6 +117,7 @@ export function RequestOrder({ sender }: { sender: UserType }) {
   const { data: couriersData } = useCollection<Courier>(couriersQuery);
   const couriers = useMemo(() => [...(couriersData || [])].sort((a, b) => (a.nome || "").localeCompare(b.nome || "")), [couriersData]);
 
+  // Consulta robusta: só dispara quando o senderEmail está 100% pronto
   const myRequestsQuery = useMemoFirebase(() => {
     if (!sender || !sender.email || !sender.email.includes('@')) return null;
     
@@ -183,7 +184,7 @@ export function RequestOrder({ sender }: { sender: UserType }) {
       case 'rejected': return { label: req.statusNote || 'Cancelado', color: 'bg-red-100 text-red-700', icon: XCircle };
       case 'unavailable': return { label: 'Indisponível', color: 'bg-slate-100 text-slate-500', icon: AlertCircle };
       default: return { 
-        label: remaining > 0 ? `Pendente (${Math.floor(remaining / 60)}:${(remaining % 60).toString().padStart(2, '0')})` : 'Expirando...', 
+        label: remaining > 0 ? `Pendente (${Math.floor(remaining / 60)}:${(remaining % 60).toString().padStart(2, '0')})` : 'Expirado', 
         color: 'bg-amber-100 text-amber-700 animate-pulse', 
         icon: Clock,
         canCancel: true
@@ -202,10 +203,10 @@ export function RequestOrder({ sender }: { sender: UserType }) {
         {loadingMyRequests ? (
           <div className="py-4 text-center"><Loader2 className="h-5 w-5 animate-spin mx-auto text-muted-foreground opacity-30" /></div>
         ) : (myRequestsData || []).length === 0 ? (
-          <div className="bg-muted/10 border border-dashed rounded-2xl p-6 text-center text-[10px] text-muted-foreground italic">Nenhuma solicitação recente.</div>
+          <div className="bg-muted/10 border border-dashed rounded-2xl p-6 text-center text-[10px] text-muted-foreground italic">Nenhuma solicitação encontrada na nova coleção.</div>
         ) : (
           <div className="space-y-2">
-            {(myRequestsData || []).slice(0, 3).map((req) => {
+            {(myRequestsData || []).map((req) => {
               const status = getStatusInfo(req);
               const Icon = status.icon;
               return (
