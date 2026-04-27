@@ -15,14 +15,14 @@ import {
   AlertDialogHeader, 
   AlertDialogTitle 
 } from "@/components/ui/alert-dialog";
-import { BellRing, ExternalLink, X, MessageSquareQuote, Timer, AlertTriangle, Clock } from "lucide-react";
+import { BellRing, ExternalLink, X, MessageSquareQuote, Clock, Timer } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Capacitor } from '@capacitor/core';
 import { redashService } from "@/lib/api/redash-service";
 
-const EXPIRATION_TIME_MS = 120000; // 2 minutos exatos
+const EXPIRATION_TIME_MS = 120000; // 2 minutos
 
 export function PushListener({ 
   user, 
@@ -37,27 +37,40 @@ export function PushListener({
   const [isMinimized, setIsMinimized] = useState(false);
   const [timeLeft, setTimeLeft] = useState<string>("");
 
+  // Inicialização de Notificações
   useEffect(() => {
     const setupNotifications = async () => {
+      // 1. Permissões Nativas (Android/iOS)
       if (Capacitor.isNativePlatform()) {
         try {
           const { LocalNotifications } = await import('@capacitor/local-notifications');
-          await LocalNotifications.requestPermissions();
-          await LocalNotifications.createChannel({
-            id: 'orders-channel-v1',
-            name: 'Novos Pedidos Rappi',
-            importance: 5,
-            visibility: 1,
-            vibration: true,
-            sound: 'default'
-          });
-        } catch (e) {}
+          const perm = await LocalNotifications.requestPermissions();
+          if (perm.display === 'granted') {
+            await LocalNotifications.createChannel({
+              id: 'orders-channel-v1',
+              name: 'Novos Pedidos Rappi',
+              importance: 5,
+              visibility: 1,
+              vibration: true,
+              sound: 'default'
+            });
+          }
+        } catch (e) {
+          console.error("Erro ao configurar notificações nativas:", e);
+        }
+      } 
+      // 2. Permissões Web (PWA)
+      else if (typeof window !== 'undefined' && 'Notification' in window) {
+        if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+          await Notification.requestPermission();
+        }
       }
     };
     setupNotifications();
   }, []);
 
   const sendSystemNotification = useCallback(async (title: string, body: string) => {
+    // Notificação Nativa
     if (Capacitor.isNativePlatform()) {
       try {
         const { LocalNotifications } = await import('@capacitor/local-notifications');
@@ -72,6 +85,10 @@ export function PushListener({
         });
       } catch (e) {}
     } 
+    // Notificação Browser (quando app aberto)
+    else if (typeof window !== 'undefined' && Notification.permission === 'granted') {
+      new Notification(title, { body, icon: '/logo.png' });
+    }
   }, []);
 
   // Monitor de expiração e disponibilidade
@@ -86,7 +103,6 @@ export function PushListener({
       const createdTime = new Date(firstRequest.createdAt).getTime();
       const diff = (createdTime + EXPIRATION_TIME_MS) - now;
 
-      // 1. Verificação de Expiração (Time Out)
       if (diff <= 0) {
         if (firstRequest.id) {
           updateDoc(doc(db, "orderRequests", firstRequest.id), {
@@ -101,7 +117,7 @@ export function PushListener({
         setTimeLeft(`${mins}:${secs.toString().padStart(2, '0')}`);
       }
 
-      // 2. Verificação de Disponibilidade (Se o pedido ainda existe no Redash)
+      // Verificação de Disponibilidade via Redash
       const redash = await redashService.fetchOrders();
       if (redash.success && redash.data) {
         const isStillAvailable = redash.data.some(o => String(o.order_id) === String(firstRequest.orderId));
@@ -115,8 +131,9 @@ export function PushListener({
     }, 2000);
 
     return () => clearInterval(interval);
-  }, [pendingRequests, db, toast]);
+  }, [pendingRequests, db]);
 
+  // Listener de Pedidos no Firestore
   useEffect(() => {
     if (!user?.email || !user.notificationsEnabled) return;
 

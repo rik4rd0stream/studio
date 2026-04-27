@@ -9,10 +9,12 @@ import {
   enableIndexedDbPersistence,
   CACHE_SIZE_UNLIMITED
 } from 'firebase/firestore';
+import { getMessaging, Messaging, isSupported } from 'firebase/messaging';
 
 let firestoreInstance: Firestore | null = null;
 let authInstance: Auth | null = null;
 let appInstance: FirebaseApp | null = null;
+let messagingInstance: Messaging | null = null;
 
 /**
  * Inicialização Singleton do Firebase Otimizada para Mobile.
@@ -59,6 +61,20 @@ export function initializeFirebase() {
     auth: authInstance,
     firestore: firestoreInstance
   };
+}
+
+/**
+ * Obtém a instância de Messaging se suportada pelo ambiente.
+ */
+export async function getFirebaseMessaging() {
+  const { firebaseApp } = initializeFirebase();
+  if (typeof window !== 'undefined' && await isSupported()) {
+    if (!messagingInstance) {
+      messagingInstance = getMessaging(firebaseApp);
+    }
+    return messagingInstance;
+  }
+  return null;
 }
 
 export { 
