@@ -32,6 +32,34 @@ export function PushListener({ user, onPendingCountChange }: { user: User; onPen
   const [timeLeft, setTimeLeft] = useState<string>("");
 
   /**
+   * Listeners para Push Notifications Nativos (Android)
+   */
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+
+    // Quando o push chega com o app aberto (foreground)
+    const receiveListener = PushNotifications.addListener('pushNotificationReceived', (notification) => {
+      console.log("Push recebido (foreground):", notification);
+
+      toast({
+        title: notification.title || "Novo Pedido!",
+        description: notification.body,
+      });
+    });
+
+    // Quando o usuário clica na notificação na barra do Android
+    const actionListener = PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
+      console.log("Usuário clicou na notificação:", notification);
+      setIsMinimized(false); // Maximiza o alerta se houver pedido pendente
+    });
+
+    return () => {
+      receiveListener.remove();
+      actionListener.remove();
+    };
+  }, [toast]);
+
+  /**
    * Dispara uma notificação nativa do sistema (Android/Web)
    * Isso garante que o celular vibre/toque mesmo se o app não estiver em foco.
    */
