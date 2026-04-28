@@ -33,12 +33,12 @@ export function PushListener({ user, onPendingCountChange }: { user: User; onPen
 
   /**
    * Listeners para Push Notifications Nativos (Android)
+   * Este bloco gerencia a chegada e o clique nas notificações.
    */
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
 
-    // Quando o push chega com o app aberto (foreground)
-    const receiveListener = PushNotifications.addListener('pushNotificationReceived', (notification) => {
+    PushNotifications.addListener('pushNotificationReceived', (notification) => {
       console.log("Push recebido (foreground):", notification);
 
       toast({
@@ -47,17 +47,11 @@ export function PushListener({ user, onPendingCountChange }: { user: User; onPen
       });
     });
 
-    // Quando o usuário clica na notificação na barra do Android
-    const actionListener = PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
+    PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
       console.log("Usuário clicou na notificação:", notification);
-      setIsMinimized(false); // Maximiza o alerta se houver pedido pendente
+      setIsMinimized(false); // Maximiza o alerta ao clicar na notificação
     });
-
-    return () => {
-      receiveListener.remove();
-      actionListener.remove();
-    };
-  }, [toast]);
+  }, []);
 
   /**
    * Dispara uma notificação nativa do sistema (Android/Web)
