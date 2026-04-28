@@ -36,6 +36,8 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
   const [isOffline, setIsOffline] = useState(false);
   const [prefilledOrderId, setPrefilledOrderId] = useState<string>("");
 
+  const isMaster = user.role === 'master' || user.email === 'rik4rd0stream@gmail.com';
+
   useEffect(() => {
     const handleOnline = () => setIsOffline(false);
     const handleOffline = () => setIsOffline(true);
@@ -133,14 +135,16 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
                 <Send className="h-3.5 w-3.5" /> <span className="hidden xs:inline">Envio</span>
               </Button>
               
-              <Button 
-                size="sm" 
-                variant={currentView === 'rt-status' ? 'default' : 'outline'} 
-                className="rounded-full h-8 gap-1.5 text-[10px] px-3 transition-all border-primary/20"
-                onClick={() => handleSetView('rt-status')}
-              >
-                <Radar className="h-3.5 w-3.5" /> <span className="hidden xs:inline">Status RT</span>
-              </Button>
+              {(user.hasRtStatusAccess || isMaster) && (
+                <Button 
+                  size="sm" 
+                  variant={currentView === 'rt-status' ? 'default' : 'outline'} 
+                  className="rounded-full h-8 gap-1.5 text-[10px] px-3 transition-all border-primary/20"
+                  onClick={() => handleSetView('rt-status')}
+                >
+                  <Radar className="h-3.5 w-3.5" /> <span className="hidden xs:inline">Status RT</span>
+                </Button>
+              )}
 
               <Button 
                 size="sm" 

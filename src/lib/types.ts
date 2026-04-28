@@ -9,6 +9,7 @@ export interface User {
   role: UserRole;
   notificationsEnabled?: boolean;
   hasRequestAccess?: boolean;
+  hasRtStatusAccess?: boolean; // Nova permissão para visualizar o Monitor RT
   fcmTokens?: string[]; // Lista de tokens de dispositivos do usuário
 }
 

@@ -26,8 +26,8 @@ interface SidebarNavProps {
 export function SidebarNav({ currentView, setView, user, onLogout }: SidebarNavProps) {
   const navItems = [
     { id: 'send-order', label: 'Envio de Pedido', icon: Send },
-    { id: 'rt-status', label: 'Status Real-Time RT', icon: Radar },
-    { id: 'request-order', label: 'Solicitação de Pedido', icon: PackageSearch, restricted: true },
+    { id: 'rt-status', label: 'Status Real-Time RT', icon: Radar, permission: 'hasRtStatusAccess' },
+    { id: 'request-order', label: 'Solicitação de Pedido', icon: PackageSearch, permission: 'hasRequestAccess' },
     { id: 'active-orders', label: 'Pedidos Ativos', icon: Activity },
   ];
 
@@ -44,7 +44,12 @@ export function SidebarNav({ currentView, setView, user, onLogout }: SidebarNavP
     const isMaster = user.role === 'master' || user.email === 'rik4rd0stream@gmail.com';
     
     if (item.masterOnly && !isMaster) return null;
-    if (item.restricted && !user.hasRequestAccess && !isMaster) return null;
+    
+    // Verificação de permissão específica (ou Master)
+    if (item.permission) {
+      const hasPerm = (user as any)[item.permission];
+      if (!hasPerm && !isMaster) return null;
+    }
     
     const active = currentView === item.id;
     

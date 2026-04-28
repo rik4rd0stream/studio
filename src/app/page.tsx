@@ -110,7 +110,8 @@ export default function Home() {
       email: data.email,
       role: data.role || 'normal',
       notificationsEnabled: data.notificationsEnabled !== false,
-      hasRequestAccess: !!data.hasRequestAccess
+      hasRequestAccess: !!data.hasRequestAccess,
+      hasRtStatusAccess: !!data.hasRtStatusAccess
     };
     setLocalUser(userData);
     const expiry = new Date().getTime() + SEVEN_DAYS_MS;

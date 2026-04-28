@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Loader2, Pencil, Trash2, RefreshCw, Database, UserPlus, Bike, ShieldCheck, Bell, Lock, Fingerprint } from "lucide-react";
+import { Loader2, Pencil, Trash2, RefreshCw, Database, UserPlus, Bike, ShieldCheck, Bell, Lock, Fingerprint, Radar } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getCollectionBridge, setDocumentBridge, deleteDocumentBridge } from "@/app/actions/firestore-bridge";
 import { createAuthUserBridge } from "@/app/actions/auth-bridge";
@@ -30,6 +30,7 @@ export function Registration({ type }: RegistrationProps) {
   const [password, setPassword] = useState("");
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [hasRequestAccess, setHasRequestAccess] = useState(false);
+  const [hasRtStatusAccess, setHasRtStatusAccess] = useState(false);
 
   const isUser = type === 'users';
   const collectionName = isUser ? 'userProfiles' : 'entregadores';
@@ -66,13 +67,13 @@ export function Registration({ type }: RegistrationProps) {
   const handleEdit = (item: any) => {
     setEditingId(item.id);
     setName(item.name || item.nome || "");
-    // Para entregadores, usamos o id_motoboy gravado. Para usuários, o e-mail.
     setCustomId(item.id_motoboy || item.email || item.id || "");
     
     if (isUser) {
       setPassword(item.password || "");
       setNotificationsEnabled(item.notificationsEnabled !== false);
       setHasRequestAccess(!!item.hasRequestAccess);
+      setHasRtStatusAccess(!!item.hasRtStatusAccess);
     }
   };
 
@@ -82,6 +83,7 @@ export function Registration({ type }: RegistrationProps) {
     setPassword("");
     setNotificationsEnabled(true);
     setHasRequestAccess(false);
+    setHasRtStatusAccess(false);
     setEditingId(null);
   };
 
@@ -110,7 +112,6 @@ export function Registration({ type }: RegistrationProps) {
       return;
     }
 
-    // Lógica para novos usuários (Auth)
     if (isUser && !editingId) {
       if (password.length < 6) {
         toast({ variant: "destructive", title: "Senha Curta", description: "Mínimo 6 caracteres." });
@@ -125,7 +126,6 @@ export function Registration({ type }: RegistrationProps) {
       }
     }
 
-    // SUBSTITUIÇÃO: Se o ID mudou na edição, removemos o antigo para não duplicar
     if (editingId && editingId !== docId) {
       await deleteDocumentBridge(collectionName, editingId);
     }
@@ -138,6 +138,7 @@ export function Registration({ type }: RegistrationProps) {
           role: 'normal',
           notificationsEnabled,
           hasRequestAccess,
+          hasRtStatusAccess,
           updatedAt: new Date().toISOString()
         }
       : { 
@@ -211,7 +212,7 @@ export function Registration({ type }: RegistrationProps) {
                       <Lock className="absolute right-3 top-3.5 h-5 w-5 text-muted-foreground/50" />
                     </div>
                   </div>
-                  <div className="flex items-center gap-6 pt-2">
+                  <div className="flex flex-wrap items-center gap-6 pt-2">
                     <div className="flex items-center space-x-2">
                       <Switch id="notif" checked={notificationsEnabled} onCheckedChange={setNotificationsEnabled} />
                       <Label htmlFor="notif" className="text-xs font-bold flex items-center gap-1.5"><Bell className="h-3.5 w-3.5 text-primary" /> PUSH</Label>
@@ -219,6 +220,10 @@ export function Registration({ type }: RegistrationProps) {
                     <div className="flex items-center space-x-2">
                       <Switch id="access" checked={hasRequestAccess} onCheckedChange={setHasRequestAccess} />
                       <Label htmlFor="access" className="text-xs font-bold flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5 text-primary" /> SOLICITAR</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Switch id="rtAccess" checked={hasRtStatusAccess} onCheckedChange={setHasRtStatusAccess} />
+                      <Label htmlFor="rtAccess" className="text-xs font-bold flex items-center gap-1.5"><Radar className="h-3.5 w-3.5 text-primary" /> MONITOR RT</Label>
                     </div>
                   </div>
                 </>
@@ -276,6 +281,7 @@ export function Registration({ type }: RegistrationProps) {
                       <TableCell className="font-bold text-sm px-4">
                         <div className="flex items-center gap-2">
                           {item.name || item.nome}
+                          {isUser && item.hasRtStatusAccess && <Radar className="h-3 w-3 text-primary" />}
                           {isUser && item.hasRequestAccess && <ShieldCheck className="h-3 w-3 text-primary" />}
                         </div>
                       </TableCell>
