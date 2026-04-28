@@ -21,12 +21,24 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
+import { collection } from "firebase/firestore";
 
 export function RTStatus() {
   const { toast } = useToast();
+  const db = useFirestore();
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<RTStatusData[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+
+  // Busca entregadores cadastrados para mostrar o nome em vez de apenas o ID
+  const couriersQuery = useMemoFirebase(() => collection(db, 'entregadores'), [db]);
+  const { data: couriers } = useCollection<any>(couriersQuery);
+
+  const getCourierName = (id: string) => {
+    const courier = couriers?.find(c => String(c.id_motoboy || c.id) === String(id));
+    return courier ? (courier.nome || courier.name) : `RT ${id}`;
+  };
 
   const loadData = async (silent = false) => {
     if (!silent) setLoading(true);
@@ -62,13 +74,15 @@ export function RTStatus() {
       
       if (!isPoint9944) return false;
 
-      // Filtro de busca por texto
+      // Filtro de busca por texto (agora inclui o nome se existir)
+      const courierName = getCourierName(rt.courier_id).toLowerCase();
       const matchesSearch = String(rt.courier_id).includes(searchTerm) || 
+                           courierName.includes(searchTerm.toLowerCase()) ||
                            String(rt.storekeeper_level_name || "").toLowerCase().includes(searchTerm.toLowerCase());
       
       return matchesSearch;
     });
-  }, [data, searchTerm]);
+  }, [data, searchTerm, couriers]);
 
   const openMap = (lat: number, lng: number) => {
     const url = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
@@ -89,7 +103,7 @@ export function RTStatus() {
           <div className="relative flex-1 md:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input 
-              placeholder="Buscar RT ou Nível..." 
+              placeholder="Buscar por Nome ou RT..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-9 h-10 bg-card border-none shadow-sm rounded-xl"
@@ -112,6 +126,7 @@ export function RTStatus() {
             const isOnline = rt.on_geo_queue === true || rt.on_geo_queue === 1 || String(rt.on_geo_queue).toLowerCase() === 'true';
             const isGeo = rt.connected_on_geo_queue === true || rt.connected_on_geo_queue === 1 || String(rt.connected_on_geo_queue).toLowerCase() === 'true';
             const isAuto = rt.auto_acceptance === true || rt.auto_acceptance === 1 || String(rt.auto_acceptance).toLowerCase() === 'true';
+            const courierName = getCourierName(rt.courier_id);
 
             return (
               <Card key={idx} className={cn(
@@ -127,11 +142,16 @@ export function RTStatus() {
                       )}>
                         {isOnline ? <Wifi className="h-6 w-6" /> : <WifiOff className="h-6 w-6" />}
                       </div>
-                      <div>
-                        <h3 className="text-lg font-black leading-none mb-1">RT {rt.courier_id}</h3>
+                      <div className="overflow-hidden">
+                        <h3 className="text-lg font-black leading-none mb-1 truncate max-w-[180px]">
+                          {courierName}
+                        </h3>
                         <p className={cn("text-[10px] uppercase tracking-tighter flex items-center gap-1", getLevelStyles(rt.storekeeper_level_name))}>
                           <Award className="h-3 w-3" /> {rt.storekeeper_level_name || 'Nível N/A'}
                         </p>
+                        {courierName !== `RT ${rt.courier_id}` && (
+                          <p className="text-[9px] font-bold text-muted-foreground/60 uppercase mt-0.5">ID: {rt.courier_id}</p>
+                        )}
                       </div>
                     </div>
 
@@ -142,7 +162,7 @@ export function RTStatus() {
                         onClick={() => openMap(rt.lat, rt.lng)}
                         className="h-8 rounded-full gap-1.5 text-[9px] font-bold uppercase"
                       >
-                        <MapPin className="h-3 w-3" /> Ver no Mapa
+                        <MapPin className="h-3 w-3" /> Mapa
                       </Button>
                     )}
                   </div>
