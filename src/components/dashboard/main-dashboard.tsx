@@ -6,12 +6,13 @@ import { AppView, User } from "@/lib/types";
 import { SidebarNav } from "./sidebar-nav";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
-import { Send, Bell, Activity, Menu, WifiOff } from "lucide-react";
+import { Send, Bell, Activity, Menu, WifiOff, Navigation } from "lucide-react";
 import { CreateOrder } from "@/components/orders/create-order";
 import { ActiveOrders } from "@/components/orders/active-orders";
 import { RequestOrder } from "@/components/orders/request-order";
 import { Registration } from "@/components/admin/registration";
 import { OperationLogs } from "@/components/admin/operation-logs";
+import { RTStatus } from "@/components/admin/rt-status";
 import { PushListener } from "@/components/notifications/push-listener";
 import { 
   Sheet, 
@@ -72,6 +73,8 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
         );
       case 'active-orders':
         return <ActiveOrders onSelectOrder={handleSelectOrderFromActive} />;
+      case 'rt-status':
+        return <RTStatus />;
       case 'request-order':
         return <RequestOrder sender={user} />;
       case 'admin-users':
@@ -130,6 +133,15 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
                 <Send className="h-3.5 w-3.5" /> <span className="hidden xs:inline">Envio</span>
               </Button>
               
+              <Button 
+                size="sm" 
+                variant={currentView === 'rt-status' ? 'default' : 'outline'} 
+                className="rounded-full h-8 gap-1.5 text-[10px] px-3 transition-all border-primary/20"
+                onClick={() => handleSetView('rt-status')}
+              >
+                <Navigation className="h-3.5 w-3.5" /> <span className="hidden xs:inline">Status RT</span>
+              </Button>
+
               <Button 
                 size="sm" 
                 variant={currentView === 'active-orders' ? 'default' : 'outline'} 

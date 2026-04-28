@@ -1,12 +1,16 @@
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * API Route para servir como Proxy do Redash na Web.
- * Resolve o problema de CORS no navegador.
+ * Agora aceita parâmetros para diferentes queries.
  */
-export async function GET() {
-  const REDASH_URL = `https://redash.rappi.com/api/queries/130603/results.json?api_key=VqwlaUY9wOLjhUJTvrfuKdFExSsJG8ktuzUXy4fR`;
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const queryId = searchParams.get('queryId') || '130603';
+  const apiKey = searchParams.get('apiKey') || 'VqwlaUY9wOLjhUJTvrfuKdFExSsJG8ktuzUXy4fR';
+
+  const REDASH_URL = `https://redash.rappi.com/api/queries/${queryId}/results.json?api_key=${apiKey}`;
 
   try {
     const response = await fetch(REDASH_URL, {

@@ -43,4 +43,15 @@ export interface OperationLog {
   timestamp: string;
 }
 
-export type AppView = 'send-order' | 'request-order' | 'active-orders' | 'admin-users' | 'admin-couriers' | 'operation-logs';
+export interface RTStatusData {
+  courier_id: string;
+  storekeeper_level_name: string;
+  lat: number;
+  lng: number;
+  on_geo_queue: boolean | string | number;
+  connected_on_geo_queue: boolean | string | number;
+  auto_acceptance: boolean | string | number;
+  [key: string]: any;
+}
+
+export type AppView = 'send-order' | 'request-order' | 'active-orders' | 'admin-users' | 'admin-couriers' | 'operation-logs' | 'rt-status';
