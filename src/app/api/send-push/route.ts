@@ -1,11 +1,9 @@
-
 import { NextResponse } from 'next/server';
 import admin from 'firebase-admin';
 
 /**
  * API Route para disparar notificações Push (FCM).
- * Esta rota atua como o servidor que "acorda" o app fechado.
- * Payload atualizado para garantir entrega no Android nativo (Capacitor).
+ * Payload Híbrido otimizado para despertar o Android nativo (Capacitor) mesmo fechado.
  */
 
 const FIREBASE_CONFIG = {
@@ -33,7 +31,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'Admin não inicializado.' });
     }
 
-    // Payload Híbrido (Notification + Data) para máxima compatibilidade
+    // Payload Híbrido (Notification + Data) para máxima compatibilidade com App Fechado
     const message = {
       tokens: tokens,
 
@@ -51,7 +49,7 @@ export async function POST(req: Request) {
       android: {
         priority: 'high' as const,
         notification: {
-          channelId: 'orders-v1', // Crucial: Deve bater com o ID criado no app
+          channelId: 'orders-v1', // Vinculado ao canal criado no app
           sound: 'default',
           clickAction: 'FLUTTER_NOTIFICATION_CLICK',
           priority: 'high' as const,

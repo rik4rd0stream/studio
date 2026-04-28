@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -68,17 +67,16 @@ export function RTStatus() {
 
   const filteredData = useMemo(() => {
     return data.filter(rt => {
-      // Filtro obrigatório por Localidade (Point 9944)
+      // FILTRO POR LOCALIDADE 9944 (Obrigatório)
       const geoId = String(rt.geo_queue_id || rt.point_id || "");
       const isPoint9944 = geoId === '9944' || geoId.includes('9944');
       
       if (!isPoint9944) return false;
 
-      // Filtro de busca por texto (agora inclui o nome se existir)
+      // Filtro de busca por texto
       const courierName = getCourierName(rt.courier_id).toLowerCase();
       const matchesSearch = String(rt.courier_id).includes(searchTerm) || 
-                           courierName.includes(searchTerm.toLowerCase()) ||
-                           String(rt.storekeeper_level_name || "").toLowerCase().includes(searchTerm.toLowerCase());
+                           courierName.includes(searchTerm.toLowerCase());
       
       return matchesSearch;
     });
@@ -149,9 +147,6 @@ export function RTStatus() {
                         <p className={cn("text-[10px] uppercase tracking-tighter flex items-center gap-1", getLevelStyles(rt.storekeeper_level_name))}>
                           <Award className="h-3 w-3" /> {rt.storekeeper_level_name || 'Nível N/A'}
                         </p>
-                        {courierName !== `RT ${rt.courier_id}` && (
-                          <p className="text-[9px] font-bold text-muted-foreground/60 uppercase mt-0.5">ID: {rt.courier_id}</p>
-                        )}
                       </div>
                     </div>
 
@@ -172,17 +167,17 @@ export function RTStatus() {
                       "p-3 rounded-xl flex items-center justify-between border transition-all",
                       isGeo 
                         ? "bg-green-50 border-green-200 text-green-700" 
-                        : "bg-muted/40 text-muted-foreground/40 border-transparent"
+                        : "bg-muted/40 text-muted-foreground/40 border-transparent opacity-50"
                     )}>
                       <span className="text-[9px] font-bold uppercase tracking-tight">Status GEO</span>
-                      {isGeo ? <Zap className="h-4 w-4" /> : <ZapOff className="h-4 w-4 opacity-30" />}
+                      {isGeo ? <Zap className="h-4 w-4" /> : <ZapOff className="h-4 w-4" />}
                     </div>
                     
                     <div className={cn(
                       "p-3 rounded-xl flex items-center justify-between border transition-all",
                       isAuto 
                         ? "bg-emerald-50 border-emerald-200 text-emerald-700" 
-                        : "bg-muted/40 text-muted-foreground/40 border-transparent"
+                        : "bg-muted/40 text-muted-foreground/40 border-transparent opacity-50"
                     )}>
                       <span className="text-[9px] font-bold uppercase tracking-tight">Auto Aceite</span>
                       <div className={cn(
@@ -200,7 +195,7 @@ export function RTStatus() {
       
       {filteredData.length === 0 && !loading && (
         <div className="py-20 text-center text-muted-foreground italic text-sm">
-          Nenhum RT encontrado.
+          Nenhum RT encontrado para Monitoramento.
         </div>
       )}
     </div>

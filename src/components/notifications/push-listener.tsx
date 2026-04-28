@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
@@ -53,7 +52,7 @@ export function PushListener({ user, onPendingCountChange }: { user: User; onPen
   }, [toast]);
 
   /**
-   * Dispara uma notificação nativa do sistema (Android/Web)
+   * Dispara uma notificação nativa do sistema (Vibração/Som)
    */
   const sendSystemAlert = useCallback(async (title: string, body: string) => {
     if (Capacitor.isNativePlatform()) {
@@ -88,7 +87,7 @@ export function PushListener({ user, onPendingCountChange }: { user: User; onPen
     }
   }, []);
 
-  // 🔥 CONFIGURAÇÃO INICIAL E TOKENS
+  // CONFIGURAÇÃO INICIAL E TOKENS
   useEffect(() => {
     if (!user?.email || !db) return;
 
@@ -134,7 +133,7 @@ export function PushListener({ user, onPendingCountChange }: { user: User; onPen
     setupPush();
   }, [user, db]);
 
-  // 🔥 ESCUTA PEDIDOS EM TEMPO REAL
+  // ESCUTA PEDIDOS EM TEMPO REAL COM DETECÇÃO PRECISA (snapshot.docChanges)
   useEffect(() => {
     if (!user?.email || !db || user.notificationsEnabled === false) return;
 
@@ -146,7 +145,7 @@ export function PushListener({ user, onPendingCountChange }: { user: User; onPen
         .map(doc => ({ id: doc.id, ...doc.data() } as OrderRequest))
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-      // Detecção precisa de novos documentos adicionados
+      // Detecção de novos documentos adicionados (hasNew)
       const hasNew = snapshot.docChanges().some(c => c.type === "added");
 
       if (hasNew && !snapshot.metadata.fromCache) {
@@ -166,7 +165,7 @@ export function PushListener({ user, onPendingCountChange }: { user: User; onPen
     return () => unsubscribe();
   }, [db, user, onPendingCountChange, sendSystemAlert]);
 
-  // 🔥 CONTADOR E EXPIRAÇÃO
+  // CONTADOR E EXPIRAÇÃO
   useEffect(() => {
     if (pendingRequests.length === 0) return;
 
