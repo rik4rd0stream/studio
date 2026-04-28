@@ -2,7 +2,8 @@
 'use server';
 
 /**
- * @fileOverview Ponte de Dados (Data Bridge) via Server Actions com suporte a Logs.
+ * @fileOverview Ponte de Dados (Data Bridge) via Server Actions.
+ * Importa a inicialização diretamente do init.ts para evitar conflitos de 'use client'.
  */
 
 import { 
@@ -13,7 +14,7 @@ import {
   doc, 
   getDocs,
 } from 'firebase/firestore';
-import { initializeFirebase } from '@/firebase';
+import { initializeFirebase } from '@/firebase/init';
 
 const getDb = () => {
   const { firestore } = initializeFirebase();

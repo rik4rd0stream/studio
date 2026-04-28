@@ -3,7 +3,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, addDoc, query, where, limit, doc, setDoc, orderBy } from 'firebase/firestore';
+import { collection, addDoc, doc, getDoc, setDoc } from 'firebase/firestore';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -37,11 +37,14 @@ import {
 
 const STORAGE_LAST_USER = 'rappi_commander_last_user_v1';
 const STORAGE_LAST_COURIER = 'rappi_commander_last_courier_v1';
+const COMMANDS = ["!!bundleBR", "!!rebr", "!!Br", "!!forzarbr"];
 
 export function RequestOrder({ sender }: { sender: UserType }) {
   const db = useFirestore();
   const { toast } = useToast();
+  const { user: authUser } = useUser();
   const [manualOrderId, setManualOrderId] = useState('');
+  const [selectedCommand, setSelectedCommand] = useState("!!bundleBR");
   const [searchQuery, setSearchQuery] = useState('');
   const [searchCourierQuery, setSearchCourierQuery] = useState('');
   const [selectedUser, setSelectedUser] = useState<UserType | null>(null);
@@ -101,11 +104,9 @@ export function RequestOrder({ sender }: { sender: UserType }) {
     });
   }, [allOrders]);
 
-  const usersQuery = useMemoFirebase(() => {
-    return query(collection(db, 'userProfiles'), limit(50));
-  }, [db]);
-  
+  const usersQuery = useMemoFirebase(() => collection(db, 'userProfiles'), [db]);
   const { data: usersData } = useCollection<UserType>(usersQuery);
+  
   const users = useMemo(() => 
     (usersData || [])
       .filter(u => u.notificationsEnabled === true)
@@ -113,29 +114,25 @@ export function RequestOrder({ sender }: { sender: UserType }) {
     [usersData]
   );
 
-  const couriersQuery = useMemoFirebase(() => query(collection(db, 'entregadores')), [db]);
+  const couriersQuery = useMemoFirebase(() => collection(db, 'entregadores'), [db]);
   const { data: couriersData } = useCollection<Courier>(couriersQuery);
   const couriers = useMemo(() => [...(couriersData || [])].sort((a, b) => (a.nome || "").localeCompare(b.nome || "")), [couriersData]);
 
-  // Query simplificada para evitar necessidade imediata de índices compostos
-  const myRequestsQuery = useMemoFirebase(() => {
-    if (!sender || !sender.email || !sender.email.includes('@')) return null;
-    const senderEmail = sender.email.toLowerCase().trim();
-    return query(
-      collection(db, 'orderRequests'),
-      where('senderEmail', '==', senderEmail),
-      limit(10)
-    );
-  }, [db, sender?.email]);
+  const allRequestsQuery = useMemoFirebase(() => {
+    if (!authUser?.email) return null;
+    return collection(db, 'orderRequests');
+  }, [db, authUser?.email]);
 
-  const { data: myRequestsData, isLoading: loadingMyRequests } = useCollection<OrderRequest>(myRequestsQuery);
+  const { data: myRequestsData, isLoading: loadingMyRequests } = useCollection<OrderRequest>(allRequestsQuery);
 
-  // Ordenação manual no lado do cliente para evitar erro de índice
   const sortedRequests = useMemo(() => {
-    return [...(myRequestsData || [])].sort((a, b) => 
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
-  }, [myRequestsData]);
+    if (!myRequestsData || !authUser?.email) return [];
+    const email = authUser.email.toLowerCase().trim();
+    return [...myRequestsData]
+      .filter(req => req.senderEmail === email)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 3);
+  }, [myRequestsData, authUser?.email]);
 
   const handleSendRequest = async () => {
     if (!db || !sender || !selectedUser || !selectedCourier || !manualOrderId.trim()) return;
@@ -146,7 +143,7 @@ export function RequestOrder({ sender }: { sender: UserType }) {
       const matchedOrder = redashOrders.find(o => String(o.order_id) === cleanId);
       const storeName = matchedOrder?.store_name || 'Pedido Manual';
       
-      const fullCommand = `!!forzarbr ${cleanId} ${selectedCourier.id_motoboy}`;
+      const fullCommand = `${selectedCommand} ${cleanId} ${selectedCourier.id_motoboy}`;
       
       const newRequest: OrderRequest = {
         orderId: cleanId,
@@ -160,6 +157,24 @@ export function RequestOrder({ sender }: { sender: UserType }) {
       };
 
       await addDoc(collection(db, 'orderRequests'), newRequest);
+      
+      const userRef = doc(db, 'userProfiles', selectedUser.email.toLowerCase().trim());
+      const userSnap = await getDoc(userRef);
+      const tokens = userSnap.data()?.fcmTokens || [];
+
+      if (tokens.length > 0) {
+        fetch('/api/send-push', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tokens,
+            title: "Novo Pedido de Despacho!",
+            body: `${sender.name} enviou: ${storeName} (#${cleanId})`,
+            data: { orderId: cleanId, command: fullCommand }
+          })
+        }).catch(err => console.error("Erro ao chamar API de Push:", err));
+      }
+      
       setManualOrderId('');
       toast({ title: "Solicitado!", description: `Aguardando ${selectedUser.name}` });
     } catch (e) {
@@ -241,6 +256,25 @@ export function RequestOrder({ sender }: { sender: UserType }) {
       </div>
 
       <div className="h-px bg-border/40 my-2" />
+
+      <div className="bg-card p-3 rounded-2xl border border-border/40 shadow-sm space-y-2">
+        <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-1">Comando de Solicitação</p>
+        <div className="flex flex-wrap gap-1.5">
+          {COMMANDS.map((cmd) => (
+            <Button
+              key={cmd}
+              variant="default"
+              onClick={() => setSelectedCommand(cmd)}
+              className={cn(
+                "h-8 px-4 font-bold text-xs rounded-xl transition-all",
+                selectedCommand === cmd ? "bg-primary text-primary-foreground shadow-lg" : "bg-muted text-muted-foreground"
+              )}
+            >
+              {cmd}
+            </Button>
+          ))}
+        </div>
+      </div>
 
       <div className="space-y-3">
         <div className="flex items-center justify-between px-1">

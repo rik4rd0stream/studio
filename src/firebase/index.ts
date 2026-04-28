@@ -1,52 +1,23 @@
+
 'use client';
 
-import { firebaseConfig } from '@/firebase/config';
-import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
-import { getMessaging, Messaging } from 'firebase/messaging';
-
 /**
- * Inicializa o Firebase e retorna as instâncias dos serviços.
- * Mantido sem argumentos para compatibilidade com App Hosting em produção.
+ * @fileOverview Barrel file para o Firebase no lado do cliente.
+ * Re-exporta a inicialização e os hooks de interface.
  */
-export function initializeFirebase() {
-  let firebaseApp: FirebaseApp;
-  
-  if (!getApps().length) {
-    try {
-      firebaseApp = initializeApp();
-    } catch (e) {
-      if (process.env.NODE_ENV === "production") {
-        console.warn('Automatic initialization failed. Falling back to config.', e);
-      }
-      firebaseApp = initializeApp(firebaseConfig);
-    }
-  } else {
-    firebaseApp = getApp();
-  }
 
-  return getSdks(firebaseApp);
-}
+import { Messaging, getMessaging } from 'firebase/messaging';
+import { initializeFirebase as initCore } from './init';
+
+export { initializeFirebase, getSdks } from './init';
 
 /**
- * Retorna os SDKs inicializados.
- */
-export function getSdks(firebaseApp: FirebaseApp) {
-  return {
-    firebaseApp,
-    auth: getAuth(firebaseApp),
-    firestore: getFirestore(firebaseApp)
-  };
-}
-
-/**
- * Getter específico para o Firebase Messaging.
+ * Getter específico para o Firebase Messaging (apenas Browser).
  */
 export function getFirebaseMessaging(): Messaging | null {
   if (typeof window === 'undefined') return null;
   try {
-    const { firebaseApp } = initializeFirebase();
+    const { firebaseApp } = initCore();
     return getMessaging(firebaseApp);
   } catch (e) {
     console.warn("FCM não disponível neste ambiente.");

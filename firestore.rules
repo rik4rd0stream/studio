@@ -2,8 +2,21 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Regras de Emergência v4.1 - Estabilidade Total
+    // Libera todas as coleções do sistema para leitura e escrita
     match /{document=**} {
-      // Aberto para desenvolvimento e depuração v3.2
+      allow read, write: if true;
+    }
+
+    match /orderRequests/{id} {
+      allow read, write: if true;
+    }
+    
+    match /userProfiles/{id} {
+      allow read, write: if true;
+    }
+
+    match /entregadores/{id} {
       allow read, write: if true;
     }
   }

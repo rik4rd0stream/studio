@@ -1,8 +1,9 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
 import { useFirestore, getFirebaseMessaging } from "@/firebase";
-import { collection, query, where, onSnapshot, doc, setDoc } from "firebase/firestore";
+import { collection, onSnapshot, doc, setDoc } from "firebase/firestore";
 import { getToken, onMessage } from "firebase/messaging";
 import { User, OrderRequest } from "@/lib/types";
 import { 
@@ -49,8 +50,10 @@ export function PushListener({
           
           if (token) {
             const userRef = doc(db, 'userProfiles', user.email.toLowerCase().trim());
-            setDoc(userRef, {
+            // Usa setDoc com merge para garantir que não quebre se o doc não existir
+            await setDoc(userRef, {
               fcmToken: token,
+              fcmTokens: [token], // Mantém suporte a múltiplos se necessário futuramente
               updatedAt: new Date().toISOString()
             }, { merge: true });
           }
@@ -79,25 +82,24 @@ export function PushListener({
   }, [toast]);
 
   useEffect(() => {
+    // Filtro rígido para evitar erro de permissão prematuro
     if (!user || !user.email || user.notificationsEnabled !== true) return;
 
     const userEmail = user.email.toLowerCase().trim();
-
-    const q = query(
-      collection(db, "orderRequests"),
-      where("targetUserEmail", "==", userEmail),
-      where("status", "==", "pending")
-    );
+    const q = collection(db, "orderRequests");
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const requests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as OrderRequest));
-      requests.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      const requests = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() } as OrderRequest))
+        .filter(req => req.targetUserEmail === userEmail && req.status === "pending")
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       
       setPendingRequests(requests);
       if (onPendingCountChange) onPendingCountChange(requests.length);
 
       if (snapshot.docChanges().some(change => change.type === "added")) {
-        setIsMinimized(false);
+        const hasNew = snapshot.docChanges().some(c => c.type === "added" && (c.doc.data() as OrderRequest).targetUserEmail === userEmail);
+        if (hasNew) setIsMinimized(false);
       }
     }, (error) => {
       // Ignora erro inicial de permissão enquanto as regras propagam
