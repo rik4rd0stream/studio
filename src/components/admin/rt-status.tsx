@@ -94,7 +94,7 @@ export function RTStatus() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-2">
         <div>
           <h2 className="text-xl font-bold text-primary flex items-center gap-2">
-            <Radar className="h-6 w-6" /> Monitor RT (Point 9944)
+            <Radar className="h-6 w-6" /> Monitor RT
           </h2>
           <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest">Tempo real & Localização</p>
         </div>
@@ -118,7 +118,7 @@ export function RTStatus() {
       {loading && data.length === 0 ? (
         <div className="py-20 flex flex-col items-center gap-4">
           <Loader2 className="h-10 w-10 animate-spin text-primary opacity-20" />
-          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest animate-pulse">Filtrando Point 9944...</p>
+          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest animate-pulse">Sincronizando Monitor RT...</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -200,7 +200,7 @@ export function RTStatus() {
       
       {filteredData.length === 0 && !loading && (
         <div className="py-20 text-center text-muted-foreground italic text-sm">
-          Nenhum RT do Point 9944 encontrado.
+          Nenhum RT encontrado.
         </div>
       )}
     </div>
