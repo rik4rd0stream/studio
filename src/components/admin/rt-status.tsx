@@ -17,7 +17,6 @@ import {
   Zap, 
   ZapOff, 
   Award,
-  ExternalLink,
   Navigation
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -56,10 +55,19 @@ export function RTStatus() {
   };
 
   const filteredData = useMemo(() => {
-    return data.filter(rt => 
-      String(rt.courier_id).includes(searchTerm) || 
-      String(rt.storekeeper_level_name || "").toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    return data.filter(rt => {
+      // Filtro obrigatório por Localidade (Point 9944)
+      const geoId = String(rt.geo_queue_id || rt.point_id || "");
+      const isPoint9944 = geoId === '9944' || geoId.includes('9944');
+      
+      if (!isPoint9944) return false;
+
+      // Filtro de busca por texto
+      const matchesSearch = String(rt.courier_id).includes(searchTerm) || 
+                           String(rt.storekeeper_level_name || "").toLowerCase().includes(searchTerm.toLowerCase());
+      
+      return matchesSearch;
+    });
   }, [data, searchTerm]);
 
   const openMap = (lat: number, lng: number) => {
@@ -72,7 +80,7 @@ export function RTStatus() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-2">
         <div>
           <h2 className="text-xl font-bold text-primary flex items-center gap-2">
-            <Navigation className="h-6 w-6" /> Monitor de Status RT
+            <Navigation className="h-6 w-6" /> Monitor RT (Point 9944)
           </h2>
           <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest">Tempo real & Localização</p>
         </div>
@@ -96,7 +104,7 @@ export function RTStatus() {
       {loading && data.length === 0 ? (
         <div className="py-20 flex flex-col items-center gap-4">
           <Loader2 className="h-10 w-10 animate-spin text-primary opacity-20" />
-          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest animate-pulse">Sincronizando GEO...</p>
+          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest animate-pulse">Filtrando Point 9944...</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -165,7 +173,7 @@ export function RTStatus() {
       
       {filteredData.length === 0 && !loading && (
         <div className="py-20 text-center text-muted-foreground italic text-sm">
-          Nenhum RT encontrado com este critério.
+          Nenhum RT do Point 9944 encontrado.
         </div>
       )}
     </div>
