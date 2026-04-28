@@ -137,7 +137,7 @@ export function RTStatus() {
                   <div className="flex justify-between items-start">
                     <div className="flex items-center gap-3">
                       <div className={cn(
-                        "w-12 h-12 rounded-2xl flex items-center justify-center shadow-inner",
+                        "w-12 h-12 rounded-2xl flex items-center justify-center shadow-inner transition-colors",
                         isOnline ? "bg-green-100 text-green-600" : "bg-slate-100 text-slate-400"
                       )}>
                         {isOnline ? <Wifi className="h-6 w-6" /> : <WifiOff className="h-6 w-6" />}
@@ -169,19 +169,26 @@ export function RTStatus() {
 
                   <div className="grid grid-cols-2 gap-3 pt-2">
                     <div className={cn(
-                      "p-3 rounded-xl flex items-center justify-between border",
-                      isGeo ? "bg-blue-50 border-blue-100 text-blue-700" : "bg-muted text-muted-foreground border-transparent"
+                      "p-3 rounded-xl flex items-center justify-between border transition-all",
+                      isGeo 
+                        ? "bg-green-50 border-green-200 text-green-700" 
+                        : "bg-muted/40 text-muted-foreground/40 border-transparent"
                     )}>
                       <span className="text-[9px] font-bold uppercase tracking-tight">Status GEO</span>
-                      {isGeo ? <Zap className="h-4 w-4" /> : <ZapOff className="h-4 w-4" />}
+                      {isGeo ? <Zap className="h-4 w-4" /> : <ZapOff className="h-4 w-4 opacity-30" />}
                     </div>
                     
                     <div className={cn(
-                      "p-3 rounded-xl flex items-center justify-between border",
-                      isAuto ? "bg-orange-50 border-orange-100 text-orange-700" : "bg-muted text-muted-foreground border-transparent"
+                      "p-3 rounded-xl flex items-center justify-between border transition-all",
+                      isAuto 
+                        ? "bg-emerald-50 border-emerald-200 text-emerald-700" 
+                        : "bg-muted/40 text-muted-foreground/40 border-transparent"
                     )}>
                       <span className="text-[9px] font-bold uppercase tracking-tight">Auto Aceite</span>
-                      <div className={cn("w-2 h-2 rounded-full", isAuto ? "bg-orange-500 animate-pulse" : "bg-slate-300")} />
+                      <div className={cn(
+                        "w-2 h-2 rounded-full", 
+                        isAuto ? "bg-emerald-500 animate-pulse" : "bg-slate-300"
+                      )} />
                     </div>
                   </div>
                 </CardContent>
