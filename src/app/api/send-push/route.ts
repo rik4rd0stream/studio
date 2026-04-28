@@ -31,7 +31,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'Admin não inicializado.' });
     }
 
-    // Payload Híbrido (Notification + Data) para máxima compatibilidade com App Fechado
+    // Payload Híbrido (Notification + Data)
+    // Removido clickAction forçado para permitir que o Capacitor gerencie a abertura do app
     const message = {
       tokens: tokens,
 
@@ -49,9 +50,8 @@ export async function POST(req: Request) {
       android: {
         priority: 'high' as const,
         notification: {
-          channelId: 'orders-v1', // Vinculado ao canal criado no app
+          channelId: 'orders-v1',
           sound: 'default',
-          clickAction: 'FLUTTER_NOTIFICATION_CLICK',
           priority: 'high' as const,
         },
       },

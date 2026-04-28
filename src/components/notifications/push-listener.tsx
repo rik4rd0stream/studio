@@ -36,23 +36,31 @@ export function PushListener({ user, onPendingCountChange }: { user: User; onPen
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
 
-    PushNotifications.addListener('pushNotificationReceived', (notification) => {
+    // Quando recebe com o app aberto (Foreground)
+    const pushReceived = PushNotifications.addListener('pushNotificationReceived', (notification) => {
       console.log("Push recebido (foreground):", notification);
-
       toast({
         title: notification.title || "Novo Pedido!",
         description: notification.body,
       });
     });
 
-    PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
+    // Quando o usuário CLICA na notificação (App fechado ou background)
+    const pushAction = PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
       console.log("Usuário clicou na notificação:", notification);
+      // Força o modal a aparecer
       setIsMinimized(false); 
+      // Opcional: Você pode extrair dados do notification.notification.data se precisar
     });
+
+    return () => {
+      pushReceived.remove();
+      pushAction.remove();
+    };
   }, [toast]);
 
   /**
-   * Dispara uma notificação nativa do sistema (Vibração/Som)
+   * Dispara uma notificação local (Vibração/Som) caso o app esteja aberto mas o usuário não veja
    */
   const sendSystemAlert = useCallback(async (title: string, body: string) => {
     if (Capacitor.isNativePlatform()) {
@@ -87,7 +95,7 @@ export function PushListener({ user, onPendingCountChange }: { user: User; onPen
     }
   }, []);
 
-  // CONFIGURAÇÃO INICIAL E TOKENS
+  // CONFIGURAÇÃO INICIAL E REGISTRO DE TOKENS
   useEffect(() => {
     if (!user?.email || !db) return;
 
@@ -122,6 +130,7 @@ export function PushListener({ user, onPendingCountChange }: { user: User; onPen
           }
 
           PushNotifications.addListener('registration', async (token) => {
+            console.log("FCM Token registrado:", token.value);
             await setDoc(userRef, { fcmTokens: [token.value], updatedAt: new Date().toISOString() }, { merge: true });
           });
         } catch (e) {
@@ -133,7 +142,7 @@ export function PushListener({ user, onPendingCountChange }: { user: User; onPen
     setupPush();
   }, [user, db]);
 
-  // ESCUTA PEDIDOS EM TEMPO REAL COM DETECÇÃO PRECISA (snapshot.docChanges)
+  // ESCUTA PEDIDOS EM TEMPO REAL
   useEffect(() => {
     if (!user?.email || !db || user.notificationsEnabled === false) return;
 
@@ -145,7 +154,7 @@ export function PushListener({ user, onPendingCountChange }: { user: User; onPen
         .map(doc => ({ id: doc.id, ...doc.data() } as OrderRequest))
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-      // Detecção de novos documentos adicionados (hasNew)
+      // Detecção de novos documentos via meta-dados
       const hasNew = snapshot.docChanges().some(c => c.type === "added");
 
       if (hasNew && !snapshot.metadata.fromCache) {
