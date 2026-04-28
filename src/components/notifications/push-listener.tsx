@@ -17,7 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from "@/components/ui/alert-dialog";
-import { BellRing, X, MessageSquareQuote, Clock, Check, XCircle, Bell } from "lucide-react";
+import { BellRing, X, Clock, Check, XCircle, Bell } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 
@@ -33,7 +33,6 @@ export function PushListener({ user, onPendingCountChange }: { user: User; onPen
 
   /**
    * Listeners para Push Notifications Nativos (Android)
-   * Este bloco gerencia a chegada e o clique nas notificações.
    */
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
@@ -49,13 +48,12 @@ export function PushListener({ user, onPendingCountChange }: { user: User; onPen
 
     PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
       console.log("Usuário clicou na notificação:", notification);
-      setIsMinimized(false); // Maximiza o alerta ao clicar na notificação
+      setIsMinimized(false); 
     });
-  }, []);
+  }, [toast]);
 
   /**
    * Dispara uma notificação nativa do sistema (Android/Web)
-   * Isso garante que o celular vibre/toque mesmo se o app não estiver em foco.
    */
   const sendSystemAlert = useCallback(async (title: string, body: string) => {
     if (Capacitor.isNativePlatform()) {
@@ -148,11 +146,15 @@ export function PushListener({ user, onPendingCountChange }: { user: User; onPen
         .map(doc => ({ id: doc.id, ...doc.data() } as OrderRequest))
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-      // Se chegou um novo pedido que não tínhamos na lista
-      if (requests.length > pendingRequests.length) {
+      // Detecção precisa de novos documentos adicionados
+      const hasNew = snapshot.docChanges().some(c => c.type === "added");
+
+      if (hasNew && !snapshot.metadata.fromCache) {
         const latest = requests[0];
-        sendSystemAlert("NOVO PEDIDO!", `${latest.senderName} enviou ${latest.storeName}`);
-        setIsMinimized(false); // Maximiza o alerta
+        if (latest) {
+          sendSystemAlert("NOVO PEDIDO!", `${latest.senderName} enviou ${latest.storeName}`);
+          setIsMinimized(false); 
+        }
       }
 
       setPendingRequests(requests);
@@ -162,7 +164,7 @@ export function PushListener({ user, onPendingCountChange }: { user: User; onPen
     });
 
     return () => unsubscribe();
-  }, [db, user, pendingRequests.length, onPendingCountChange, sendSystemAlert]);
+  }, [db, user, onPendingCountChange, sendSystemAlert]);
 
   // 🔥 CONTADOR E EXPIRAÇÃO
   useEffect(() => {
@@ -198,7 +200,6 @@ export function PushListener({ user, onPendingCountChange }: { user: User; onPen
 
     try {
       if (status === 'accepted') {
-        // Checagem final de segurança (Race Condition)
         const qCheck = query(
           collection(db, 'orderRequests'),
           where('orderId', '==', activeRequest.orderId),
