@@ -11,7 +11,7 @@ import {
   LogOut,
   ChevronRight,
   ClipboardList,
-  Navigation
+  Radar
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -26,7 +26,7 @@ interface SidebarNavProps {
 export function SidebarNav({ currentView, setView, user, onLogout }: SidebarNavProps) {
   const navItems = [
     { id: 'send-order', label: 'Envio de Pedido', icon: Send },
-    { id: 'rt-status', label: 'Status Real-Time RT', icon: Navigation },
+    { id: 'rt-status', label: 'Status Real-Time RT', icon: Radar },
     { id: 'request-order', label: 'Solicitação de Pedido', icon: PackageSearch, restricted: true },
     { id: 'active-orders', label: 'Pedidos Ativos', icon: Activity },
   ];

@@ -17,7 +17,7 @@ import {
   Zap, 
   ZapOff, 
   Award,
-  Navigation
+  Radar
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -94,7 +94,7 @@ export function RTStatus() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-2">
         <div>
           <h2 className="text-xl font-bold text-primary flex items-center gap-2">
-            <Navigation className="h-6 w-6" /> Monitor RT (Point 9944)
+            <Radar className="h-6 w-6" /> Monitor RT (Point 9944)
           </h2>
           <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest">Tempo real & Localização</p>
         </div>
