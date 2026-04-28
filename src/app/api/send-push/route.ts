@@ -1,9 +1,11 @@
+
 import { NextResponse } from 'next/server';
 import admin from 'firebase-admin';
 
 /**
  * API Route para disparar notificações Push (FCM).
  * Esta rota atua como o servidor que "acorda" o app fechado.
+ * Payload atualizado para garantir entrega no Android nativo (Capacitor).
  */
 
 const FIREBASE_CONFIG = {
@@ -31,20 +33,41 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'Admin não inicializado.' });
     }
 
+    // Payload Híbrido (Notification + Data) para máxima compatibilidade
     const message = {
-      notification: { title, body },
-      data: data || {},
       tokens: tokens,
+
+      notification: {
+        title,
+        body,
+      },
+
+      data: {
+        ...(data || {}),
+        title: title || '',
+        body: body || '',
+      },
+
       android: {
         priority: 'high' as const,
         notification: {
+          channelId: 'orders-v1', // Crucial: Deve bater com o ID criado no app
           sound: 'default',
           clickAction: 'FLUTTER_NOTIFICATION_CLICK',
+          priority: 'high' as const,
+        },
+      },
+
+      apns: {
+        payload: {
+          aps: {
+            sound: 'default',
+          },
         },
       },
     };
 
-    const response = await admin.messaging().sendEachForMulticast(message);
+    const response = await admin.messaging().sendEachForMulticast(message as any);
     
     return NextResponse.json({ 
       success: true, 
