@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -124,26 +123,38 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
     if (!selectedOrder) return;
     const fullCommand = `${selectedCommand} ${selectedOrder.order_id} ${courierId}`;
     
+    // CRITICAL FIX: Ensure we use the latest profile setting
     const isDirect = currentUser?.useDirectWhatsApp !== false;
+
+    console.log("Despacho - Preferência:", isDirect ? "ZAP DIRETO" : "MENU COMPARTILHAR");
 
     if (isDirect) {
       window.open(`https://wa.me/?text=${encodeURIComponent(fullCommand)}`, '_blank');
     } else {
+      // Tenta usar o menu de compartilhamento nativo
       if (Capacitor.isNativePlatform()) {
         try {
           await Share.share({
+            title: 'Despacho Rappi',
             text: fullCommand,
+            dialogTitle: 'Enviar comando para:',
           });
         } catch (e) {
+          console.error("Erro Capacitor Share, abrindo Zap:", e);
           window.open(`https://wa.me/?text=${encodeURIComponent(fullCommand)}`, '_blank');
         }
       } else if (typeof navigator !== 'undefined' && navigator.share) {
         try {
-          await navigator.share({ text: fullCommand });
+          await navigator.share({
+            title: 'Despacho Rappi',
+            text: fullCommand,
+          });
         } catch (err) {
+          console.error("Erro Web Share, abrindo Zap:", err);
           window.open(`https://wa.me/?text=${encodeURIComponent(fullCommand)}`, '_blank');
         }
       } else {
+        // Fallback total para WhatsApp
         window.open(`https://wa.me/?text=${encodeURIComponent(fullCommand)}`, '_blank');
       }
     }

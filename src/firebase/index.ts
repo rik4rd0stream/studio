@@ -1,4 +1,3 @@
-
 'use client';
 
 /**
@@ -27,6 +26,7 @@ export function getFirebaseMessaging(): Messaging | null {
 
 export * from './provider';
 export * from './client-provider';
+export { useUser } from './auth/use-user';
 export * from './firestore/use-collection';
 export * from './firestore/use-doc';
 export * from './non-blocking-updates';
