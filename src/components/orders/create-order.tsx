@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -122,16 +123,11 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
   const handleGenerateCommand = async (courierId: string) => {
     if (!selectedOrder) return;
     const fullCommand = `${selectedCommand} ${selectedOrder.order_id} ${courierId}`;
-    
-    // CRITICAL FIX: Ensure we use the latest profile setting
     const isDirect = currentUser?.useDirectWhatsApp !== false;
-
-    console.log("Despacho - Preferência:", isDirect ? "ZAP DIRETO" : "MENU COMPARTILHAR");
 
     if (isDirect) {
       window.open(`https://wa.me/?text=${encodeURIComponent(fullCommand)}`, '_blank');
     } else {
-      // Tenta usar o menu de compartilhamento nativo
       if (Capacitor.isNativePlatform()) {
         try {
           await Share.share({
@@ -140,8 +136,8 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
             dialogTitle: 'Enviar comando para:',
           });
         } catch (e) {
-          console.error("Erro Capacitor Share, abrindo Zap:", e);
-          window.open(`https://wa.me/?text=${encodeURIComponent(fullCommand)}`, '_blank');
+          // Se o usuário cancelar ou clicar fora, apenas logamos sem abrir o WhatsApp
+          console.log("Compartilhamento nativo cancelado ou falhou.");
         }
       } else if (typeof navigator !== 'undefined' && navigator.share) {
         try {
@@ -150,11 +146,11 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
             text: fullCommand,
           });
         } catch (err) {
-          console.error("Erro Web Share, abrindo Zap:", err);
-          window.open(`https://wa.me/?text=${encodeURIComponent(fullCommand)}`, '_blank');
+          // Se o usuário cancelar no navegador, não fazemos nada
+          console.log("Compartilhamento web cancelado.");
         }
       } else {
-        // Fallback total para WhatsApp
+        // Fallback apenas se nenhuma API de compartilhamento existir (ex: PC sem Zap Desktop)
         window.open(`https://wa.me/?text=${encodeURIComponent(fullCommand)}`, '_blank');
       }
     }

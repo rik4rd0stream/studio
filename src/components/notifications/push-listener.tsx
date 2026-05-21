@@ -227,13 +227,13 @@ export function PushListener({ user: userProp, onPendingCountChange }: { user: U
             try {
               await Share.share({ text: command });
             } catch (e) {
-              window.open(`https://wa.me/?text=${encodeURIComponent(command)}`, '_blank');
+              console.log("Compartilhamento nativo cancelado ou falhou.");
             }
           } else if (typeof navigator !== 'undefined' && navigator.share) {
             try {
               await navigator.share({ text: command });
             } catch (e) {
-              window.open(`https://wa.me/?text=${encodeURIComponent(command)}`, '_blank');
+              console.log("Compartilhamento web cancelado.");
             }
           } else {
             window.open(`https://wa.me/?text=${encodeURIComponent(command)}`, '_blank');
