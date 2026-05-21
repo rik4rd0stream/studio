@@ -302,7 +302,7 @@ export function Registration({ type }: RegistrationProps) {
                         </div>
                       </TableCell>
                       <TableCell className="px-4 text-right">
-                        <div className="flex gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex gap-1 justify-end transition-opacity">
                           <Button variant="ghost" size="icon" onClick={() => handleEdit(item)} className="h-9 w-9 text-blue-600 hover:bg-blue-100 rounded-full">
                             <Pencil size={14} />
                           </Button>
