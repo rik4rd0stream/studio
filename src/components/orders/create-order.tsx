@@ -13,7 +13,8 @@ import {
   ClipboardPaste,
   ArrowRight,
   AlertCircle,
-  X
+  X,
+  Share2
 } from "lucide-react";
 import { redashService, RedashOrder } from "@/lib/api/redash-service";
 import { useToast } from "@/hooks/use-toast";
@@ -25,7 +26,7 @@ import {
   DialogDescription
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
+import { useFirestore, useCollection, useMemoFirebase, useUser } from "@/firebase";
 import { collection, query } from "firebase/firestore";
 import { cn } from "@/lib/utils";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -39,6 +40,7 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
 }) {
   const { toast } = useToast();
   const db = useFirestore();
+  const { user: currentUser } = useUser();
   const [loading, setLoading] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [allOrders, setAllOrders] = useState<RedashOrder[]>([]);
@@ -119,10 +121,30 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
     if (onClearInitialId) onClearInitialId();
   };
 
-  const handleGenerateCommand = (courierId: string) => {
+  const handleGenerateCommand = async (courierId: string) => {
     if (!selectedOrder) return;
     const fullCommand = `${selectedCommand} ${selectedOrder.order_id} ${courierId}`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(fullCommand)}`, '_blank');
+    
+    // Se o usuário preferir WhatsApp Direto (Padrão)
+    if (currentUser?.useDirectWhatsApp !== false) {
+      window.open(`https://wa.me/?text=${encodeURIComponent(fullCommand)}`, '_blank');
+    } else {
+      // Caso contrário, tenta usar a API de Compartilhamento Nativa
+      if (typeof navigator !== 'undefined' && navigator.share) {
+        try {
+          await navigator.share({
+            text: fullCommand
+          });
+        } catch (err) {
+          // Se falhar ou cancelar, abre o WhatsApp como fallback
+          window.open(`https://wa.me/?text=${encodeURIComponent(fullCommand)}`, '_blank');
+        }
+      } else {
+        // Fallback para Web/Desktop onde não há navigator.share
+        window.open(`https://wa.me/?text=${encodeURIComponent(fullCommand)}`, '_blank');
+      }
+    }
+
     setIsCourierDialogOpen(false);
     setSelectedOrder(null);
     setManualOrderId(""); 

@@ -34,7 +34,8 @@ export function useUser() {
               role: data.role || 'normal',
               notificationsEnabled: data.notificationsEnabled !== false,
               hasRequestAccess: !!data.hasRequestAccess,
-              hasRtStatusAccess: !!data.hasRtStatusAccess
+              hasRtStatusAccess: !!data.hasRtStatusAccess,
+              useDirectWhatsApp: data.useDirectWhatsApp !== false // Default true
             } as User);
           } else {
             // Perfil básico se não houver documento mas houver Auth
@@ -46,7 +47,8 @@ export function useUser() {
               role: isMasterEmail ? 'master' : 'normal',
               hasRequestAccess: isMasterEmail,
               hasRtStatusAccess: isMasterEmail,
-              notificationsEnabled: true
+              notificationsEnabled: true,
+              useDirectWhatsApp: true
             });
           }
           setLoading(false);

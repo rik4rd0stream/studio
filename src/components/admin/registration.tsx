@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -7,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Loader2, Pencil, Trash2, RefreshCw, Database, UserPlus, Bike, ShieldCheck, Bell, Lock, Fingerprint, Radar } from "lucide-react";
+import { Loader2, Pencil, Trash2, RefreshCw, Database, UserPlus, Bike, ShieldCheck, Bell, Lock, Fingerprint, Radar, Share2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getCollectionBridge, setDocumentBridge, deleteDocumentBridge } from "@/app/actions/firestore-bridge";
 import { createAuthUserBridge } from "@/app/actions/auth-bridge";
@@ -30,6 +31,7 @@ export function Registration({ type }: RegistrationProps) {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [hasRequestAccess, setHasRequestAccess] = useState(false);
   const [hasRtStatusAccess, setHasRtStatusAccess] = useState(false);
+  const [useDirectWhatsApp, setUseDirectWhatsApp] = useState(true);
 
   const isUser = type === 'users';
   const collectionName = isUser ? 'userProfiles' : 'entregadores';
@@ -73,6 +75,7 @@ export function Registration({ type }: RegistrationProps) {
       setNotificationsEnabled(item.notificationsEnabled !== false);
       setHasRequestAccess(!!item.hasRequestAccess);
       setHasRtStatusAccess(!!item.hasRtStatusAccess);
+      setUseDirectWhatsApp(item.useDirectWhatsApp !== false);
     }
   };
 
@@ -83,6 +86,7 @@ export function Registration({ type }: RegistrationProps) {
     setNotificationsEnabled(true);
     setHasRequestAccess(false);
     setHasRtStatusAccess(false);
+    setUseDirectWhatsApp(true);
     setEditingId(null);
   };
 
@@ -138,6 +142,7 @@ export function Registration({ type }: RegistrationProps) {
           notificationsEnabled,
           hasRequestAccess,
           hasRtStatusAccess,
+          useDirectWhatsApp,
           updatedAt: new Date().toISOString()
         }
       : { 
@@ -211,18 +216,22 @@ export function Registration({ type }: RegistrationProps) {
                       <Lock className="absolute right-3 top-3.5 h-5 w-5 text-muted-foreground/50" />
                     </div>
                   </div>
-                  <div className="flex flex-wrap items-center gap-6 pt-2">
-                    <div className="flex items-center space-x-2">
+                  <div className="flex flex-wrap items-center gap-4 pt-2">
+                    <div className="flex items-center space-x-2 bg-muted/20 px-3 py-2 rounded-xl">
                       <Switch id="notif" checked={notificationsEnabled} onCheckedChange={setNotificationsEnabled} />
                       <Label htmlFor="notif" className="text-xs font-bold flex items-center gap-1.5"><Bell className="h-3.5 w-3.5 text-primary" /> PUSH</Label>
                     </div>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-2 bg-muted/20 px-3 py-2 rounded-xl">
                       <Switch id="access" checked={hasRequestAccess} onCheckedChange={setHasRequestAccess} />
                       <Label htmlFor="access" className="text-xs font-bold flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5 text-primary" /> SOLICITAR</Label>
                     </div>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-2 bg-muted/20 px-3 py-2 rounded-xl">
                       <Switch id="rtAccess" checked={hasRtStatusAccess} onCheckedChange={setHasRtStatusAccess} />
                       <Label htmlFor="rtAccess" className="text-xs font-bold flex items-center gap-1.5"><Radar className="h-3.5 w-3.5 text-primary" /> MONITOR RT</Label>
+                    </div>
+                    <div className="flex items-center space-x-2 bg-muted/20 px-3 py-2 rounded-xl">
+                      <Switch id="directZap" checked={useDirectWhatsApp} onCheckedChange={setUseDirectWhatsApp} />
+                      <Label htmlFor="directZap" className="text-xs font-bold flex items-center gap-1.5"><Share2 className="h-3.5 w-3.5 text-primary" /> ZAP DIRETO</Label>
                     </div>
                   </div>
                 </>
@@ -282,6 +291,7 @@ export function Registration({ type }: RegistrationProps) {
                           {item.name || item.nome}
                           {isUser && item.hasRtStatusAccess && <Radar className="h-3 w-3 text-primary" />}
                           {isUser && item.hasRequestAccess && <ShieldCheck className="h-3 w-3 text-primary" />}
+                          {isUser && !item.useDirectWhatsApp && <Share2 className="h-3 w-3 text-primary" />}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -289,11 +299,6 @@ export function Registration({ type }: RegistrationProps) {
                           <span className="font-mono text-[11px] font-bold text-primary">
                             {isUser ? item.email : (item.id_motoboy || item.id)}
                           </span>
-                          {!isUser && item.id.length > 10 && (
-                            <span className="text-[8px] text-muted-foreground font-mono flex items-center gap-1">
-                              <Fingerprint className="h-2 w-2" /> ID Interno: {item.id.substring(0, 8)}...
-                            </span>
-                          )}
                         </div>
                       </TableCell>
                       <TableCell className="px-4 text-right">

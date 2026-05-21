@@ -10,6 +10,7 @@ export interface User {
   notificationsEnabled?: boolean;
   hasRequestAccess?: boolean;
   hasRtStatusAccess?: boolean; // Nova permissão para visualizar o Monitor RT
+  useDirectWhatsApp?: boolean; // Se true, abre o zap direto. Se false, abre menu de compartilhar.
   fcmTokens?: string[]; // Lista de tokens de dispositivos do usuário
 }
 

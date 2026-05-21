@@ -1,7 +1,8 @@
+
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useFirestore, getFirebaseMessaging } from "@/firebase";
+import { useFirestore, getFirebaseMessaging, useUser } from "@/firebase";
 import { collection, onSnapshot, doc, setDoc, updateDoc, getDocs, query, where, limit } from "firebase/firestore";
 import { getToken } from "firebase/messaging";
 import { Capacitor } from '@capacitor/core';
@@ -23,8 +24,9 @@ import { Button } from "@/components/ui/button";
 const EXPIRATION_TIME_MS = 120000; // 2 minutos
 const VAPID_KEY = "BIqUjXu7NogeKlsoD9Cp6FWKN4JfEnrBnNybso_ntheRV2uT9FQhM-AEoYwcJXebN-iLP7KVO9q72Q0OfwLcMi4";
 
-export function PushListener({ user, onPendingCountChange }: { user: User; onPendingCountChange?: (count: number) => void }) {
+export function PushListener({ user: userProp, onPendingCountChange }: { user: User; onPendingCountChange?: (count: number) => void }) {
   const db = useFirestore();
+  const { user: currentUser } = useUser();
   const { toast } = useToast();
   const [pendingRequests, setPendingRequests] = useState<OrderRequest[]>([]);
   const [isMinimized, setIsMinimized] = useState(false);
@@ -48,9 +50,7 @@ export function PushListener({ user, onPendingCountChange }: { user: User; onPen
     // Quando o usuário CLICA na notificação (App fechado ou background)
     const pushAction = PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
       console.log("Usuário clicou na notificação:", notification);
-      // Força o modal a aparecer
       setIsMinimized(false); 
-      // Opcional: Você pode extrair dados do notification.notification.data se precisar
     });
 
     return () => {
@@ -97,10 +97,10 @@ export function PushListener({ user, onPendingCountChange }: { user: User; onPen
 
   // CONFIGURAÇÃO INICIAL E REGISTRO DE TOKENS
   useEffect(() => {
-    if (!user?.email || !db) return;
+    if (!userProp?.email || !db) return;
 
     const setupPush = async () => {
-      const userEmail = user.email.toLowerCase().trim();
+      const userEmail = userProp.email.toLowerCase().trim();
       const userRef = doc(db, 'userProfiles', userEmail);
 
       // Registro Web
@@ -140,13 +140,13 @@ export function PushListener({ user, onPendingCountChange }: { user: User; onPen
     };
 
     setupPush();
-  }, [user, db]);
+  }, [userProp, db]);
 
   // ESCUTA PEDIDOS EM TEMPO REAL
   useEffect(() => {
-    if (!user?.email || !db || user.notificationsEnabled === false) return;
+    if (!userProp?.email || !db || userProp.notificationsEnabled === false) return;
 
-    const userEmail = user.email.toLowerCase().trim();
+    const userEmail = userProp.email.toLowerCase().trim();
     const q = query(collection(db, "orderRequests"), where("targetUserEmail", "==", userEmail), where("status", "==", "pending"));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -172,7 +172,7 @@ export function PushListener({ user, onPendingCountChange }: { user: User; onPen
     });
 
     return () => unsubscribe();
-  }, [db, user, onPendingCountChange, sendSystemAlert]);
+  }, [db, userProp, onPendingCountChange, sendSystemAlert]);
 
   // CONTADOR E EXPIRAÇÃO
   useEffect(() => {
@@ -231,8 +231,22 @@ export function PushListener({ user, onPendingCountChange }: { user: User; onPen
       });
 
       if (status === 'accepted') {
-        const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(activeRequest.command)}`;
-        window.open(whatsappUrl, '_blank');
+        const command = activeRequest.command;
+        
+        // Respeita a preferência do usuário logado
+        if (currentUser?.useDirectWhatsApp !== false) {
+          window.open(`https://wa.me/?text=${encodeURIComponent(command)}`, '_blank');
+        } else {
+          if (typeof navigator !== 'undefined' && navigator.share) {
+            try {
+              await navigator.share({ text: command });
+            } catch (e) {
+              window.open(`https://wa.me/?text=${encodeURIComponent(command)}`, '_blank');
+            }
+          } else {
+            window.open(`https://wa.me/?text=${encodeURIComponent(command)}`, '_blank');
+          }
+        }
       }
     } catch (e) {
       toast({ variant: "destructive", title: "Erro", description: "Falha ao processar ação." });
