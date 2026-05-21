@@ -13,8 +13,7 @@ import {
   ClipboardPaste,
   ArrowRight,
   AlertCircle,
-  X,
-  Share2
+  X
 } from "lucide-react";
 import { redashService, RedashOrder } from "@/lib/api/redash-service";
 import { useToast } from "@/hooks/use-toast";
@@ -30,6 +29,8 @@ import { useFirestore, useCollection, useMemoFirebase, useUser } from "@/firebas
 import { collection, query } from "firebase/firestore";
 import { cn } from "@/lib/utils";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Share } from "@capacitor/share";
+import { Capacitor } from "@capacitor/core";
 
 const COMMANDS = ["!!bundleBR", "!!rebr", "!!Br", "!!forzarbr"];
 
@@ -62,10 +63,8 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
     return allOrders.filter(row => {
       const pointValue = String(row.point_id || row.point || '').trim();
       const isPoint9944 = pointValue === '9944' || pointValue.includes('9944');
-      
       const esTrusted = String(row.es_trusted || '').toUpperCase();
       const isSinRT = esTrusted.includes('SIN RT');
-
       return isPoint9944 && isSinRT;
     });
   }, [allOrders]);
@@ -125,22 +124,26 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
     if (!selectedOrder) return;
     const fullCommand = `${selectedCommand} ${selectedOrder.order_id} ${courierId}`;
     
-    // Se o usuário preferir WhatsApp Direto (Padrão)
-    if (currentUser?.useDirectWhatsApp !== false) {
+    const isDirect = currentUser?.useDirectWhatsApp !== false;
+
+    if (isDirect) {
       window.open(`https://wa.me/?text=${encodeURIComponent(fullCommand)}`, '_blank');
     } else {
-      // Caso contrário, tenta usar a API de Compartilhamento Nativa
-      if (typeof navigator !== 'undefined' && navigator.share) {
+      if (Capacitor.isNativePlatform()) {
         try {
-          await navigator.share({
-            text: fullCommand
+          await Share.share({
+            text: fullCommand,
           });
+        } catch (e) {
+          window.open(`https://wa.me/?text=${encodeURIComponent(fullCommand)}`, '_blank');
+        }
+      } else if (typeof navigator !== 'undefined' && navigator.share) {
+        try {
+          await navigator.share({ text: fullCommand });
         } catch (err) {
-          // Se falhar ou cancelar, abre o WhatsApp como fallback
           window.open(`https://wa.me/?text=${encodeURIComponent(fullCommand)}`, '_blank');
         }
       } else {
-        // Fallback para Web/Desktop onde não há navigator.share
         window.open(`https://wa.me/?text=${encodeURIComponent(fullCommand)}`, '_blank');
       }
     }
@@ -251,8 +254,10 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
         </div>
         <div className="grid grid-cols-2 gap-3">
           <Button type="button" variant="outline" onClick={async () => {
-            const text = await navigator.clipboard.readText();
-            if (text) setManualOrderId(text.trim());
+            if (typeof navigator !== 'undefined' && navigator.clipboard) {
+              const text = await navigator.clipboard.readText();
+              if (text) setManualOrderId(text.trim());
+            }
           }} className="h-12 font-bold text-[10px] uppercase rounded-2xl">
             <ClipboardPaste className="h-4 w-4 mr-2" /> Colar ID
           </Button>

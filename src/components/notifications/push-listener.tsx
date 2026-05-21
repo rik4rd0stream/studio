@@ -7,6 +7,7 @@ import { collection, onSnapshot, doc, setDoc, updateDoc, getDocs, query, where, 
 import { getToken } from "firebase/messaging";
 import { Capacitor } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
+import { Share } from '@capacitor/share';
 import { User, OrderRequest } from "@/lib/types";
 import {
   AlertDialog,
@@ -21,7 +22,7 @@ import { BellRing, X, Clock, Check, XCircle, Bell } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 
-const EXPIRATION_TIME_MS = 120000; // 2 minutos
+const EXPIRATION_TIME_MS = 120000; 
 const VAPID_KEY = "BIqUjXu7NogeKlsoD9Cp6FWKN4JfEnrBnNybso_ntheRV2uT9FQhM-AEoYwcJXebN-iLP7KVO9q72Q0OfwLcMi4";
 
 export function PushListener({ user: userProp, onPendingCountChange }: { user: User; onPendingCountChange?: (count: number) => void }) {
@@ -32,13 +33,9 @@ export function PushListener({ user: userProp, onPendingCountChange }: { user: U
   const [isMinimized, setIsMinimized] = useState(false);
   const [timeLeft, setTimeLeft] = useState<string>("");
 
-  /**
-   * Listeners para Push Notifications Nativos (Android)
-   */
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
 
-    // Quando recebe com o app aberto (Foreground)
     const pushReceived = PushNotifications.addListener('pushNotificationReceived', (notification) => {
       console.log("Push recebido (foreground):", notification);
       toast({
@@ -47,7 +44,6 @@ export function PushListener({ user: userProp, onPendingCountChange }: { user: U
       });
     });
 
-    // Quando o usuário CLICA na notificação (App fechado ou background)
     const pushAction = PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
       console.log("Usuário clicou na notificação:", notification);
       setIsMinimized(false); 
@@ -59,14 +55,10 @@ export function PushListener({ user: userProp, onPendingCountChange }: { user: U
     };
   }, [toast]);
 
-  /**
-   * Dispara uma notificação local (Vibração/Som) caso o app esteja aberto mas o usuário não veja
-   */
   const sendSystemAlert = useCallback(async (title: string, body: string) => {
     if (Capacitor.isNativePlatform()) {
       try {
         const { LocalNotifications } = await import('@capacitor/local-notifications');
-        
         await LocalNotifications.createChannel({
           id: 'orders-v1',
           name: 'Pedidos Rappi',
@@ -95,7 +87,6 @@ export function PushListener({ user: userProp, onPendingCountChange }: { user: U
     }
   }, []);
 
-  // CONFIGURAÇÃO INICIAL E REGISTRO DE TOKENS
   useEffect(() => {
     if (!userProp?.email || !db) return;
 
@@ -103,7 +94,6 @@ export function PushListener({ user: userProp, onPendingCountChange }: { user: U
       const userEmail = userProp.email.toLowerCase().trim();
       const userRef = doc(db, 'userProfiles', userEmail);
 
-      // Registro Web
       if (!Capacitor.isNativePlatform()) {
         try {
           const messaging = getFirebaseMessaging();
@@ -121,7 +111,6 @@ export function PushListener({ user: userProp, onPendingCountChange }: { user: U
         }
       }
 
-      // Registro Android
       if (Capacitor.isNativePlatform()) {
         try {
           const perm = await PushNotifications.requestPermissions();
@@ -142,7 +131,6 @@ export function PushListener({ user: userProp, onPendingCountChange }: { user: U
     setupPush();
   }, [userProp, db]);
 
-  // ESCUTA PEDIDOS EM TEMPO REAL
   useEffect(() => {
     if (!userProp?.email || !db || userProp.notificationsEnabled === false) return;
 
@@ -154,7 +142,6 @@ export function PushListener({ user: userProp, onPendingCountChange }: { user: U
         .map(doc => ({ id: doc.id, ...doc.data() } as OrderRequest))
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-      // Detecção de novos documentos via meta-dados
       const hasNew = snapshot.docChanges().some(c => c.type === "added");
 
       if (hasNew && !snapshot.metadata.fromCache) {
@@ -174,7 +161,6 @@ export function PushListener({ user: userProp, onPendingCountChange }: { user: U
     return () => unsubscribe();
   }, [db, userProp, onPendingCountChange, sendSystemAlert]);
 
-  // CONTADOR E EXPIRAÇÃO
   useEffect(() => {
     if (pendingRequests.length === 0) return;
 
@@ -232,12 +218,18 @@ export function PushListener({ user: userProp, onPendingCountChange }: { user: U
 
       if (status === 'accepted') {
         const command = activeRequest.command;
+        const isDirect = currentUser?.useDirectWhatsApp !== false;
         
-        // Respeita a preferência do usuário logado
-        if (currentUser?.useDirectWhatsApp !== false) {
+        if (isDirect) {
           window.open(`https://wa.me/?text=${encodeURIComponent(command)}`, '_blank');
         } else {
-          if (typeof navigator !== 'undefined' && navigator.share) {
+          if (Capacitor.isNativePlatform()) {
+            try {
+              await Share.share({ text: command });
+            } catch (e) {
+              window.open(`https://wa.me/?text=${encodeURIComponent(command)}`, '_blank');
+            }
+          } else if (typeof navigator !== 'undefined' && navigator.share) {
             try {
               await navigator.share({ text: command });
             } catch (e) {

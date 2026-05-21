@@ -60,7 +60,6 @@ export default function Home() {
     const password = passInput.trim();
     
     try {
-      // BUSCA DIRETA PELO ID (E-MAIL) - Prioridade total ao Firestore
       const userDocRef = doc(db, 'userProfiles', email);
       const userSnap = await getDoc(userDocRef);
       
@@ -68,7 +67,7 @@ export default function Home() {
         toast({
           variant: "destructive",
           title: "Acesso Negado",
-          description: "Usuário não encontrado no banco de dados. Solicite o cadastro."
+          description: "Usuário não encontrado no banco de dados."
         });
         setIsAuthenticating(false);
         return;
@@ -76,15 +75,13 @@ export default function Home() {
 
       const firestoreData = userSnap.data();
 
-      // Validação de senha local (Firestore) antes de tentar o Auth
       if (firestoreData.password && firestoreData.password !== password) {
-         toast({ variant: "destructive", title: "Senha Incorreta", description: "Verifique seus dados." });
+         toast({ variant: "destructive", title: "Senha Incorreta" });
          setIsAuthenticating(false);
          return;
       }
 
       try {
-        // Tenta o login oficial no Firebase Auth
         const authResult = await signInWithEmailAndPassword(auth, email, password);
         completeLogin(authResult.user.uid, firestoreData);
       } catch (authErr: any) {
@@ -92,12 +89,12 @@ export default function Home() {
         toast({ 
           variant: "destructive", 
           title: "Erro de Autenticação", 
-          description: "O usuário não foi ativado no Auth ou a senha está divergente." 
+          description: "O usuário não foi ativado no Auth." 
         });
       }
     } catch (err: any) {
       console.error("Login Critical Error:", err);
-      toast({ variant: "destructive", title: "Erro de Conexão", description: "Falha na comunicação com o servidor." });
+      toast({ variant: "destructive", title: "Erro de Conexão" });
     } finally {
       setIsAuthenticating(false);
     }
@@ -111,7 +108,8 @@ export default function Home() {
       role: data.role || 'normal',
       notificationsEnabled: data.notificationsEnabled !== false,
       hasRequestAccess: !!data.hasRequestAccess,
-      hasRtStatusAccess: !!data.hasRtStatusAccess
+      hasRtStatusAccess: !!data.hasRtStatusAccess,
+      useDirectWhatsApp: data.useDirectWhatsApp !== false // CRITICAL FIX: Include the setting in local user
     };
     setLocalUser(userData);
     const expiry = new Date().getTime() + SEVEN_DAYS_MS;
@@ -131,7 +129,7 @@ export default function Home() {
         <div className="flex flex-col items-center gap-4">
           <div className="h-10 w-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
           <p className="text-primary font-bold animate-pulse text-[10px] uppercase tracking-widest">
-            {isAuthenticating ? "Autenticando..." : "Carregando Rappi Commander..."}
+            Carregando...
           </p>
         </div>
       </div>
