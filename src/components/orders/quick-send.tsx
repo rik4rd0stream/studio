@@ -149,6 +149,7 @@ export function QuickSend({ onOrderCreated, initialOrderId, onClearInitialId }: 
 
   const toggleFavorite = async (e: React.MouseEvent, courierId: string) => {
     e.stopPropagation();
+    e.preventDefault();
     if (!currentUser?.email) return;
 
     const favDocRef = doc(db, 'users', currentUser.email.toLowerCase().trim(), 'favorites', String(courierId));
@@ -172,15 +173,11 @@ export function QuickSend({ onOrderCreated, initialOrderId, onClearInitialId }: 
       if (Capacitor.isNativePlatform()) {
         try {
           await Share.share({ title: 'Despacho Rappi', text: fullCommand });
-        } catch (e) {
-          console.log("Compartilhamento cancelado.");
-        }
+        } catch (e) {}
       } else if (typeof navigator !== 'undefined' && navigator.share) {
         try {
           await navigator.share({ title: 'Despacho Rappi', text: fullCommand });
-        } catch (err) {
-          console.log("Compartilhamento web cancelado.");
-        }
+        } catch (err) {}
       } else {
         window.open(`https://wa.me/?text=${encodeURIComponent(fullCommand)}`, '_blank');
       }
@@ -435,4 +432,3 @@ export function QuickSend({ onOrderCreated, initialOrderId, onClearInitialId }: 
     </div>
   );
 }
-

@@ -129,6 +129,7 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
 
   const toggleFavorite = async (e: React.MouseEvent, courierId: string) => {
     e.stopPropagation();
+    e.preventDefault();
     if (!currentUser?.email) return;
 
     const favDocRef = doc(db, 'users', currentUser.email.toLowerCase().trim(), 'favorites', String(courierId));
@@ -308,7 +309,7 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
                             className="flex flex-col items-center justify-center h-20 w-full p-2 hover:bg-primary/10 rounded-2xl border-2 border-primary/20 bg-primary/5 transition-all" 
                             onClick={() => handleGenerateCommand(c.id_motoboy)}
                           >
-                            <p className="font-bold text-xs leading-tight text-center truncate w-full group-hover:text-primary">
+                            <p className="font-bold text-xs leading-tight text-center truncate w-full">
                               {(c.nome || c.name || '').split(' ')[0]}
                             </p>
                             <p className="text-[9px] text-muted-foreground font-bold mt-1 uppercase">RT {c.id_motoboy}</p>
@@ -335,7 +336,7 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
                           className="flex flex-col items-center justify-center h-20 w-full p-2 hover:bg-primary/10 rounded-2xl bg-muted/20 transition-all" 
                           onClick={() => handleGenerateCommand(c.id_motoboy)}
                         >
-                          <p className="font-bold text-xs leading-tight text-center truncate w-full group-hover:text-primary">
+                          <p className="font-bold text-xs leading-tight text-center truncate w-full">
                             {(c.nome || c.name || '').split(' ')[0]}
                           </p>
                           <p className="text-[9px] text-muted-foreground font-bold mt-1 uppercase">RT {c.id_motoboy}</p>
@@ -358,4 +359,3 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
     </div>
   );
 }
-
