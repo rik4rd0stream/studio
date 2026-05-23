@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { useUser } from "@/firebase";
 
 interface SidebarNavProps {
   currentView: AppView;
@@ -25,7 +26,10 @@ interface SidebarNavProps {
   onLogout: () => void;
 }
 
-export function SidebarNav({ currentView, setView, user, onLogout }: SidebarNavProps) {
+export function SidebarNav({ currentView, setView, user: initialUser, onLogout }: SidebarNavProps) {
+  const { user: reactiveUser } = useUser();
+  const user = reactiveUser || initialUser;
+
   const isMaster = user.role === 'master' || user.email === 'rik4rd0stream@gmail.com';
 
   const navItems = [
@@ -44,14 +48,15 @@ export function SidebarNav({ currentView, setView, user, onLogout }: SidebarNavP
   ];
 
   const userName = user?.name || "Usuário";
-  const firstName = userName.split(' ')[0] || "Usuário";
 
   const renderItem = (item: any) => {
+    // Itens administrativos continuam liberados para Master
     if (item.masterOnly && !isMaster) return null;
     
+    // Itens operacionais agora respeitam estritamente a chave de permissão
     if (item.permission) {
       const hasPerm = (user as any)[item.permission];
-      if (!hasPerm && !isMaster) return null;
+      if (!hasPerm) return null;
     }
     
     const active = currentView === item.id;

@@ -16,6 +16,7 @@ import { StoreRegistration } from "@/components/admin/store-registration";
 import { OperationLogs } from "@/components/admin/operation-logs";
 import { RTStatus } from "@/components/admin/rt-status";
 import { PushListener } from "@/components/notifications/push-listener";
+import { useUser } from "@/firebase";
 import { 
   Sheet, 
   SheetContent, 
@@ -31,7 +32,11 @@ interface MainDashboardProps {
   onLogout: () => void;
 }
 
-export function MainDashboard({ user, onLogout }: MainDashboardProps) {
+export function MainDashboard({ user: initialUser, onLogout }: MainDashboardProps) {
+  // Sincronização reativa com o Firestore para permissões em tempo real
+  const { user: reactiveUser } = useUser();
+  const user = reactiveUser || initialUser;
+
   const [currentView, setView] = useState<AppView>(user.hasQuickSendAccess ? 'quick-send' : 'send-order');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
@@ -135,7 +140,6 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
             <div className="font-bold text-primary text-2xl tracking-tighter shrink-0">RC</div>
             
             <div className="flex gap-4 items-center ml-2 md:ml-4">
-              {/*atalhos ativos*/}
               {user.hasQuickSendAccess && (
                 <Button 
                   size="lg" 
@@ -162,7 +166,7 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
                 <Send className="h-5 w-5" /> <span className="hidden sm:inline">ENVIO</span>
               </Button>
 
-              {(user.hasRtStatusAccess || isMaster) && (
+              {user.hasRtStatusAccess && (
                 <Button 
                   size="lg" 
                   variant={currentView === 'rt-status' ? 'default' : 'outline'} 
@@ -176,7 +180,7 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
                 </Button>
               )}
 
-              {(user.hasRequestAccess || isMaster) && (
+              {user.hasRequestAccess && (
                 <Button 
                   size="lg" 
                   variant={currentView === 'request-order' ? 'default' : 'outline'} 
