@@ -147,29 +147,29 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
   };
 
   return (
-    <div className="space-y-6 animate-slide-up max-w-2xl mx-auto pb-20">
+    <div className="space-y-3 animate-slide-up max-w-2xl mx-auto pb-20">
       <div className="flex items-center justify-between px-1">
         <div>
-          <h2 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Monitoramento Ativo</h2>
-          <p className="text-[10px] text-muted-foreground font-bold">{Object.keys(groupedOrders).length} RT(s) em operação</p>
+          <h2 className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Monitoramento Ativo</h2>
+          <p className="text-[9px] text-muted-foreground font-bold">{Object.keys(groupedOrders).length} RT(s) em operação</p>
         </div>
         <Button 
           variant="ghost" 
           size="sm" 
           onClick={() => loadData()} 
           disabled={loading} 
-          className="h-9 gap-2 text-blue-600 hover:bg-blue-50 text-[11px] font-black uppercase tracking-widest px-4 rounded-full"
+          className="h-7 gap-1 text-blue-600 hover:bg-blue-50 text-[10px] font-black uppercase tracking-widest px-3 rounded-full"
         >
-          <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
+          <RefreshCw className={cn("h-3 w-3", loading && "animate-spin")} />
           ATUALIZAR
         </Button>
       </div>
 
-      <div className="space-y-5">
+      <div className="space-y-3">
         {Object.keys(groupedOrders).length === 0 && !loading ? (
-          <div className="text-center py-20 bg-muted/20 rounded-[32px] border border-dashed border-muted-foreground/20 flex flex-col items-center">
-            <Package className="h-12 w-12 text-muted-foreground/30 mb-2" />
-            <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest">Nenhum pedido ativo</h3>
+          <div className="text-center py-10 bg-muted/20 rounded-2xl border border-dashed border-muted-foreground/20 flex flex-col items-center">
+            <Package className="h-10 w-10 text-muted-foreground/30 mb-2" />
+            <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Nenhum pedido ativo</h3>
           </div>
         ) : (
           Object.entries(groupedOrders)
@@ -191,47 +191,47 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
               
               return (
                 <Card key={rtId} className={cn(
-                  "border shadow-sm overflow-hidden rounded-[32px] transition-all",
-                  isAlert ? "bg-red-500/[0.05] border-red-200" : "bg-card/80 border-border/60"
+                  "border shadow-sm overflow-hidden rounded-xl transition-all",
+                  isAlert ? "bg-red-500/[0.05] border-red-200" : "bg-card/80 border-border/40"
                 )}>
                   <CardContent className="p-0">
                     <div className={cn(
-                      "p-5 flex items-center justify-between border-b",
+                      "p-2.5 flex items-center justify-between border-b",
                       isAlert ? "bg-red-500/[0.1] border-red-200/50" : "bg-muted/30 border-border/40"
                     )}>
-                      <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-3">
                         <div className={cn(
-                          "w-11 h-11 rounded-2xl flex items-center justify-center shadow-inner",
+                          "w-8 h-8 rounded-lg flex items-center justify-center shadow-inner",
                           isAlert ? "bg-red-100 text-red-600" : "bg-primary/10 text-primary"
                         )}>
-                          {isNuvem ? <Cloud className="h-6 w-6" /> : <User className="h-6 w-6" />}
+                          {isNuvem ? <Cloud className="h-4 w-4" /> : <User className="h-4 w-4" />}
                         </div>
                         <div className="overflow-hidden">
                           <h3 className={cn(
-                            "text-base font-black tracking-tight leading-none mb-1",
+                            "text-sm font-black tracking-tight leading-none mb-0.5 truncate max-w-[150px]",
                             isAlert ? "text-red-700" : "text-foreground"
                           )}>
                             {courierName}
                           </h3>
-                          <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/70">
+                          <p className="text-[8px] font-black uppercase tracking-widest text-muted-foreground/70">
                             {rtId === "Nuvem" ? "DESPACHO MANUAL" : `RT: ${rtId}`}
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
                         <Button 
                           variant="outline" 
                           size="sm" 
                           onClick={() => setManagingRt(rtId)}
                           className={cn(
-                            "h-10 text-[10px] font-black uppercase tracking-widest rounded-2xl gap-2 px-4 border-2",
+                            "h-7 text-[9px] font-black uppercase tracking-widest rounded-lg gap-1.5 px-3 border",
                             isAlert ? "text-red-700 border-red-300 bg-red-50 hover:bg-red-100" : "text-primary border-primary/20 hover:bg-primary/5"
                           )}
                         >
-                          <Settings2 className="h-4 w-4" /> Gerenciar
+                          <Settings2 className="h-3.5 w-3.5" /> Opções
                         </Button>
                         <div className={cn(
-                          "min-w-[30px] h-8 px-2.5 rounded-full flex items-center justify-center text-[12px] font-black border-2",
+                          "w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black border",
                           isAlert ? "bg-red-600 text-white border-red-400" : "bg-primary text-white border-primary-foreground/20"
                         )}>
                           {orders.length}
@@ -239,7 +239,7 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
                       </div>
                     </div>
 
-                    <div className="p-4 space-y-3">
+                    <div className="p-1.5 space-y-1">
                       {orders.map((order, idx) => {
                         const isExternoOrder = String(order.estado_detallado_actual || order.estado || "").toUpperCase().includes('EXTERNO');
                         
@@ -247,25 +247,25 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
                           <div 
                             key={idx} 
                             className={cn(
-                              "p-4 rounded-2xl border transition-all flex items-center justify-between group",
+                              "p-2 rounded-lg border transition-all flex items-center justify-between group",
                               isExternoOrder ? "bg-red-600/10 border-red-300 shadow-inner" : "bg-muted/5 border-border/40 hover:bg-muted/10"
                             )}
                           >
-                            <div className="space-y-1 overflow-hidden">
+                            <div className="space-y-0.5 overflow-hidden">
                               <p className={cn(
-                                "text-[12px] font-black leading-tight truncate",
+                                "text-[11px] font-black leading-tight truncate max-w-[160px]",
                                 isExternoOrder ? "text-red-700" : "text-foreground"
                               )}>{order.store_name}</p>
-                              <p className="text-[10px] text-muted-foreground font-bold truncate max-w-[200px]">{order.direccion_entrega}</p>
+                              <p className="text-[9px] text-muted-foreground font-bold truncate max-w-[180px]">{order.direccion_entrega}</p>
                             </div>
-                            <div className="flex items-center gap-3 shrink-0 ml-4">
-                              <div className="flex flex-col items-end mr-1">
+                            <div className="flex items-center gap-2 shrink-0 ml-2">
+                              <div className="flex flex-col items-end">
                                 <span className={cn(
-                                  "text-[10px] font-mono font-black",
+                                  "text-[8px] font-mono font-black",
                                   isExternoOrder ? "text-red-700" : "text-muted-foreground/60"
                                 )}>#{order.order_id}</span>
                                 <span className={cn(
-                                  "text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full mt-1",
+                                  "text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full",
                                   isExternoOrder ? "bg-red-600 text-white" : "bg-muted text-muted-foreground"
                                 )}>
                                   {order.estado_detallado_actual || order.estado}
@@ -275,12 +275,12 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
                                 variant="default"
                                 size="icon"
                                 className={cn(
-                                  "h-10 w-10 rounded-2xl shadow-lg transition-transform group-hover:scale-110",
+                                  "h-8 w-8 rounded-lg shadow-sm transition-transform",
                                   isExternoOrder ? "bg-red-600 hover:bg-red-700 text-white" : "bg-primary text-white"
                                 )}
                                 onClick={() => handleCopyAndGo(order.order_id, rtId)}
                               >
-                                <Send className="h-4 w-4" />
+                                <Send className="h-3.5 w-3.5" />
                               </Button>
                             </div>
                           </div>
@@ -295,70 +295,70 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
       </div>
 
       <Dialog open={!!managingRt} onOpenChange={(open) => !open && setManagingRt(null)}>
-        <DialogContent className="max-w-[360px] rounded-[40px] p-0 border-none shadow-2xl overflow-hidden">
+        <DialogContent className="max-w-[320px] rounded-3xl p-0 border-none shadow-2xl overflow-hidden">
           <DialogHeader className={cn(
-            "p-8 pb-6 text-white",
+            "p-5 pb-4 text-white",
             (managingRt === "Nuvem" || rtOrdersToManage.some(o => String(o.estado_detallado_actual || "").toUpperCase().includes('EXTERNO'))) ? "bg-red-600" : "bg-primary"
           )}>
-            <DialogTitle className="text-xl font-black flex items-center gap-3">
-              <Settings2 className="h-6 w-6" /> {getCourierName(managingRt || "")}
+            <DialogTitle className="text-lg font-black flex items-center gap-2">
+              <Settings2 className="h-5 w-5" /> {getCourierName(managingRt || "")}
             </DialogTitle>
-            <DialogDescription className="text-white/80 text-[10px] font-black uppercase tracking-widest mt-2">
+            <DialogDescription className="text-white/80 text-[9px] font-black uppercase tracking-widest mt-1">
               {managingRt === "Nuvem" ? "Despacho Manual / Point" : `RT Ativo: ${managingRt}`}
             </DialogDescription>
           </DialogHeader>
-          <div className="p-6 max-h-[60vh] overflow-y-auto space-y-4 no-scrollbar">
+          <div className="p-4 max-h-[50vh] overflow-y-auto space-y-2 no-scrollbar">
             {rtOrdersToManage.map((order, idx) => {
                const isExternoOrder = String(order.estado_detallado_actual || order.estado || "").toUpperCase().includes('EXTERNO');
 
                return (
                 <div key={idx} className={cn(
-                  "p-5 rounded-[28px] border space-y-4",
+                  "p-3 rounded-2xl border space-y-3",
                   isExternoOrder ? "bg-red-500/10 border-red-300" : "bg-muted/30 border-border/40"
                 )}>
                   <div className="flex justify-between items-start">
-                    <div className="space-y-1">
-                      <p className="text-xs font-black leading-tight">{order.store_name}</p>
-                      <p className="text-[10px] font-mono font-black text-muted-foreground/60">#{order.order_id}</p>
+                    <div className="space-y-0.5">
+                      <p className="text-[11px] font-black leading-tight">{order.store_name}</p>
+                      <p className="text-[9px] font-mono font-black text-muted-foreground/60">#{order.order_id}</p>
                     </div>
                     <Badge variant="outline" className={cn(
-                      "text-[9px] uppercase font-black py-0 h-5 border-none px-3",
+                      "text-[8px] uppercase font-black py-0 h-4 border-none px-2",
                       isExternoOrder ? "text-white bg-red-600" : "text-primary bg-primary/10"
                     )}>
                       {order.estado_detallado_actual || order.estado}
                     </Badge>
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-2">
                     <Button 
-                      size="lg" 
+                      size="sm" 
                       variant="outline"
-                      className="h-12 text-[10px] font-black uppercase gap-2 rounded-2xl border-2 border-blue-200 text-blue-600 hover:bg-blue-50"
+                      className="h-9 text-[9px] font-black uppercase gap-1.5 rounded-xl border border-blue-200 text-blue-600 hover:bg-blue-50"
                       onClick={() => {
                         navigator.clipboard.writeText(String(order.order_id));
                         recordLog(String(order.order_id), managingRt!, 'copy_id');
                         toast({ title: "Copiado!", description: "ID enviado para área de transferência." });
                       }}
                     >
-                      <ClipboardCopy className="h-4 w-4" /> Copiar ID
+                      <ClipboardCopy className="h-3.5 w-3.5" /> Copiar ID
                     </Button>
                     <Button 
-                      size="lg" 
+                      size="sm" 
                       className={cn(
-                        "h-12 text-[10px] font-black uppercase gap-2 rounded-2xl text-white shadow-xl",
-                        isExternoOrder ? "bg-red-600 hover:bg-red-700" : "bg-orange-600 hover:bg-orange-700 shadow-orange-500/20"
+                        "h-9 text-[9px] font-black uppercase gap-1.5 rounded-xl text-white shadow-md",
+                        isExternoOrder ? "bg-red-600 hover:bg-red-700" : "bg-orange-600 hover:bg-orange-700 shadow-orange-500/10"
                       )}
                       onClick={() => handleForzarBr(String(order.order_id), managingRt!)}
                     >
-                      <Zap className="h-4 w-4" /> Cheguei
+                      <Zap className="h-3.5 w-3.5" /> Cheguei
                     </Button>
                   </div>
                 </div>
               );
             })}
           </div>
-          <div className="p-6 bg-muted/20 border-t flex justify-center">
-            <Button variant="ghost" onClick={() => setManagingRt(null)} className="text-[10px] font-black uppercase text-muted-foreground tracking-widest hover:bg-transparent">
+          <div className="p-4 bg-muted/20 border-t flex justify-center">
+            <Button variant="ghost" size="sm" onClick={() => setManagingRt(null)} className="text-[9px] font-black uppercase text-muted-foreground tracking-widest hover:bg-transparent">
               Fechar Painel
             </Button>
           </div>
