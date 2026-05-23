@@ -1,4 +1,3 @@
-
 "use client";
 
 import { AppView, User } from "@/lib/types";
@@ -34,7 +33,7 @@ export function SidebarNav({ currentView, setView, user: initialUser, onLogout }
   const isMaster = user.role === 'master' || user.email === 'rik4rd0stream@gmail.com';
 
   const navItems = [
-    { id: 'quick-send', label: 'Envio Rápido', icon: Zap, permission: 'hasQuickSendAccess' },
+    { id: 'quick-send', label: 'Envio Rápido', icon: Zap },
     { id: 'send-order', label: 'Envio de Pedido', icon: Send },
     { id: 'rt-status', label: 'Monitor RT', icon: Radar, permission: 'hasRtStatusAccess' },
     { id: 'request-order', label: 'Solicitação de Pedido', icon: PackageSearch, permission: 'hasRequestAccess' },

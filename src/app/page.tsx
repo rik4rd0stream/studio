@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -6,7 +5,7 @@ import { LoginView } from "@/components/auth/login-view";
 import { MainDashboard } from "@/components/dashboard/main-dashboard";
 import { User } from "@/lib/types";
 import { useFirestore, useAuth } from "@/firebase";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 import { 
   signInWithEmailAndPassword, 
   onAuthStateChanged 
@@ -46,7 +45,7 @@ export default function Home() {
     }
 
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      // Sincronização passiva
+      // Sincronização passiva via Auth
     });
 
     setIsInitializing(false);
@@ -109,7 +108,6 @@ export default function Home() {
       notificationsEnabled: data.notificationsEnabled !== false,
       hasRequestAccess: !!data.hasRequestAccess,
       hasRtStatusAccess: !!data.hasRtStatusAccess,
-      hasQuickSendAccess: !!data.hasQuickSendAccess,
       useDirectWhatsApp: data.useDirectWhatsApp !== false
     };
     setLocalUser(userData);

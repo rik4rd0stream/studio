@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -20,7 +19,6 @@ export function useUser() {
   useEffect(() => {
     return onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser && firebaseUser.email) {
-        // Busca o documento pelo e-mail (ID do documento no seu Firebase)
         const userEmail = firebaseUser.email.toLowerCase().trim();
         const userDocRef = doc(db, 'userProfiles', userEmail);
         
@@ -35,11 +33,9 @@ export function useUser() {
               notificationsEnabled: data.notificationsEnabled !== false,
               hasRequestAccess: !!data.hasRequestAccess,
               hasRtStatusAccess: !!data.hasRtStatusAccess,
-              hasQuickSendAccess: !!data.hasQuickSendAccess,
-              useDirectWhatsApp: data.useDirectWhatsApp !== false // Default true
+              useDirectWhatsApp: data.useDirectWhatsApp !== false
             } as User);
           } else {
-            // Perfil básico se não houver documento mas houver Auth
             const isMasterEmail = firebaseUser.email === 'rik4rd0stream@gmail.com';
             setUser({
               id: firebaseUser.uid,
@@ -48,7 +44,6 @@ export function useUser() {
               role: isMasterEmail ? 'master' : 'normal',
               hasRequestAccess: isMasterEmail,
               hasRtStatusAccess: isMasterEmail,
-              hasQuickSendAccess: isMasterEmail,
               notificationsEnabled: true,
               useDirectWhatsApp: true
             });

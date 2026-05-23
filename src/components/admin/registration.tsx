@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -8,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Loader2, Pencil, Trash2, RefreshCw, Database, UserPlus, Bike, ShieldCheck, Bell, Lock, Radar, Share2, Zap } from "lucide-react";
+import { Loader2, Pencil, Trash2, RefreshCw, Database, UserPlus, Bike, ShieldCheck, Bell, Lock, Radar, Share2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getCollectionBridge, setDocumentBridge, deleteDocumentBridge } from "@/app/actions/firestore-bridge";
 import { createAuthUserBridge } from "@/app/actions/auth-bridge";
@@ -32,7 +31,6 @@ export function Registration({ type }: RegistrationProps) {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [hasRequestAccess, setHasRequestAccess] = useState(false);
   const [hasRtStatusAccess, setHasRtStatusAccess] = useState(false);
-  const [hasQuickSendAccess, setHasQuickSendAccess] = useState(false);
   const [useDirectWhatsApp, setUseDirectWhatsApp] = useState(true);
 
   const isUser = type === 'users';
@@ -77,7 +75,6 @@ export function Registration({ type }: RegistrationProps) {
       setNotificationsEnabled(item.notificationsEnabled !== false);
       setHasRequestAccess(!!item.hasRequestAccess);
       setHasRtStatusAccess(!!item.hasRtStatusAccess);
-      setHasQuickSendAccess(!!item.hasQuickSendAccess);
       setUseDirectWhatsApp(item.useDirectWhatsApp !== false);
     }
   };
@@ -89,7 +86,6 @@ export function Registration({ type }: RegistrationProps) {
     setNotificationsEnabled(true);
     setHasRequestAccess(false);
     setHasRtStatusAccess(false);
-    setHasQuickSendAccess(false);
     setUseDirectWhatsApp(true);
     setEditingId(null);
   };
@@ -146,7 +142,6 @@ export function Registration({ type }: RegistrationProps) {
           notificationsEnabled,
           hasRequestAccess,
           hasRtStatusAccess,
-          hasQuickSendAccess,
           useDirectWhatsApp,
           updatedAt: new Date().toISOString()
         }
@@ -225,10 +220,6 @@ export function Registration({ type }: RegistrationProps) {
                     <div className="flex items-center space-x-2 bg-muted/20 px-3 py-2 rounded-xl">
                       <Switch id="notif" checked={notificationsEnabled} onCheckedChange={setNotificationsEnabled} />
                       <Label htmlFor="notif" className="text-[9px] font-bold flex items-center gap-1.5 uppercase"><Bell className="h-3 w-3 text-primary" /> PUSH</Label>
-                    </div>
-                    <div className="flex items-center space-x-2 bg-muted/20 px-3 py-2 rounded-xl">
-                      <Switch id="quick" checked={hasQuickSendAccess} onCheckedChange={setHasQuickSendAccess} />
-                      <Label htmlFor="quick" className="text-[9px] font-bold flex items-center gap-1.5 uppercase"><Zap className="h-3 w-3 text-primary" /> RÁPIDO</Label>
                     </div>
                     <div className="flex items-center space-x-2 bg-muted/20 px-3 py-2 rounded-xl">
                       <Switch id="access" checked={hasRequestAccess} onCheckedChange={setHasRequestAccess} />

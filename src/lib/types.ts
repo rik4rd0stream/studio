@@ -1,4 +1,3 @@
-
 export type UserRole = 'normal' | 'master';
 
 export interface User {
@@ -10,7 +9,6 @@ export interface User {
   notificationsEnabled?: boolean;
   hasRequestAccess?: boolean;
   hasRtStatusAccess?: boolean;
-  hasQuickSendAccess?: boolean; 
   useDirectWhatsApp?: boolean;
   fcmTokens?: string[];
 }

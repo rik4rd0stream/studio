@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -37,7 +36,7 @@ export function MainDashboard({ user: initialUser, onLogout }: MainDashboardProp
   const { user: reactiveUser } = useUser();
   const user = reactiveUser || initialUser;
 
-  const [currentView, setView] = useState<AppView>(user.hasQuickSendAccess ? 'quick-send' : 'send-order');
+  const [currentView, setView] = useState<AppView>('quick-send');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const [isOffline, setIsOffline] = useState(false);
@@ -61,14 +60,6 @@ export function MainDashboard({ user: initialUser, onLogout }: MainDashboardProp
     };
   }, []);
 
-  useEffect(() => {
-    if (reactiveUser && !prefilledOrderId) {
-      if (reactiveUser.hasQuickSendAccess) {
-        setView('quick-send');
-      }
-    }
-  }, [reactiveUser?.hasQuickSendAccess, prefilledOrderId]);
-
   const handleSetView = (view: AppView) => {
     setView(view);
     setIsMobileMenuOpen(false);
@@ -76,7 +67,7 @@ export function MainDashboard({ user: initialUser, onLogout }: MainDashboardProp
 
   const handleSelectOrderFromActive = (orderId: string) => {
     setPrefilledOrderId(String(orderId));
-    setView(user.hasQuickSendAccess ? 'quick-send' : 'send-order');
+    setView('quick-send');
   };
 
   const renderContent = () => {
@@ -114,7 +105,7 @@ export function MainDashboard({ user: initialUser, onLogout }: MainDashboardProp
       case 'operation-logs':
         return <OperationLogs />;
       default:
-        return <CreateOrder onOrderCreated={() => setView('active-orders')} />;
+        return <QuickSend onOrderCreated={() => setView('active-orders')} />;
     }
   };
 
@@ -154,19 +145,17 @@ export function MainDashboard({ user: initialUser, onLogout }: MainDashboardProp
             <div className="font-bold text-primary text-xl tracking-tighter shrink-0">RC</div>
             
             <div className="flex gap-2 items-center ml-1 md:ml-2">
-              {user.hasQuickSendAccess && (
-                <Button 
-                  size="sm" 
-                  variant={currentView === 'quick-send' ? 'default' : 'outline'} 
-                  className={cn(
-                    "rounded-xl h-10 gap-1.5 text-[9px] font-black px-4 transition-all border-primary/20 shrink-0",
-                    currentView === 'quick-send' && "shadow-md shadow-primary/20"
-                  )}
-                  onClick={() => handleSetView('quick-send')}
-                >
-                  <Zap className="h-4 w-4" /> <span className="hidden sm:inline">RÁPIDO</span>
-                </Button>
-              )}
+              <Button 
+                size="sm" 
+                variant={currentView === 'quick-send' ? 'default' : 'outline'} 
+                className={cn(
+                  "rounded-xl h-10 gap-1.5 text-[9px] font-black px-4 transition-all border-primary/20 shrink-0",
+                  currentView === 'quick-send' && "shadow-md shadow-primary/20"
+                )}
+                onClick={() => handleSetView('quick-send')}
+              >
+                <Zap className="h-4 w-4" /> <span className="hidden sm:inline">RÁPIDO</span>
+              </Button>
 
               <Button 
                 size="sm" 
