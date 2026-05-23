@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "User": {
@@ -143,7 +144,7 @@
           "schema": {
             "$ref": "#/backend/entities/User"
           },
-          "description": "Stores user profiles, including their unique identifier, name, email, and access role. Access is restricted to the owner of the profile or users with 'master' role.",
+          "description": "Stores user profiles, including their unique identifier, name, email, and access role.",
           "params": [
             {
               "name": "userId",
@@ -153,18 +154,20 @@
         }
       },
       {
-        "path": "/roles_master/{userId}",
+        "path": "/users/{userId}/favorites/{courierId}",
         "definition": {
-          "entityName": "User",
+          "entityName": "UserFavorite",
           "schema": {
-            "$ref": "#/backend/entities/User"
-          },
-          "description": "A dedicated collection used for denormalizing 'master' role assignments. Each document's ID corresponds to a User ID that holds the 'master' role, enabling efficient and authorization-independent permission checks using `exists()` in security rules.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of a user who has been granted the 'master' role."
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "createdAt": { "type": "string", "format": "date-time" }
             }
+          },
+          "description": "User-specific favorite couriers.",
+          "params": [
+            { "name": "userId", "description": "The user ID" },
+            { "name": "courierId", "description": "The courier RT ID" }
           ]
         }
       },
@@ -175,11 +178,11 @@
           "schema": {
             "$ref": "#/backend/entities/DeliveryPerson"
           },
-          "description": "Stores profiles of delivery personnel, including their unique ID, name, and current operational status. Creation and management are typically by 'master' users, while a delivery person can update their own status. Includes denormalized 'id' for authorization independence.",
+          "description": "Stores profiles of delivery personnel.",
           "params": [
             {
               "name": "deliveryPersonId",
-              "description": "The unique identifier for the delivery person, matching their Firebase Authentication UID."
+              "description": "The unique identifier for the delivery person."
             }
           ]
         }
@@ -191,7 +194,7 @@
           "schema": {
             "$ref": "#/backend/entities/Order"
           },
-          "description": "Stores all delivery orders, tracking details from creation to completion. Includes denormalized 'creatorUserId' and 'assignedDeliveryPersonId' for authorization independence, and 'status' for supporting QAPs and various access patterns (e.g., listing pending orders for assignment).",
+          "description": "Stores all delivery orders.",
           "params": [
             {
               "name": "orderId",
@@ -200,7 +203,6 @@
           ]
         }
       }
-    ],
-    "reasoning": "The Firestore structure is designed to be secure, scalable, and debuggable, strictly adhering to the core design principles. The primary goal is to achieve Authorization Independence and robust Query-Applicable Permissions (QAPs) through strategic denormalization and structural segregation.\n\n**Authorization Independence:**\n1.  **Master Role Denormalization:** Instead of relying on `get()` calls to a user's profile to check their `role` (e.g., `get(/users/$(request.auth.uid)).data.role == 'master'`), a dedicated collection `/roles_master/{userId}` is introduced. A document in this collection simply signifies that the `userId` associated with the document ID has the 'master' role. Security rules can then use `exists(/databases/$(database)/documents/roles_master/$(request.auth.uid))` for atomic and independent verification of master privileges. This eliminates the need for `get()` calls, which can break atomic operations and complicate debugging.\n2.  **Order Authorization Fields:** For the `Order` entity, critical authorization fields such as `creatorUserId` and `assignedDeliveryPersonId` are directly embedded within each `/orders/{orderId}` document. This means that rules checking ownership or assignment do not need to fetch data from parent documents or other collections, making them independent and efficient. For instance, a rule can directly compare `request.auth.uid` with `resource.data.creatorUserId` or `resource.data.assignedDeliveryPersonId`.\n\n**Query-Applicable Permissions (QAPs):**\n1.  **Structural Segregation for Roles:** The `/roles_master` collection exemplifies structural segregation, where all documents within it share the homogeneous security posture of being a 'master' user identifier. This naturally supports QAPs for `exists()` checks.\n2.  **Homogeneous Security for Users and DeliveryPersons:** The `/users` and `/deliveryPersons` collections are designed to hold documents with a homogeneous security posture. While `users` contain a `role` field that differentiates access *within* the collection, the collection itself has a clear access pattern (owner can read/write, master can manage all). `deliveryPersons` also follows this, allowing `master` users to manage and delivery persons to update their own status. QAPs will enable efficient listing (e.g., `master` users listing all `users`, delivery persons listing `available` `deliveryPersons` if needed).\n3.  **Order Listing Flexibility:** The `/orders` collection is a prime example of enabling robust QAPs. By including `creatorUserId`, `assignedDeliveryPersonId`, and `status` fields directly in each `Order` document, complex listing requirements can be met with efficient, secure queries without relying on server-side filtering (which rules are not designed for):\n    *   **User's Own Orders:** `db.collection('orders').where('creatorUserId', '==', 'user_id')`\n    *   **Delivery Person's Assigned Orders:** `db.collection('orders').where('assignedDeliveryPersonId', '==', 'delivery_person_id')`\n    *   **Available Orders for Delivery Persons:** `db.collection('orders').where('status', '==', 'pending').where('assignedDeliveryPersonId', '==', null)`\n\nThis design ensures that security rules are straightforward, relying on document-local data or simple `exists()` checks, preventing cascading dependencies and making the system easier to debug and maintain."
+    ]
   }
 }

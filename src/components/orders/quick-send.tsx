@@ -18,7 +18,6 @@ import {
   Star,
   Store,
   MapPin as MapPinIcon,
-  ChevronRight
 } from "lucide-react";
 import { redashService, RedashOrder } from "@/lib/api/redash-service";
 import { useToast } from "@/hooks/use-toast";
@@ -32,9 +31,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useFirestore, useCollection, useMemoFirebase, useUser } from "@/firebase";
-import { collection, query, doc, setDoc } from "firebase/firestore";
+import { collection, query, doc, setDoc, deleteDoc } from "firebase/firestore";
 import { cn } from "@/lib/utils";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Share } from "@capacitor/share";
 import { Capacitor } from "@capacitor/core";
 
@@ -72,6 +70,13 @@ export function QuickSend({ onOrderCreated, initialOrderId, onClearInitialId }: 
   const storesQuery = useMemoFirebase(() => collection(db, 'storeProfiles'), [db]);
   const { data: stores } = useCollection<any>(storesQuery);
 
+  // Hook para buscar os favoritos específicos do usuário atual
+  const userFavoritesQuery = useMemoFirebase(() => {
+    if (!currentUser?.email) return null;
+    return collection(db, 'users', currentUser.email.toLowerCase().trim(), 'favorites');
+  }, [db, currentUser?.email]);
+  const { data: userFavorites } = useCollection<any>(userFavoritesQuery);
+
   const redashOrders = useMemo(() => {
     return allOrders.filter(row => {
       const pointValue = String(row.point_id || row.point || '').trim();
@@ -84,6 +89,9 @@ export function QuickSend({ onOrderCreated, initialOrderId, onClearInitialId }: 
 
   const filteredCouriers = useMemo(() => {
     if (!couriers) return { favorites: [], others: [] };
+    
+    const favoriteIds = new Set((userFavorites || []).map(f => f.id));
+
     const base = [...couriers]
       .filter(c => 
         (c.nome || c.name || '').toLowerCase().includes(searchCourier.toLowerCase()) || 
@@ -91,10 +99,10 @@ export function QuickSend({ onOrderCreated, initialOrderId, onClearInitialId }: 
       );
     
     return {
-      favorites: base.filter(c => !!c.isFavorite).sort((a, b) => (a.nome || "").localeCompare(b.nome || "")),
-      others: base.filter(c => !c.isFavorite).sort((a, b) => (a.nome || "").localeCompare(b.nome || ""))
+      favorites: base.filter(c => favoriteIds.has(String(c.id_motoboy))).sort((a, b) => (a.nome || "").localeCompare(b.nome || "")),
+      others: base.filter(c => !favoriteIds.has(String(c.id_motoboy))).sort((a, b) => (a.nome || "").localeCompare(b.nome || ""))
     };
-  }, [couriers, searchCourier]);
+  }, [couriers, searchCourier, userFavorites]);
 
   const loadData = async (silent = false) => {
     if (!silent) {
@@ -140,6 +148,20 @@ export function QuickSend({ onOrderCreated, initialOrderId, onClearInitialId }: 
     }
   };
 
+  const toggleFavorite = async (e: React.MouseEvent, courierId: string) => {
+    e.stopPropagation();
+    if (!currentUser?.email) return;
+
+    const favDocRef = doc(db, 'users', currentUser.email.toLowerCase().trim(), 'favorites', String(courierId));
+    const isAlreadyFav = (userFavorites || []).some(f => f.id === String(courierId));
+
+    if (isAlreadyFav) {
+      await deleteDoc(favDocRef);
+    } else {
+      await setDoc(favDocRef, { createdAt: new Date().toISOString() });
+    }
+  };
+
   const handleGenerateCommand = async (courierId: string) => {
     if (!selectedOrder) return;
     const fullCommand = `${selectedCommand} ${selectedOrder.order_id} ${courierId}`;
@@ -172,7 +194,7 @@ export function QuickSend({ onOrderCreated, initialOrderId, onClearInitialId }: 
   };
 
   return (
-    <div className="space-y-2.5 animate-slide-up pb-32 max-w-xl mx-auto">
+    <div className="space-y-2 animate-slide-up pb-32 max-w-xl mx-auto">
       <div className="flex items-center justify-between px-1">
         <h2 className="text-[9px] font-black text-primary uppercase tracking-widest flex items-center gap-1.5">
           <Zap className="h-3 w-3" /> Envio Rápido ({redashOrders.length})
@@ -202,10 +224,10 @@ export function QuickSend({ onOrderCreated, initialOrderId, onClearInitialId }: 
                 className="border-none bg-card shadow-sm hover:shadow-md transition-all cursor-pointer rounded-xl group"
                 onClick={() => handleOpenCourierSelection(order)}
               >
-                <CardContent className="p-2.5 space-y-1.5">
+                <CardContent className="p-2 space-y-1">
                   <div className="flex justify-between items-start">
                     <div className="flex-1 overflow-hidden pr-2">
-                      <div className="flex items-center gap-1.5 mb-0.5">
+                      <div className="flex items-center gap-1.5">
                         <h3 className="text-[11px] font-black text-foreground group-hover:text-primary leading-tight truncate">
                           {order.store_name}
                         </h3>
@@ -256,7 +278,7 @@ export function QuickSend({ onOrderCreated, initialOrderId, onClearInitialId }: 
         )}
       </div>
 
-      <form onSubmit={(e) => { e.preventDefault(); if(manualOrderId.trim()) handleOpenCourierSelection({ order_id: manualOrderId.trim(), store_name: "Manual", direccion_entrega: "Manual" } as RedashOrder); }} className="pt-2 space-y-2">
+      <form onSubmit={(e) => { e.preventDefault(); if(manualOrderId.trim()) handleOpenCourierSelection({ order_id: manualOrderId.trim(), store_name: "Manual", direccion_entrega: "Manual" } as RedashOrder); }} className="pt-1 space-y-1.5">
         <div className="relative">
           <Input 
             placeholder="ID DO PEDIDO" 
@@ -310,15 +332,15 @@ export function QuickSend({ onOrderCreated, initialOrderId, onClearInitialId }: 
           className="max-md rounded-3xl p-0 border-none shadow-2xl overflow-hidden"
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
-          <div className="bg-primary/5 p-4 border-b border-primary/10">
-            <DialogHeader className="space-y-0.5 mb-3">
+          <div className="bg-primary/5 p-3 border-b border-primary/10">
+            <DialogHeader className="space-y-0.5 mb-2">
               <DialogTitle className="text-base font-black tracking-tight">Selecionar Entregador</DialogTitle>
               <DialogDescription className="text-[8px] text-primary font-black uppercase tracking-widest">
                 Pedido #{selectedOrder?.order_id} • {selectedOrder?.store_name}
               </DialogDescription>
             </DialogHeader>
             
-            <div className="space-y-1.5">
+            <div className="space-y-1">
               <p className="text-[7px] font-black text-muted-foreground uppercase tracking-widest">Comando</p>
               <div className="flex flex-wrap gap-1">
                 {COMMANDS.map((cmd) => (
@@ -340,7 +362,7 @@ export function QuickSend({ onOrderCreated, initialOrderId, onClearInitialId }: 
             </div>
           </div>
 
-          <div className="p-4 space-y-3">
+          <div className="p-3 space-y-2">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input 
@@ -351,20 +373,26 @@ export function QuickSend({ onOrderCreated, initialOrderId, onClearInitialId }: 
               />
             </div>
 
-            <div className="max-h-[35vh] overflow-y-auto pr-1 no-scrollbar space-y-3">
+            <div className="max-h-[45vh] overflow-y-auto pr-1 no-scrollbar space-y-3">
               {filteredCouriers.favorites.length > 0 && (
                 <div className="space-y-1.5">
                   <p className="text-[8px] font-black text-primary uppercase tracking-widest flex items-center gap-1">
-                    <Star className="h-2.5 w-2.5 fill-primary" /> Favoritos
+                    <Star className="h-2.5 w-2.5 fill-primary" /> Seus Favoritos
                   </p>
                   <div className="grid grid-cols-3 gap-1.5">
                     {filteredCouriers.favorites.map((c) => (
                       <Button 
                         key={c.id} 
                         variant="ghost" 
-                        className="flex flex-col items-center justify-center h-16 p-1 hover:bg-primary/10 rounded-xl border border-primary/10 bg-primary/5 transition-all group" 
+                        className="flex flex-col items-center justify-center h-16 p-1 hover:bg-primary/10 rounded-xl border border-primary/10 bg-primary/5 transition-all relative group" 
                         onClick={() => handleGenerateCommand(c.id_motoboy)}
                       >
+                        <button 
+                          onClick={(e) => toggleFavorite(e, c.id_motoboy)}
+                          className="absolute top-1 right-1 p-1 z-10"
+                        >
+                          <Star className="h-3 w-3 fill-primary text-primary" />
+                        </button>
                         <p className="font-black text-[10px] leading-tight text-center truncate w-full">
                           {(c.nome || c.name || '').split(' ')[0]}
                         </p>
@@ -376,15 +404,21 @@ export function QuickSend({ onOrderCreated, initialOrderId, onClearInitialId }: 
               )}
 
               <div className="space-y-1.5">
-                <p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Geral</p>
+                <p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Todos os Entregadores</p>
                 <div className="grid grid-cols-3 gap-1.5">
                   {filteredCouriers.others.map((c) => (
                     <Button 
                       key={c.id} 
                       variant="ghost" 
-                      className="flex flex-col items-center justify-center h-16 p-1 hover:bg-primary/10 rounded-xl bg-muted/20 transition-all group" 
+                      className="flex flex-col items-center justify-center h-16 p-1 hover:bg-primary/10 rounded-xl bg-muted/20 transition-all relative group" 
                       onClick={() => handleGenerateCommand(c.id_motoboy)}
                     >
+                      <button 
+                        onClick={(e) => toggleFavorite(e, c.id_motoboy)}
+                        className="absolute top-1 right-1 p-1 z-10 opacity-30 group-hover:opacity-100 transition-opacity"
+                      >
+                        <Star className="h-3 w-3 text-muted-foreground" />
+                      </button>
                       <p className="font-bold text-[10px] leading-tight text-center truncate w-full">
                         {(c.nome || c.name || '').split(' ')[0]}
                       </p>

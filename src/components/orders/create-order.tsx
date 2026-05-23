@@ -16,7 +16,7 @@ import {
   X,
   Store,
   MapPin as MapPinIcon,
-  ChevronRight
+  Star,
 } from "lucide-react";
 import { redashService, RedashOrder } from "@/lib/api/redash-service";
 import { useToast } from "@/hooks/use-toast";
@@ -30,9 +30,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useFirestore, useCollection, useMemoFirebase, useUser } from "@/firebase";
-import { collection, query, doc, setDoc } from "firebase/firestore";
+import { collection, query, doc, setDoc, deleteDoc } from "firebase/firestore";
 import { cn } from "@/lib/utils";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Share } from "@capacitor/share";
 import { Capacitor } from "@capacitor/core";
 
@@ -70,6 +69,13 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
   const storesQuery = useMemoFirebase(() => collection(db, 'storeProfiles'), [db]);
   const { data: stores } = useCollection<any>(storesQuery);
 
+  // Hook para buscar os favoritos específicos do usuário atual
+  const userFavoritesQuery = useMemoFirebase(() => {
+    if (!currentUser?.email) return null;
+    return collection(db, 'users', currentUser.email.toLowerCase().trim(), 'favorites');
+  }, [db, currentUser?.email]);
+  const { data: userFavorites } = useCollection<any>(userFavoritesQuery);
+
   const redashOrders = useMemo(() => {
     return allOrders.filter(row => {
       const pointValue = String(row.point_id || row.point || '').trim();
@@ -81,14 +87,20 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
   }, [allOrders]);
 
   const filteredCouriers = useMemo(() => {
-    if (!couriers) return [];
-    return [...couriers]
+    if (!couriers) return { favorites: [], others: [] };
+    const favoriteIds = new Set((userFavorites || []).map(f => f.id));
+
+    const base = [...couriers]
       .filter(c => 
         (c.nome || c.name || '').toLowerCase().includes(searchCourier.toLowerCase()) || 
         String(c.id_motoboy || "").includes(searchCourier)
-      )
-      .sort((a, b) => (a.nome || a.name || "").localeCompare(b.nome || b.name || ""));
-  }, [couriers, searchCourier]);
+      );
+    
+    return {
+      favorites: base.filter(c => favoriteIds.has(String(c.id_motoboy))).sort((a, b) => (a.nome || "").localeCompare(b.nome || "")),
+      others: base.filter(c => !favoriteIds.has(String(c.id_motoboy))).sort((a, b) => (a.nome || "").localeCompare(b.nome || ""))
+    };
+  }, [couriers, searchCourier, userFavorites]);
 
   const loadData = async (silent = false) => {
     if (!silent) {
@@ -134,6 +146,20 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
     }
   };
 
+  const toggleFavorite = async (e: React.MouseEvent, courierId: string) => {
+    e.stopPropagation();
+    if (!currentUser?.email) return;
+
+    const favDocRef = doc(db, 'users', currentUser.email.toLowerCase().trim(), 'favorites', String(courierId));
+    const isAlreadyFav = (userFavorites || []).some(f => f.id === String(courierId));
+
+    if (isAlreadyFav) {
+      await deleteDoc(favDocRef);
+    } else {
+      await setDoc(favDocRef, { createdAt: new Date().toISOString() });
+    }
+  };
+
   const handleGenerateCommand = async (courierId: string) => {
     if (!selectedOrder) return;
     const fullCommand = `${selectedCommand} ${selectedOrder.order_id} ${courierId}`;
@@ -163,15 +189,7 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
 
   return (
     <div className="space-y-4 animate-slide-up pb-32 max-w-xl mx-auto">
-      {fetchError && (
-        <Alert variant="destructive" className="rounded-xl border-none bg-destructive/10 p-3">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle className="text-xs">Erro Redash</AlertTitle>
-          <AlertDescription className="text-[10px]">{fetchError}</AlertDescription>
-        </Alert>
-      )}
-
-      <div className="bg-card p-4 rounded-2xl border border-border/40 shadow-sm space-y-3">
+      <div className="bg-card p-3 rounded-2xl border border-border/40 shadow-sm space-y-2">
         <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest px-1">Comando de Despacho</p>
         <div className="flex flex-wrap gap-2">
           {COMMANDS.map((cmd) => (
@@ -225,10 +243,10 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
                 className="border-none bg-card shadow-sm hover:shadow-md transition-all cursor-pointer rounded-2xl group"
                 onClick={() => handleOpenCourierSelection(order)}
               >
-                <CardContent className="p-4 space-y-2">
+                <CardContent className="p-3 space-y-1">
                   <div className="flex justify-between items-start">
                     <div className="flex-1 overflow-hidden pr-2">
-                      <div className="flex items-center gap-2 mb-0.5">
+                      <div className="flex items-center gap-2">
                         <h3 className="text-xs font-black text-foreground group-hover:text-primary leading-tight truncate">
                           {order.store_name}
                         </h3>
@@ -249,16 +267,14 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
                         )}
                       </div>
                       
-                      <div className="space-y-1">
-                        {pickupAddr && (
-                          <div className="flex items-start gap-1.5 text-muted-foreground">
-                            <MapPinIcon className="h-3 w-3 text-orange-500 shrink-0 mt-0.5" />
-                            <p className="text-[9px] font-bold leading-tight">
-                              <span className="text-orange-600">COLETA:</span> {pickupAddr}
-                            </p>
-                          </div>
-                        )}
-                        <div className="flex items-start gap-1.5 text-muted-foreground">
+                      <div className="space-y-0.5">
+                        <div className="flex items-start gap-1 text-muted-foreground">
+                          <MapPinIcon className="h-3 w-3 text-orange-500 shrink-0 mt-0.5" />
+                          <p className="text-[9px] font-bold leading-tight">
+                            <span className="text-orange-600">COLETA:</span> {pickupAddr || "N/A"}
+                          </p>
+                        </div>
+                        <div className="flex items-start gap-1 text-muted-foreground">
                           <MapPin className="h-3 w-3 text-primary shrink-0 mt-0.5" />
                           <p className="text-[9px] font-bold leading-tight">
                             <span className="text-primary">ENTREGA:</span> {order.direccion_entrega}
@@ -281,110 +297,87 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
         )}
       </div>
 
-      <form onSubmit={(e) => { e.preventDefault(); if(manualOrderId.trim()) handleOpenCourierSelection({ order_id: manualOrderId.trim(), store_name: "Manual", direccion_entrega: "Manual" } as RedashOrder); }} className="pt-4 space-y-3">
-        <div className="relative">
-          <Input 
-            placeholder="ID DO PEDIDO" 
-            value={manualOrderId}
-            onChange={(e) => setManualOrderId(e.target.value)}
-            className="h-12 text-center text-xl font-black tracking-widest rounded-2xl border-none bg-muted/50 shadow-inner pr-12"
-          />
-          {manualOrderId && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={() => { setManualOrderId(""); if(onClearInitialId) onClearInitialId(); }}
-              className="absolute right-3 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full text-muted-foreground hover:text-destructive"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <Button type="button" variant="outline" onClick={async () => {
-            if (typeof navigator !== 'undefined' && navigator.clipboard) {
-              const text = await navigator.clipboard.readText();
-              if (text) setManualOrderId(text.trim());
-            }
-          }} className="h-10 font-black text-[10px] uppercase rounded-2xl border-muted-foreground/20 hover:bg-muted gap-2">
-            <ClipboardPaste className="h-4 w-4" /> Colar ID
-          </Button>
-          <Button type="submit" disabled={!manualOrderId.trim()} className="h-10 font-black text-[10px] uppercase rounded-2xl shadow-md gap-2">
-            Próximo <ArrowRight className="h-4 w-4" />
-          </Button>
-        </div>
-      </form>
-
-      <Dialog open={isStoreRegisterOpen} onOpenChange={setIsStoreRegisterOpen}>
-        <DialogContent className="max-w-[320px] rounded-[28px] p-6 border-none shadow-2xl">
-          <DialogHeader className="space-y-2">
-            <div className="h-12 w-12 bg-primary/10 rounded-xl flex items-center justify-center mx-auto mb-1">
-              <Store className="h-6 w-6 text-primary" />
-            </div>
-            <DialogTitle className="text-lg font-black text-center tracking-tight">Cadastrar Coleta</DialogTitle>
-            <DialogDescription className="text-[10px] text-center font-bold text-muted-foreground uppercase leading-relaxed">
-              Loja: <span className="text-primary">{tempStoreName}</span>
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 pt-2">
-            <div className="space-y-1.5">
-              <Label className="text-[9px] font-black uppercase tracking-widest ml-1 text-muted-foreground">Endereço (Máx 50 caracteres)</Label>
-              <Input 
-                placeholder="Ex: Rua das Flores, 123 - Box 4"
-                value={tempStoreAddress}
-                onChange={(e) => setTempStoreAddress(e.target.value.substring(0, 50))}
-                className="h-10 bg-muted/50 border-none rounded-xl font-bold shadow-inner text-sm"
-              />
-            </div>
-            <Button onClick={handleQuickStoreRegister} className="w-full h-12 font-black rounded-xl shadow-md text-xs uppercase">
-              Salvar Endereço
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
       <Dialog open={isCourierDialogOpen} onOpenChange={setIsCourierDialogOpen}>
         <DialogContent 
-          className="max-md rounded-[32px] p-0 border-none shadow-2xl overflow-hidden"
+          className="max-md rounded-3xl p-0 border-none shadow-2xl overflow-hidden"
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
-          <DialogHeader className="p-6 pb-2">
+          <DialogHeader className="p-4 pb-2">
             <DialogTitle className="text-xl font-black tracking-tight">Selecionar Entregador</DialogTitle>
             <DialogDescription className="text-[9px] text-muted-foreground font-black uppercase tracking-widest">
               Pedido #{selectedOrder?.order_id}
             </DialogDescription>
           </DialogHeader>
-          <div className="px-6 pb-2">
+          <div className="px-4 pb-2">
             <div className="relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input 
                 placeholder="Buscar motoboy..." 
-                className="pl-10 h-11 text-xs font-bold bg-muted/30 border-none rounded-2xl shadow-inner" 
+                className="pl-10 h-10 text-xs font-bold bg-muted/30 border-none rounded-2xl shadow-inner" 
                 value={searchCourier} 
                 onChange={(e) => setSearchCourier(e.target.value)} 
               />
             </div>
           </div>
-          <div className="px-6 py-4 max-h-[50vh] overflow-y-auto pr-2 no-scrollbar">
+          <div className="px-4 py-4 max-h-[50vh] overflow-y-auto pr-2 no-scrollbar space-y-4">
             {loadingCouriers ? (
               <Loader2 className="h-8 w-8 animate-spin mx-auto my-6 text-primary opacity-30" />
             ) : (
-              <div className="grid grid-cols-3 gap-3">
-                {filteredCouriers.map((c) => (
-                  <Button 
-                    key={c.id} 
-                    variant="ghost" 
-                    className="flex flex-col items-center justify-center h-24 p-2 hover:bg-primary/10 rounded-2xl border-2 border-transparent hover:border-primary/20 transition-all group" 
-                    onClick={() => handleGenerateCommand(c.id_motoboy)}
-                  >
-                    <p className="font-bold text-xs leading-tight text-center truncate w-full group-hover:text-primary">
-                      {(c.nome || c.name || '').split(' ')[0]}
+              <>
+                {filteredCouriers.favorites.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-[8px] font-black text-primary uppercase tracking-widest flex items-center gap-1">
+                      <Star className="h-2.5 w-2.5 fill-primary" /> Favoritos
                     </p>
-                    <p className="text-[9px] text-muted-foreground font-bold mt-1 uppercase">RT {c.id_motoboy}</p>
-                  </Button>
-                ))}
-              </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      {filteredCouriers.favorites.map((c) => (
+                        <Button 
+                          key={c.id} 
+                          variant="ghost" 
+                          className="flex flex-col items-center justify-center h-20 p-2 hover:bg-primary/10 rounded-2xl border-2 border-primary/20 bg-primary/5 transition-all relative group" 
+                          onClick={() => handleGenerateCommand(c.id_motoboy)}
+                        >
+                          <button 
+                            onClick={(e) => toggleFavorite(e, c.id_motoboy)}
+                            className="absolute top-1 right-1 p-1 z-10"
+                          >
+                            <Star className="h-3 w-3 fill-primary text-primary" />
+                          </button>
+                          <p className="font-bold text-xs leading-tight text-center truncate w-full group-hover:text-primary">
+                            {(c.nome || c.name || '').split(' ')[0]}
+                          </p>
+                          <p className="text-[9px] text-muted-foreground font-bold mt-1 uppercase">RT {c.id_motoboy}</p>
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                <div className="space-y-2">
+                  <p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Todos</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {filteredCouriers.others.map((c) => (
+                      <Button 
+                        key={c.id} 
+                        variant="ghost" 
+                        className="flex flex-col items-center justify-center h-20 p-2 hover:bg-primary/10 rounded-2xl bg-muted/20 transition-all relative group" 
+                        onClick={() => handleGenerateCommand(c.id_motoboy)}
+                      >
+                        <button 
+                          onClick={(e) => toggleFavorite(e, c.id_motoboy)}
+                          className="absolute top-1 right-1 p-1 z-10 opacity-30 group-hover:opacity-100 transition-opacity"
+                        >
+                          <Star className="h-3 w-3 text-muted-foreground" />
+                        </button>
+                        <p className="font-bold text-xs leading-tight text-center truncate w-full group-hover:text-primary">
+                          {(c.nome || c.name || '').split(' ')[0]}
+                        </p>
+                        <p className="text-[9px] text-muted-foreground font-bold mt-1 uppercase">RT {c.id_motoboy}</p>
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              </>
             )}
           </div>
         </DialogContent>

@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Loader2, Pencil, Trash2, RefreshCw, Database, UserPlus, Bike, ShieldCheck, Bell, Lock, Radar, Share2, Zap, Star } from "lucide-react";
+import { Loader2, Pencil, Trash2, RefreshCw, Database, UserPlus, Bike, ShieldCheck, Bell, Lock, Radar, Share2, Zap } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getCollectionBridge, setDocumentBridge, deleteDocumentBridge } from "@/app/actions/firestore-bridge";
 import { createAuthUserBridge } from "@/app/actions/auth-bridge";
@@ -34,7 +34,6 @@ export function Registration({ type }: RegistrationProps) {
   const [hasRtStatusAccess, setHasRtStatusAccess] = useState(false);
   const [hasQuickSendAccess, setHasQuickSendAccess] = useState(false);
   const [useDirectWhatsApp, setUseDirectWhatsApp] = useState(true);
-  const [isFavorite, setIsFavorite] = useState(false);
 
   const isUser = type === 'users';
   const collectionName = isUser ? 'userProfiles' : 'entregadores';
@@ -80,8 +79,6 @@ export function Registration({ type }: RegistrationProps) {
       setHasRtStatusAccess(!!item.hasRtStatusAccess);
       setHasQuickSendAccess(!!item.hasQuickSendAccess);
       setUseDirectWhatsApp(item.useDirectWhatsApp !== false);
-    } else {
-      setIsFavorite(!!item.isFavorite);
     }
   };
 
@@ -94,7 +91,6 @@ export function Registration({ type }: RegistrationProps) {
     setHasRtStatusAccess(false);
     setHasQuickSendAccess(false);
     setUseDirectWhatsApp(true);
-    setIsFavorite(false);
     setEditingId(null);
   };
 
@@ -157,7 +153,6 @@ export function Registration({ type }: RegistrationProps) {
       : { 
           nome: name.trim(), 
           id_motoboy: docId,
-          isFavorite,
           updatedAt: new Date().toISOString()
         };
 
@@ -250,13 +245,6 @@ export function Registration({ type }: RegistrationProps) {
                   </div>
                 </>
               )}
-
-              {!isUser && (
-                <div className="flex items-center space-x-2 bg-muted/20 px-4 py-3 rounded-2xl w-fit">
-                  <Switch id="fav" checked={isFavorite} onCheckedChange={setIsFavorite} />
-                  <Label htmlFor="fav" className="text-xs font-bold flex items-center gap-2 uppercase tracking-widest"><Star className={cn("h-4 w-4", isFavorite ? "fill-primary text-primary" : "text-muted-foreground")} /> Favorito</Label>
-                </div>
-              )}
             </div>
             
             <div className="flex gap-4 pt-4">
@@ -310,11 +298,6 @@ export function Registration({ type }: RegistrationProps) {
                       <TableCell className="font-bold text-sm px-6 py-5">
                         <div className="flex items-center gap-2">
                           {item.name || item.nome}
-                          {!isUser && item.isFavorite && <Star className="h-3.5 w-3.5 fill-primary text-primary" />}
-                          {isUser && item.hasRtStatusAccess && <Radar className="h-3 w-3 text-primary" />}
-                          {isUser && item.hasQuickSendAccess && <Zap className="h-3 w-3 text-primary" />}
-                          {isUser && item.hasRequestAccess && <ShieldCheck className="h-3 w-3 text-primary" />}
-                          {isUser && !item.useDirectWhatsApp && <Share2 className="h-3 w-3 text-primary" />}
                         </div>
                       </TableCell>
                       <TableCell>
