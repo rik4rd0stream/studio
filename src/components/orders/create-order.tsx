@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -302,11 +301,48 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
                       <Star className="h-2.5 w-2.5 fill-primary" /> Favoritos
                     </p>
                     <div className="grid grid-cols-3 gap-2">
-                      {filteredCouriers.favorites.map((c) => (
+                      {filteredCouriers.favorites.map((c) => {
+                        const isAlreadyFav = (userFavorites || []).some(f => f.id === String(c.id_motoboy));
+                        return (
+                          <div key={c.id} className="relative group">
+                            <Button 
+                              variant="ghost" 
+                              className="flex flex-col items-center justify-center h-20 w-full p-2 hover:bg-primary/10 rounded-2xl border-2 border-primary/20 bg-primary/5 transition-all" 
+                              onClick={() => handleGenerateCommand(c.id_motoboy)}
+                            >
+                              <p className="font-bold text-xs leading-tight text-center truncate w-full">
+                                {(c.nome || c.name || '').split(' ')[0]}
+                              </p>
+                              <p className="text-[9px] text-muted-foreground font-bold mt-1 uppercase">RT {c.id_motoboy}</p>
+                            </Button>
+                            <button 
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                toggleFavorite(e, c.id_motoboy);
+                              }}
+                              className="absolute top-1 right-1 p-1 z-10"
+                            >
+                              <Star className={cn("h-3 w-3", isAlreadyFav ? "fill-primary text-primary" : "text-muted-foreground")} />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+                
+                <div className="space-y-2">
+                  <p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Todos</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {filteredCouriers.others.map((c) => {
+                      const isAlreadyFav = (userFavorites || []).some(f => f.id === String(c.id_motoboy));
+                      return (
                         <div key={c.id} className="relative group">
                           <Button 
                             variant="ghost" 
-                            className="flex flex-col items-center justify-center h-20 w-full p-2 hover:bg-primary/10 rounded-2xl border-2 border-primary/20 bg-primary/5 transition-all" 
+                            className="flex flex-col items-center justify-center h-20 w-full p-2 hover:bg-primary/10 rounded-2xl bg-muted/20 transition-all" 
                             onClick={() => handleGenerateCommand(c.id_motoboy)}
                           >
                             <p className="font-bold text-xs leading-tight text-center truncate w-full">
@@ -315,40 +351,19 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
                             <p className="text-[9px] text-muted-foreground font-bold mt-1 uppercase">RT {c.id_motoboy}</p>
                           </Button>
                           <button 
-                            onClick={(e) => toggleFavorite(e, c.id_motoboy)}
-                            className="absolute top-1 right-1 p-1 z-10"
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              toggleFavorite(e, c.id_motoboy);
+                            }}
+                            className="absolute top-1 right-1 p-1 z-10 opacity-30 group-hover:opacity-100 transition-opacity"
                           >
-                            <Star className="h-3 w-3 fill-primary text-primary" />
+                            <Star className={cn("h-3 w-3", isAlreadyFav ? "fill-primary text-primary" : "text-muted-foreground")} />
                           </button>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                
-                <div className="space-y-2">
-                  <p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Todos</p>
-                  <div className="grid grid-cols-3 gap-2">
-                    {filteredCouriers.others.map((c) => (
-                      <div key={c.id} className="relative group">
-                        <Button 
-                          variant="ghost" 
-                          className="flex flex-col items-center justify-center h-20 w-full p-2 hover:bg-primary/10 rounded-2xl bg-muted/20 transition-all" 
-                          onClick={() => handleGenerateCommand(c.id_motoboy)}
-                        >
-                          <p className="font-bold text-xs leading-tight text-center truncate w-full">
-                            {(c.nome || c.name || '').split(' ')[0]}
-                          </p>
-                          <p className="text-[9px] text-muted-foreground font-bold mt-1 uppercase">RT {c.id_motoboy}</p>
-                        </Button>
-                        <button 
-                          onClick={(e) => toggleFavorite(e, c.id_motoboy)}
-                          className="absolute top-1 right-1 p-1 z-10 opacity-30 group-hover:opacity-100 transition-opacity"
-                        >
-                          <Star className="h-3 w-3 text-muted-foreground" />
-                        </button>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               </>

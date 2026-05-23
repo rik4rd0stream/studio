@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -31,7 +30,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useFirestore, useCollection, useMemoFirebase, useUser } from "@/firebase";
-import { collection, query, doc, setDoc, deleteDoc } from "firebase/firestore";
+import { collection, query, doc, deleteDoc, setDoc } from "firebase/firestore";
+import { setDocumentBridge } from "@/app/actions/firestore-bridge";
 import { cn } from "@/lib/utils";
 import { Share } from "@capacitor/share";
 import { Capacitor } from "@capacitor/core";
@@ -59,6 +59,7 @@ export function QuickSend({ onOrderCreated, initialOrderId, onClearInitialId }: 
   const [isStoreRegisterOpen, setIsStoreRegisterOpen] = useState(false);
   const [tempStoreName, setTempStoreName] = useState("");
   const [tempStoreAddress, setTempStoreAddress] = useState("");
+  const [isSavingStore, setIsSavingStore] = useState(false);
 
   useEffect(() => {
     if (initialOrderId) setManualOrderId(String(initialOrderId));
@@ -135,15 +136,24 @@ export function QuickSend({ onOrderCreated, initialOrderId, onClearInitialId }: 
 
   const handleQuickStoreRegister = async () => {
     if (!tempStoreName || !tempStoreAddress.trim()) return;
+    setIsSavingStore(true);
     try {
-      await setDoc(doc(db, 'storeProfiles', tempStoreName), {
-        address: tempStoreAddress.trim().substring(0, 50),
-        updatedAt: new Date().toISOString()
-      }, { merge: true });
-      toast({ title: "Coleta Salva", description: "Endereço registrado com sucesso." });
-      setIsStoreRegisterOpen(false);
+      // Usar a ponte para salvar o endereço de coleta de forma estável
+      const result = await setDocumentBridge('storeProfiles', tempStoreName, {
+        address: tempStoreAddress.trim().substring(0, 50)
+      });
+      
+      if (result.success) {
+        toast({ title: "Coleta Salva", description: "Endereço registrado com sucesso." });
+        setIsStoreRegisterOpen(false);
+        setTempStoreAddress("");
+      } else {
+        toast({ variant: "destructive", title: "Erro ao salvar", description: result.error });
+      }
     } catch (e) {
-      toast({ variant: "destructive", title: "Erro ao salvar" });
+      toast({ variant: "destructive", title: "Erro de Conexão" });
+    } finally {
+      setIsSavingStore(false);
     }
   };
 
@@ -176,7 +186,7 @@ export function QuickSend({ onOrderCreated, initialOrderId, onClearInitialId }: 
         } catch (e) {}
       } else if (typeof navigator !== 'undefined' && navigator.share) {
         try {
-          await navigator.share({ title: 'Despacho Rappi', text: fullCommand });
+          await navigator.share({ text: fullCommand });
         } catch (err) {}
       } else {
         window.open(`https://wa.me/?text=${encodeURIComponent(fullCommand)}`, '_blank');
@@ -316,8 +326,8 @@ export function QuickSend({ onOrderCreated, initialOrderId, onClearInitialId }: 
                 className="h-9 bg-muted/50 border-none rounded-lg font-bold text-xs"
               />
             </div>
-            <Button onClick={handleQuickStoreRegister} className="w-full h-10 font-black rounded-lg text-[10px] uppercase">
-              Salvar Endereço
+            <Button onClick={handleQuickStoreRegister} disabled={isSavingStore} className="w-full h-10 font-black rounded-lg text-[10px] uppercase">
+              {isSavingStore ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvar Endereço"}
             </Button>
           </div>
         </DialogContent>
@@ -376,26 +386,34 @@ export function QuickSend({ onOrderCreated, initialOrderId, onClearInitialId }: 
                     <Star className="h-2.5 w-2.5 fill-primary" /> Seus Favoritos
                   </p>
                   <div className="grid grid-cols-3 gap-1.5">
-                    {filteredCouriers.favorites.map((c) => (
-                      <div key={c.id} className="relative group">
-                        <Button 
-                          variant="ghost" 
-                          className="flex flex-col items-center justify-center h-16 w-full p-1 hover:bg-primary/10 rounded-xl border border-primary/10 bg-primary/5 transition-all" 
-                          onClick={() => handleGenerateCommand(c.id_motoboy)}
-                        >
-                          <p className="font-black text-[10px] leading-tight text-center truncate w-full">
-                            {(c.nome || c.name || '').split(' ')[0]}
-                          </p>
-                          <p className="text-[7px] text-muted-foreground font-black mt-0.5 uppercase">RT {c.id_motoboy}</p>
-                        </Button>
-                        <button 
-                          onClick={(e) => toggleFavorite(e, c.id_motoboy)}
-                          className="absolute top-1 right-1 p-1 z-10"
-                        >
-                          <Star className="h-3 w-3 fill-primary text-primary" />
-                        </button>
-                      </div>
-                    ))}
+                    {filteredCouriers.favorites.map((c) => {
+                      const isAlreadyFav = (userFavorites || []).some(f => f.id === String(c.id_motoboy));
+                      return (
+                        <div key={c.id} className="relative group">
+                          <Button 
+                            variant="ghost" 
+                            className="flex flex-col items-center justify-center h-16 w-full p-1 hover:bg-primary/10 rounded-xl border border-primary/10 bg-primary/5 transition-all" 
+                            onClick={() => handleGenerateCommand(c.id_motoboy)}
+                          >
+                            <p className="font-black text-[10px] leading-tight text-center truncate w-full">
+                              {(c.nome || c.name || '').split(' ')[0]}
+                            </p>
+                            <p className="text-[7px] text-muted-foreground font-black mt-0.5 uppercase">RT {c.id_motoboy}</p>
+                          </Button>
+                          <button 
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              toggleFavorite(e, c.id_motoboy);
+                            }}
+                            className="absolute top-1 right-1 p-1 z-10"
+                          >
+                            <Star className={cn("h-3 w-3", isAlreadyFav ? "fill-primary text-primary" : "text-muted-foreground")} />
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -403,26 +421,34 @@ export function QuickSend({ onOrderCreated, initialOrderId, onClearInitialId }: 
               <div className="space-y-1.5">
                 <p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Todos os Entregadores</p>
                 <div className="grid grid-cols-3 gap-1.5">
-                  {filteredCouriers.others.map((c) => (
-                    <div key={c.id} className="relative group">
-                      <Button 
-                        variant="ghost" 
-                        className="flex flex-col items-center justify-center h-16 w-full p-1 hover:bg-primary/10 rounded-xl bg-muted/20 transition-all" 
-                        onClick={() => handleGenerateCommand(c.id_motoboy)}
-                      >
-                        <p className="font-bold text-[10px] leading-tight text-center truncate w-full">
-                          {(c.nome || c.name || '').split(' ')[0]}
-                        </p>
-                        <p className="text-[7px] text-muted-foreground font-black mt-0.5 uppercase">RT {c.id_motoboy}</p>
-                      </Button>
-                      <button 
-                        onClick={(e) => toggleFavorite(e, c.id_motoboy)}
-                        className="absolute top-1 right-1 p-1 z-10 opacity-30 group-hover:opacity-100 transition-opacity"
-                      >
-                        <Star className="h-3 w-3 text-muted-foreground" />
-                      </button>
-                    </div>
-                  ))}
+                  {filteredCouriers.others.map((c) => {
+                    const isAlreadyFav = (userFavorites || []).some(f => f.id === String(c.id_motoboy));
+                    return (
+                      <div key={c.id} className="relative group">
+                        <Button 
+                          variant="ghost" 
+                          className="flex flex-col items-center justify-center h-16 w-full p-1 hover:bg-primary/10 rounded-xl bg-muted/20 transition-all" 
+                          onClick={() => handleGenerateCommand(c.id_motoboy)}
+                        >
+                          <p className="font-bold text-[10px] leading-tight text-center truncate w-full">
+                            {(c.nome || c.name || '').split(' ')[0]}
+                          </p>
+                          <p className="text-[7px] text-muted-foreground font-black mt-0.5 uppercase">RT {c.id_motoboy}</p>
+                        </Button>
+                        <button 
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            toggleFavorite(e, c.id_motoboy);
+                          }}
+                          className="absolute top-1 right-1 p-1 z-10 opacity-30 group-hover:opacity-100 transition-opacity"
+                        >
+                          <Star className={cn("h-3 w-3", isAlreadyFav ? "fill-primary text-primary" : "text-muted-foreground")} />
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>
