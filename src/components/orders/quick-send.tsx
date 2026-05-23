@@ -14,6 +14,8 @@ import {
   ArrowRight,
   AlertCircle,
   X,
+  Zap,
+  Star,
   Store,
   MapPin as MapPinIcon,
   ChevronRight
@@ -28,7 +30,6 @@ import {
   DialogDescription
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useFirestore, useCollection, useMemoFirebase, useUser } from "@/firebase";
 import { collection, query, doc, setDoc } from "firebase/firestore";
 import { cn } from "@/lib/utils";
@@ -38,7 +39,7 @@ import { Capacitor } from "@capacitor/core";
 
 const COMMANDS = ["!!bundleBR", "!!rebr", "!!Br", "!!forzarbr"];
 
-export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }: { 
+export function QuickSend({ onOrderCreated, initialOrderId, onClearInitialId }: { 
   onOrderCreated: (order: any) => void;
   initialOrderId?: string;
   onClearInitialId?: () => void;
@@ -82,13 +83,17 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
   }, [allOrders]);
 
   const filteredCouriers = useMemo(() => {
-    if (!couriers) return [];
-    return [...couriers]
+    if (!couriers) return { favorites: [], others: [] };
+    const base = [...couriers]
       .filter(c => 
         (c.nome || c.name || '').toLowerCase().includes(searchCourier.toLowerCase()) || 
         String(c.id_motoboy || "").includes(searchCourier)
-      )
-      .sort((a, b) => (a.nome || a.name || "").localeCompare(b.nome || b.name || ""));
+      );
+    
+    return {
+      favorites: base.filter(c => !!c.isFavorite).sort((a, b) => (a.nome || "").localeCompare(b.nome || "")),
+      others: base.filter(c => !c.isFavorite).sort((a, b) => (a.nome || "").localeCompare(b.nome || ""))
+    };
   }, [couriers, searchCourier]);
 
   const loadData = async (silent = false) => {
@@ -164,44 +169,11 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
 
   return (
     <div className="space-y-6 animate-slide-up pb-32 max-w-xl mx-auto">
-      {fetchError && (
-        <Alert variant="destructive" className="rounded-2xl border-none bg-destructive/10">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Erro Redash</AlertTitle>
-          <AlertDescription className="text-[10px]">{fetchError}</AlertDescription>
-        </Alert>
-      )}
-
-      <div className="bg-card p-5 rounded-3xl border border-border/40 shadow-sm space-y-4">
-        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-1">Comando de Despacho</p>
-        <div className="flex flex-wrap gap-3">
-          {COMMANDS.map((cmd) => (
-            <Button
-              key={cmd}
-              variant="default"
-              onClick={() => setSelectedCommand(cmd)}
-              className={cn(
-                "h-12 px-6 font-black text-xs rounded-2xl transition-all",
-                selectedCommand === cmd 
-                  ? "bg-primary text-primary-foreground shadow-xl scale-105" 
-                  : "bg-muted text-muted-foreground hover:bg-muted/80"
-              )}
-            >
-              {cmd}
-            </Button>
-          ))}
-        </div>
-      </div>
-
       <div className="flex items-center justify-between px-1">
-        <h2 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Pedidos Pendentes ({redashOrders.length})</h2>
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          onClick={() => loadData()} 
-          disabled={loading} 
-          className="h-8 text-[11px] font-bold text-blue-600 uppercase rounded-full hover:bg-blue-50"
-        >
+        <h2 className="text-[11px] font-black text-primary uppercase tracking-widest flex items-center gap-2">
+          <Zap className="h-4 w-4" /> Envio Rápido ({redashOrders.length})
+        </h2>
+        <Button variant="ghost" size="sm" onClick={() => loadData()} disabled={loading} className="h-8 text-[11px] font-bold text-blue-600 uppercase rounded-full hover:bg-blue-50">
           <RefreshCw className={cn("h-4 w-4 mr-2", loading && "animate-spin")} /> ATUALIZAR
         </Button>
       </div>
@@ -210,12 +182,12 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
         {loading && allOrders.length === 0 ? (
           <div className="flex flex-col items-center py-12 gap-3">
             <Loader2 className="h-8 w-8 animate-spin text-primary opacity-30" />
-            <p className="text-[10px] text-muted-foreground font-black tracking-widest uppercase">Buscando...</p>
+            <p className="text-[10px] text-muted-foreground font-black tracking-widest uppercase">Buscando Pedidos...</p>
           </div>
         ) : redashOrders.length === 0 && !loading ? (
           <div className="text-center py-12 bg-muted/20 rounded-3xl border border-dashed border-muted-foreground/20 flex flex-col items-center">
             <Package className="h-10 w-10 text-muted-foreground/30 mb-2" />
-            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Nenhum pedido pendente</h3>
+            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Nenhum pedido sem RT</h3>
           </div>
         ) : (
           redashOrders.map((order, idx) => {
@@ -251,14 +223,12 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
                       </div>
                       
                       <div className="space-y-1.5">
-                        {pickupAddr && (
-                          <div className="flex items-start gap-2 text-muted-foreground">
-                            <MapPinIcon className="h-3.5 w-3.5 text-orange-500 shrink-0 mt-0.5" />
-                            <p className="text-[10px] font-bold leading-tight">
-                              <span className="text-orange-600">COLETA:</span> {pickupAddr}
-                            </p>
-                          </div>
-                        )}
+                        <div className="flex items-start gap-2 text-muted-foreground">
+                          <MapPinIcon className="h-3.5 w-3.5 text-orange-500 shrink-0 mt-0.5" />
+                          <p className="text-[10px] font-bold leading-tight">
+                            <span className="text-orange-600">COLETA:</span> {pickupAddr || "Endereço não cadastrado"}
+                          </p>
+                        </div>
                         <div className="flex items-start gap-2 text-muted-foreground">
                           <MapPin className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
                           <p className="text-[10px] font-bold leading-tight">
@@ -312,7 +282,7 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
             <ClipboardPaste className="h-5 w-5" /> Colar ID
           </Button>
           <Button type="submit" disabled={!manualOrderId.trim()} className="h-14 font-black text-xs uppercase rounded-3xl shadow-xl shadow-primary/20 gap-3">
-            Prosseguir <ArrowRight className="h-5 w-5" />
+            Continuar <ArrowRight className="h-5 w-5" />
           </Button>
         </div>
       </form>
@@ -352,42 +322,93 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
           className="max-md rounded-[40px] p-0 border-none shadow-2xl overflow-hidden"
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
-          <DialogHeader className="p-8 pb-4">
-            <DialogTitle className="text-2xl font-black tracking-tight">Selecionar Entregador</DialogTitle>
-            <DialogDescription className="text-[10px] text-muted-foreground font-black uppercase tracking-widest">
-              Pedido #{selectedOrder?.order_id}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="px-8 pb-2">
+          <div className="bg-primary/5 p-8 border-b border-primary/10">
+            <DialogHeader className="space-y-1 mb-6">
+              <DialogTitle className="text-2xl font-black tracking-tight">Selecionar Entregador</DialogTitle>
+              <DialogDescription className="text-[10px] text-primary font-black uppercase tracking-widest">
+                Pedido #{selectedOrder?.order_id} • {selectedOrder?.store_name}
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">Comando de Despacho</p>
+              <div className="flex flex-wrap gap-2">
+                {COMMANDS.map((cmd) => (
+                  <Button
+                    key={cmd}
+                    variant="default"
+                    onClick={() => setSelectedCommand(cmd)}
+                    className={cn(
+                      "h-11 px-6 font-black text-xs rounded-2xl transition-all border-2",
+                      selectedCommand === cmd 
+                        ? "bg-primary text-primary-foreground border-primary shadow-lg scale-105" 
+                        : "bg-background text-muted-foreground border-transparent hover:border-primary/20"
+                    )}
+                  >
+                    {cmd}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="p-8 space-y-6">
             <div className="relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
               <Input 
-                placeholder="Buscar motoboy..." 
+                placeholder="Pesquisar por Nome ou RT..." 
                 className="pl-12 h-14 text-sm font-bold bg-muted/30 border-none rounded-3xl shadow-inner" 
                 value={searchCourier} 
                 onChange={(e) => setSearchCourier(e.target.value)} 
               />
             </div>
-          </div>
-          <div className="px-8 py-6 max-h-[50vh] overflow-y-auto pr-2 no-scrollbar">
-            {loadingCouriers ? (
-              <Loader2 className="h-10 w-10 animate-spin mx-auto my-8 text-primary opacity-30" />
-            ) : (
-              <div className="grid grid-cols-3 gap-4">
-                {filteredCouriers.map((c) => (
-                  <Button 
-                    key={c.id} 
-                    variant="ghost" 
-                    className="flex flex-col items-center justify-center h-28 p-3 hover:bg-primary/10 rounded-3xl border-2 border-transparent hover:border-primary/20 transition-all group" 
-                    onClick={() => handleGenerateCommand(c.id_motoboy)}
-                  >
-                    <p className="font-bold text-sm leading-tight text-center truncate w-full group-hover:text-primary">
-                      {(c.nome || c.name || '').split(' ')[0]}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground font-bold mt-1.5 uppercase">RT {c.id_motoboy}</p>
-                  </Button>
-                ))}
+
+            <div className="max-h-[45vh] overflow-y-auto pr-2 no-scrollbar space-y-6">
+              {filteredCouriers.favorites.length > 0 && (
+                <div className="space-y-3">
+                  <p className="text-[10px] font-black text-primary uppercase tracking-widest flex items-center gap-2">
+                    <Star className="h-3 w-3 fill-primary" /> Favoritos
+                  </p>
+                  <div className="grid grid-cols-3 gap-3">
+                    {filteredCouriers.favorites.map((c) => (
+                      <Button 
+                        key={c.id} 
+                        variant="ghost" 
+                        className="flex flex-col items-center justify-center h-28 p-3 hover:bg-primary/10 rounded-3xl border-2 border-primary/20 bg-primary/5 transition-all group relative" 
+                        onClick={() => handleGenerateCommand(c.id_motoboy)}
+                      >
+                        <p className="font-black text-sm leading-tight text-center truncate w-full group-hover:text-primary">
+                          {(c.nome || c.name || '').split(' ')[0]}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground font-black mt-1.5 uppercase">RT {c.id_motoboy}</p>
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-3">
+                <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Todos os Motoboys</p>
+                <div className="grid grid-cols-3 gap-3">
+                  {filteredCouriers.others.map((c) => (
+                    <Button 
+                      key={c.id} 
+                      variant="ghost" 
+                      className="flex flex-col items-center justify-center h-28 p-3 hover:bg-primary/10 rounded-3xl border-2 border-transparent bg-muted/20 transition-all group" 
+                      onClick={() => handleGenerateCommand(c.id_motoboy)}
+                    >
+                      <p className="font-bold text-sm leading-tight text-center truncate w-full group-hover:text-primary">
+                        {(c.nome || c.name || '').split(' ')[0]}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground font-bold mt-1.5 uppercase">RT {c.id_motoboy}</p>
+                    </Button>
+                  ))}
+                </div>
               </div>
+            </div>
+
+            {filteredCouriers.favorites.length === 0 && filteredCouriers.others.length === 0 && !loadingCouriers && (
+              <p className="text-center py-12 text-muted-foreground text-xs font-bold uppercase tracking-widest opacity-50">Nenhum motoboy encontrado</p>
             )}
           </div>
         </DialogContent>

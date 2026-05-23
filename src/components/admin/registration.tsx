@@ -8,10 +8,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Loader2, Pencil, Trash2, RefreshCw, Database, UserPlus, Bike, ShieldCheck, Bell, Lock, Fingerprint, Radar, Share2 } from "lucide-react";
+import { Loader2, Pencil, Trash2, RefreshCw, Database, UserPlus, Bike, ShieldCheck, Bell, Lock, Radar, Share2, Zap, Star } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getCollectionBridge, setDocumentBridge, deleteDocumentBridge } from "@/app/actions/firestore-bridge";
 import { createAuthUserBridge } from "@/app/actions/auth-bridge";
+import { cn } from "@/lib/utils";
 
 interface RegistrationProps {
   type: 'users' | 'couriers';
@@ -31,7 +32,9 @@ export function Registration({ type }: RegistrationProps) {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [hasRequestAccess, setHasRequestAccess] = useState(false);
   const [hasRtStatusAccess, setHasRtStatusAccess] = useState(false);
+  const [hasQuickSendAccess, setHasQuickSendAccess] = useState(false);
   const [useDirectWhatsApp, setUseDirectWhatsApp] = useState(true);
+  const [isFavorite, setIsFavorite] = useState(false);
 
   const isUser = type === 'users';
   const collectionName = isUser ? 'userProfiles' : 'entregadores';
@@ -75,7 +78,10 @@ export function Registration({ type }: RegistrationProps) {
       setNotificationsEnabled(item.notificationsEnabled !== false);
       setHasRequestAccess(!!item.hasRequestAccess);
       setHasRtStatusAccess(!!item.hasRtStatusAccess);
+      setHasQuickSendAccess(!!item.hasQuickSendAccess);
       setUseDirectWhatsApp(item.useDirectWhatsApp !== false);
+    } else {
+      setIsFavorite(!!item.isFavorite);
     }
   };
 
@@ -86,7 +92,9 @@ export function Registration({ type }: RegistrationProps) {
     setNotificationsEnabled(true);
     setHasRequestAccess(false);
     setHasRtStatusAccess(false);
+    setHasQuickSendAccess(false);
     setUseDirectWhatsApp(true);
+    setIsFavorite(false);
     setEditingId(null);
   };
 
@@ -142,12 +150,14 @@ export function Registration({ type }: RegistrationProps) {
           notificationsEnabled,
           hasRequestAccess,
           hasRtStatusAccess,
+          hasQuickSendAccess,
           useDirectWhatsApp,
           updatedAt: new Date().toISOString()
         }
       : { 
           nome: name.trim(), 
           id_motoboy: docId,
+          isFavorite,
           updatedAt: new Date().toISOString()
         };
 
@@ -216,34 +226,45 @@ export function Registration({ type }: RegistrationProps) {
                       <Lock className="absolute right-3 top-3.5 h-5 w-5 text-muted-foreground/50" />
                     </div>
                   </div>
-                  <div className="flex flex-wrap items-center gap-4 pt-2">
+                  <div className="flex flex-wrap items-center gap-3 pt-2">
                     <div className="flex items-center space-x-2 bg-muted/20 px-3 py-2 rounded-xl">
                       <Switch id="notif" checked={notificationsEnabled} onCheckedChange={setNotificationsEnabled} />
-                      <Label htmlFor="notif" className="text-xs font-bold flex items-center gap-1.5"><Bell className="h-3.5 w-3.5 text-primary" /> PUSH</Label>
+                      <Label htmlFor="notif" className="text-[9px] font-bold flex items-center gap-1.5 uppercase"><Bell className="h-3 w-3 text-primary" /> PUSH</Label>
+                    </div>
+                    <div className="flex items-center space-x-2 bg-muted/20 px-3 py-2 rounded-xl">
+                      <Switch id="quick" checked={hasQuickSendAccess} onCheckedChange={setHasQuickSendAccess} />
+                      <Label htmlFor="quick" className="text-[9px] font-bold flex items-center gap-1.5 uppercase"><Zap className="h-3 w-3 text-primary" /> RÁPIDO</Label>
                     </div>
                     <div className="flex items-center space-x-2 bg-muted/20 px-3 py-2 rounded-xl">
                       <Switch id="access" checked={hasRequestAccess} onCheckedChange={setHasRequestAccess} />
-                      <Label htmlFor="access" className="text-xs font-bold flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5 text-primary" /> SOLICITAR</Label>
+                      <Label htmlFor="access" className="text-[9px] font-bold flex items-center gap-1.5 uppercase"><ShieldCheck className="h-3 w-3 text-primary" /> SOLICITAR</Label>
                     </div>
                     <div className="flex items-center space-x-2 bg-muted/20 px-3 py-2 rounded-xl">
                       <Switch id="rtAccess" checked={hasRtStatusAccess} onCheckedChange={setHasRtStatusAccess} />
-                      <Label htmlFor="rtAccess" className="text-xs font-bold flex items-center gap-1.5"><Radar className="h-3.5 w-3.5 text-primary" /> MONITOR RT</Label>
+                      <Label htmlFor="rtAccess" className="text-[9px] font-bold flex items-center gap-1.5 uppercase"><Radar className="h-3 w-3 text-primary" /> MONITOR RT</Label>
                     </div>
                     <div className="flex items-center space-x-2 bg-muted/20 px-3 py-2 rounded-xl">
                       <Switch id="directZap" checked={useDirectWhatsApp} onCheckedChange={setUseDirectWhatsApp} />
-                      <Label htmlFor="directZap" className="text-xs font-bold flex items-center gap-1.5"><Share2 className="h-3.5 w-3.5 text-primary" /> ZAP DIRETO</Label>
+                      <Label htmlFor="directZap" className="text-[9px] font-bold flex items-center gap-1.5 uppercase"><Share2 className="h-3 w-3 text-primary" /> ZAP DIRETO</Label>
                     </div>
                   </div>
                 </>
               )}
+
+              {!isUser && (
+                <div className="flex items-center space-x-2 bg-muted/20 px-4 py-3 rounded-2xl w-fit">
+                  <Switch id="fav" checked={isFavorite} onCheckedChange={setIsFavorite} />
+                  <Label htmlFor="fav" className="text-xs font-bold flex items-center gap-2 uppercase tracking-widest"><Star className={cn("h-4 w-4", isFavorite ? "fill-primary text-primary" : "text-muted-foreground")} /> Favorito</Label>
+                </div>
+              )}
             </div>
             
-            <div className="flex gap-3 pt-2">
-              <Button type="submit" disabled={loading} className="h-12 px-8 font-bold uppercase rounded-2xl shadow-lg flex-1 md:flex-none">
-                {loading ? <Loader2 className="animate-spin h-5 w-5" /> : (editingId ? 'Salvar Alterações' : 'Cadastrar na Nuvem')}
+            <div className="flex gap-4 pt-4">
+              <Button type="submit" disabled={loading} className="h-14 px-10 font-black uppercase rounded-2xl shadow-xl flex-1 md:flex-none text-base">
+                {loading ? <Loader2 className="animate-spin h-6 w-6" /> : (editingId ? 'Salvar Alterações' : 'Cadastrar na Nuvem')}
               </Button>
               {editingId && (
-                <Button type="button" variant="ghost" onClick={resetForm} className="h-12 rounded-2xl text-muted-foreground hover:bg-muted font-bold px-6">
+                <Button type="button" variant="ghost" onClick={resetForm} className="h-14 rounded-2xl text-muted-foreground hover:bg-muted font-bold px-8">
                   Cancelar
                 </Button>
               )}
@@ -253,15 +274,15 @@ export function Registration({ type }: RegistrationProps) {
       </Card>
 
       <Card className="border-none shadow-sm bg-card/30 backdrop-blur-sm rounded-3xl">
-        <CardHeader className="flex flex-row items-center justify-between py-4 px-6 border-b border-muted/20">
-          <CardTitle className="text-sm flex items-center gap-2 text-muted-foreground font-bold uppercase tracking-tight">
+        <CardHeader className="flex flex-row items-center justify-between py-5 px-8 border-b border-muted/20">
+          <CardTitle className="text-sm flex items-center gap-2 text-muted-foreground font-black uppercase tracking-widest">
             <Database className="h-4 w-4" /> Registros no Servidor
           </CardTitle>
-          <Button variant="ghost" size="sm" onClick={loadData} disabled={loadingList} className="h-8 text-[10px] font-bold uppercase tracking-tight text-blue-600 hover:bg-blue-50 rounded-full">
-            <RefreshCw className={loadingList ? "animate-spin h-3.5 w-3.5 mr-1" : "h-3.5 w-3.5 mr-1"} /> Atualizar
+          <Button variant="ghost" size="sm" onClick={loadData} disabled={loadingList} className="h-9 text-[10px] font-bold uppercase tracking-widest text-blue-600 hover:bg-blue-50 rounded-full px-4">
+            <RefreshCw className={loadingList ? "animate-spin h-4 w-4 mr-2" : "h-4 w-4 mr-2"} /> Atualizar
           </Button>
         </CardHeader>
-        <CardContent className="px-2">
+        <CardContent className="px-4">
           {loadingList ? (
             <div className="py-20 text-center flex flex-col items-center gap-3">
               <Loader2 className="animate-spin h-8 w-8 text-primary opacity-20" />
@@ -272,24 +293,26 @@ export function Registration({ type }: RegistrationProps) {
               <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent border-muted/30">
-                    <TableHead className="text-[10px] font-bold uppercase px-4">Nome Completo</TableHead>
-                    <TableHead className="text-[10px] font-bold uppercase">{isUser ? 'E-mail' : 'Código RT'}</TableHead>
-                    <TableHead className="text-[10px] font-bold uppercase text-right px-4">Ações</TableHead>
+                    <TableHead className="text-[10px] font-black uppercase px-6 py-4">Nome Completo</TableHead>
+                    <TableHead className="text-[10px] font-black uppercase">{isUser ? 'E-mail' : 'Código RT'}</TableHead>
+                    <TableHead className="text-[10px] font-black uppercase text-right px-6">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {items.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={3} className="text-center py-16 text-muted-foreground italic text-xs">
+                      <TableCell colSpan={3} className="text-center py-20 text-muted-foreground italic text-xs">
                         Nenhum registro encontrado.
                       </TableCell>
                     </TableRow>
                   ) : items.map((item) => (
                     <TableRow key={item.id} className="border-muted/20 hover:bg-primary/5 transition-colors group">
-                      <TableCell className="font-bold text-sm px-4">
+                      <TableCell className="font-bold text-sm px-6 py-5">
                         <div className="flex items-center gap-2">
                           {item.name || item.nome}
+                          {!isUser && item.isFavorite && <Star className="h-3.5 w-3.5 fill-primary text-primary" />}
                           {isUser && item.hasRtStatusAccess && <Radar className="h-3 w-3 text-primary" />}
+                          {isUser && item.hasQuickSendAccess && <Zap className="h-3 w-3 text-primary" />}
                           {isUser && item.hasRequestAccess && <ShieldCheck className="h-3 w-3 text-primary" />}
                           {isUser && !item.useDirectWhatsApp && <Share2 className="h-3 w-3 text-primary" />}
                         </div>
@@ -301,13 +324,13 @@ export function Registration({ type }: RegistrationProps) {
                           </span>
                         </div>
                       </TableCell>
-                      <TableCell className="px-4 text-right">
-                        <div className="flex gap-1 justify-end transition-opacity">
-                          <Button variant="ghost" size="icon" onClick={() => handleEdit(item)} className="h-9 w-9 text-blue-600 hover:bg-blue-100 rounded-full">
-                            <Pencil size={14} />
+                      <TableCell className="px-6 text-right">
+                        <div className="flex gap-2 justify-end">
+                          <Button variant="ghost" size="icon" onClick={() => handleEdit(item)} className="h-11 w-11 text-blue-600 hover:bg-blue-100 rounded-2xl shadow-sm border border-blue-100">
+                            <Pencil size={18} />
                           </Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleDelete(item.id)} className="h-9 w-9 text-destructive hover:bg-red-100 rounded-full">
-                            <Trash2 size={14} />
+                          <Button variant="ghost" size="icon" onClick={() => handleDelete(item.id)} className="h-11 w-11 text-destructive hover:bg-red-100 rounded-2xl shadow-sm border border-red-100">
+                            <Trash2 size={18} />
                           </Button>
                         </div>
                       </TableCell>

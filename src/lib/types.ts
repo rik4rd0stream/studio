@@ -9,15 +9,23 @@ export interface User {
   role: UserRole;
   notificationsEnabled?: boolean;
   hasRequestAccess?: boolean;
-  hasRtStatusAccess?: boolean; // Nova permissão para visualizar o Monitor RT
-  useDirectWhatsApp?: boolean; // Se true, abre o zap direto. Se false, abre menu de compartilhar.
-  fcmTokens?: string[]; // Lista de tokens de dispositivos do usuário
+  hasRtStatusAccess?: boolean;
+  hasQuickSendAccess?: boolean; // Novo: Se o usuário pode ver a aba de Envio Rápido
+  useDirectWhatsApp?: boolean;
+  fcmTokens?: string[];
 }
 
 export interface Courier {
   id: string;
   nome: string;
   id_motoboy: string;
+  isFavorite?: boolean; // Novo: Marcar motoboy como favorito
+  updatedAt: string;
+}
+
+export interface StoreProfile {
+  id: string; // Nome da loja (ex: "McDonald's")
+  address: string; // Endereço de coleta (máx 50 chars)
   updatedAt: string;
 }
 
@@ -56,4 +64,4 @@ export interface RTStatusData {
   [key: string]: any;
 }
 
-export type AppView = 'send-order' | 'request-order' | 'active-orders' | 'admin-users' | 'admin-couriers' | 'operation-logs' | 'rt-status';
+export type AppView = 'send-order' | 'quick-send' | 'request-order' | 'active-orders' | 'admin-users' | 'admin-couriers' | 'admin-stores' | 'operation-logs' | 'rt-status';

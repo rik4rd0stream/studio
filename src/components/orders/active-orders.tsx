@@ -12,6 +12,8 @@ import { collection } from "firebase/firestore";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { addDocumentBridge } from "@/app/actions/firestore-bridge";
+import { Share } from "@capacitor/share";
+import { Capacitor } from "@capacitor/core";
 import {
   Dialog,
   DialogContent,
@@ -83,9 +85,25 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
     });
   };
 
-  const handleForzarBr = (orderId: string, rtId: string) => {
+  const handleForzarBr = async (orderId: string, rtId: string) => {
     const command = `!!forzarbr ${orderId} ${rtId}`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(command)}`, '_blank');
+    const isDirect = user?.useDirectWhatsApp !== false;
+
+    if (isDirect) {
+      window.open(`https://wa.me/?text=${encodeURIComponent(command)}`, '_blank');
+    } else {
+      if (Capacitor.isNativePlatform()) {
+        try {
+          await Share.share({ title: 'Cheguei Rappi', text: command });
+        } catch (e) {}
+      } else if (typeof navigator !== 'undefined' && navigator.share) {
+        try {
+          await navigator.share({ title: 'Cheguei Rappi', text: command });
+        } catch (err) {}
+      } else {
+        window.open(`https://wa.me/?text=${encodeURIComponent(command)}`, '_blank');
+      }
+    }
     
     recordLog(orderId, rtId, 'cheguei');
   };
@@ -96,16 +114,12 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
       const isPoint9944 = pointValue === '9944' || pointValue.includes('9944');
       if (!isPoint9944) return false;
 
-      // Ignora pedidos pendentes de despacho (Sin RT)
       const esTrusted = String(row.es_trusted || '').toUpperCase();
       if (esTrusted.includes('SIN RT')) return false;
 
       const rtId = String(row.rt_asignado_orden || "").trim();
       const estadoActual = String(row.estado_detallado_actual || row.estado || "").toUpperCase();
-      
       const isExterno = estadoActual.includes('EXTERNO');
-
-      // Só mostra se tiver RT ou for Externo (Nuvem)
       return rtId !== "" || isExterno;
     });
   }, [allOrders]);
@@ -115,7 +129,6 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
     filteredOrders.forEach(order => {
       const rtId = String(order.rt_asignado_orden || "Sem ID").trim();
       const displayRt = rtId === "Sem ID" || rtId === "" ? "Nuvem" : rtId;
-      
       if (!groups[displayRt]) groups[displayRt] = [];
       groups[displayRt].push(order);
     });
@@ -137,26 +150,26 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
     <div className="space-y-6 animate-slide-up max-w-2xl mx-auto pb-20">
       <div className="flex items-center justify-between px-1">
         <div>
-          <h2 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Monitoramento Ativo</h2>
-          <p className="text-[9px] text-muted-foreground">{Object.keys(groupedOrders).length} RT(s) em operação</p>
+          <h2 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Monitoramento Ativo</h2>
+          <p className="text-[10px] text-muted-foreground font-bold">{Object.keys(groupedOrders).length} RT(s) em operação</p>
         </div>
         <Button 
           variant="ghost" 
           size="sm" 
           onClick={() => loadData()} 
           disabled={loading} 
-          className="h-7 gap-1.5 text-blue-600 hover:bg-blue-50 text-[11px] font-bold uppercase tracking-tight"
+          className="h-9 gap-2 text-blue-600 hover:bg-blue-50 text-[11px] font-black uppercase tracking-widest px-4 rounded-full"
         >
-          <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
+          <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
           ATUALIZAR
         </Button>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-5">
         {Object.keys(groupedOrders).length === 0 && !loading ? (
-          <div className="text-center py-16 bg-muted/20 rounded-2xl border border-dashed flex flex-col items-center">
-            <Package className="h-8 w-8 text-muted-foreground/30 mb-2" />
-            <h3 className="text-xs font-medium text-muted-foreground">Nenhum pedido ativo no Point 9944</h3>
+          <div className="text-center py-20 bg-muted/20 rounded-[32px] border border-dashed border-muted-foreground/20 flex flex-col items-center">
+            <Package className="h-12 w-12 text-muted-foreground/30 mb-2" />
+            <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest">Nenhum pedido ativo</h3>
           </div>
         ) : (
           Object.entries(groupedOrders)
@@ -178,47 +191,47 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
               
               return (
                 <Card key={rtId} className={cn(
-                  "border shadow-sm overflow-hidden rounded-2xl transition-all",
+                  "border shadow-sm overflow-hidden rounded-[32px] transition-all",
                   isAlert ? "bg-red-500/[0.05] border-red-200" : "bg-card/80 border-border/60"
                 )}>
                   <CardContent className="p-0">
                     <div className={cn(
-                      "p-4 flex items-center justify-between border-b",
+                      "p-5 flex items-center justify-between border-b",
                       isAlert ? "bg-red-500/[0.1] border-red-200/50" : "bg-muted/30 border-border/40"
                     )}>
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-4">
                         <div className={cn(
-                          "w-9 h-9 rounded-full flex items-center justify-center shadow-sm",
+                          "w-11 h-11 rounded-2xl flex items-center justify-center shadow-inner",
                           isAlert ? "bg-red-100 text-red-600" : "bg-primary/10 text-primary"
                         )}>
-                          {isNuvem ? <Cloud className="h-5 w-5" /> : <User className="h-5 w-5" />}
+                          {isNuvem ? <Cloud className="h-6 w-6" /> : <User className="h-6 w-6" />}
                         </div>
                         <div className="overflow-hidden">
                           <h3 className={cn(
-                            "text-sm font-black tracking-tight leading-none mb-1",
+                            "text-base font-black tracking-tight leading-none mb-1",
                             isAlert ? "text-red-700" : "text-foreground"
                           )}>
                             {courierName}
                           </h3>
-                          <p className="text-[8px] font-bold uppercase tracking-widest text-muted-foreground/70">
-                            {rtId === "Nuvem" ? "DESPACHO MANUAL / POINT" : `RT: ${rtId}`}
+                          <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/70">
+                            {rtId === "Nuvem" ? "DESPACHO MANUAL" : `RT: ${rtId}`}
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-3">
                         <Button 
                           variant="outline" 
                           size="sm" 
                           onClick={() => setManagingRt(rtId)}
                           className={cn(
-                            "h-7 text-[9px] font-bold uppercase tracking-tight rounded-full gap-1 px-3",
+                            "h-10 text-[10px] font-black uppercase tracking-widest rounded-2xl gap-2 px-4 border-2",
                             isAlert ? "text-red-700 border-red-300 bg-red-50 hover:bg-red-100" : "text-primary border-primary/20 hover:bg-primary/5"
                           )}
                         >
-                          <Settings2 className="h-3 w-3" /> Gerenciar
+                          <Settings2 className="h-4 w-4" /> Gerenciar
                         </Button>
                         <div className={cn(
-                          "min-w-[24px] h-6 px-1.5 rounded-full flex items-center justify-center text-[10px] font-black border",
+                          "min-w-[30px] h-8 px-2.5 rounded-full flex items-center justify-center text-[12px] font-black border-2",
                           isAlert ? "bg-red-600 text-white border-red-400" : "bg-primary text-white border-primary-foreground/20"
                         )}>
                           {orders.length}
@@ -226,7 +239,7 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
                       </div>
                     </div>
 
-                    <div className="p-3 space-y-2">
+                    <div className="p-4 space-y-3">
                       {orders.map((order, idx) => {
                         const isExternoOrder = String(order.estado_detallado_actual || order.estado || "").toUpperCase().includes('EXTERNO');
                         
@@ -234,25 +247,25 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
                           <div 
                             key={idx} 
                             className={cn(
-                              "p-3 rounded-xl border transition-all flex items-center justify-between group",
+                              "p-4 rounded-2xl border transition-all flex items-center justify-between group",
                               isExternoOrder ? "bg-red-600/10 border-red-300 shadow-inner" : "bg-muted/5 border-border/40 hover:bg-muted/10"
                             )}
                           >
-                            <div className="space-y-0.5 overflow-hidden">
+                            <div className="space-y-1 overflow-hidden">
                               <p className={cn(
-                                "text-[11px] font-bold leading-tight truncate",
+                                "text-[12px] font-black leading-tight truncate",
                                 isExternoOrder ? "text-red-700" : "text-foreground"
                               )}>{order.store_name}</p>
-                              <p className="text-[9px] text-muted-foreground truncate max-w-[200px]">{order.direccion_entrega}</p>
+                              <p className="text-[10px] text-muted-foreground font-bold truncate max-w-[200px]">{order.direccion_entrega}</p>
                             </div>
-                            <div className="flex items-center gap-2 shrink-0 ml-2">
+                            <div className="flex items-center gap-3 shrink-0 ml-4">
                               <div className="flex flex-col items-end mr-1">
                                 <span className={cn(
-                                  "text-[9px] font-mono font-bold",
-                                  isExternoOrder ? "text-red-700" : "text-muted-foreground"
+                                  "text-[10px] font-mono font-black",
+                                  isExternoOrder ? "text-red-700" : "text-muted-foreground/60"
                                 )}>#{order.order_id}</span>
                                 <span className={cn(
-                                  "text-[7px] font-bold uppercase tracking-tighter px-1 rounded",
+                                  "text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full mt-1",
                                   isExternoOrder ? "bg-red-600 text-white" : "bg-muted text-muted-foreground"
                                 )}>
                                   {order.estado_detallado_actual || order.estado}
@@ -262,12 +275,12 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
                                 variant="default"
                                 size="icon"
                                 className={cn(
-                                  "h-8 w-8 rounded-full shadow-md transition-transform group-hover:scale-105",
+                                  "h-10 w-10 rounded-2xl shadow-lg transition-transform group-hover:scale-110",
                                   isExternoOrder ? "bg-red-600 hover:bg-red-700 text-white" : "bg-primary text-white"
                                 )}
                                 onClick={() => handleCopyAndGo(order.order_id, rtId)}
                               >
-                                <Send className="h-3.5 w-3.5" />
+                                <Send className="h-4 w-4" />
                               </Button>
                             </div>
                           </div>
@@ -282,71 +295,71 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
       </div>
 
       <Dialog open={!!managingRt} onOpenChange={(open) => !open && setManagingRt(null)}>
-        <DialogContent className="max-w-[340px] rounded-3xl p-0 border-none shadow-2xl overflow-hidden">
+        <DialogContent className="max-w-[360px] rounded-[40px] p-0 border-none shadow-2xl overflow-hidden">
           <DialogHeader className={cn(
-            "p-6 pb-4 text-white",
+            "p-8 pb-6 text-white",
             (managingRt === "Nuvem" || rtOrdersToManage.some(o => String(o.estado_detallado_actual || "").toUpperCase().includes('EXTERNO'))) ? "bg-red-600" : "bg-primary"
           )}>
-            <DialogTitle className="text-lg font-black flex items-center gap-2">
-              <Settings2 className="h-5 w-5" /> {getCourierName(managingRt || "")}
+            <DialogTitle className="text-xl font-black flex items-center gap-3">
+              <Settings2 className="h-6 w-6" /> {getCourierName(managingRt || "")}
             </DialogTitle>
-            <DialogDescription className="text-white/80 text-[10px] font-bold uppercase tracking-widest">
-              {managingRt === "Nuvem" ? "Nuvem - Point 9944" : `RT: ${managingRt}`}
+            <DialogDescription className="text-white/80 text-[10px] font-black uppercase tracking-widest mt-2">
+              {managingRt === "Nuvem" ? "Despacho Manual / Point" : `RT Ativo: ${managingRt}`}
             </DialogDescription>
           </DialogHeader>
-          <div className="p-4 max-h-[60vh] overflow-y-auto space-y-3 no-scrollbar">
+          <div className="p-6 max-h-[60vh] overflow-y-auto space-y-4 no-scrollbar">
             {rtOrdersToManage.map((order, idx) => {
                const isExternoOrder = String(order.estado_detallado_actual || order.estado || "").toUpperCase().includes('EXTERNO');
 
                return (
                 <div key={idx} className={cn(
-                  "p-4 rounded-2xl border space-y-3",
+                  "p-5 rounded-[28px] border space-y-4",
                   isExternoOrder ? "bg-red-500/10 border-red-300" : "bg-muted/30 border-border/40"
                 )}>
                   <div className="flex justify-between items-start">
                     <div className="space-y-1">
-                      <p className="text-xs font-bold leading-tight">{order.store_name}</p>
-                      <p className="text-[10px] font-mono font-bold text-muted-foreground">#{order.order_id}</p>
+                      <p className="text-xs font-black leading-tight">{order.store_name}</p>
+                      <p className="text-[10px] font-mono font-black text-muted-foreground/60">#{order.order_id}</p>
                     </div>
                     <Badge variant="outline" className={cn(
-                      "text-[8px] uppercase font-bold py-0 h-4 border-none",
+                      "text-[9px] uppercase font-black py-0 h-5 border-none px-3",
                       isExternoOrder ? "text-white bg-red-600" : "text-primary bg-primary/10"
                     )}>
                       {order.estado_detallado_actual || order.estado}
                     </Badge>
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-3">
                     <Button 
-                      size="sm" 
+                      size="lg" 
                       variant="outline"
-                      className="h-9 text-[10px] font-bold uppercase gap-1.5 rounded-xl border-blue-200 text-blue-600 hover:bg-blue-50"
+                      className="h-12 text-[10px] font-black uppercase gap-2 rounded-2xl border-2 border-blue-200 text-blue-600 hover:bg-blue-50"
                       onClick={() => {
                         navigator.clipboard.writeText(String(order.order_id));
                         recordLog(String(order.order_id), managingRt!, 'copy_id');
                         toast({ title: "Copiado!", description: "ID enviado para área de transferência." });
                       }}
                     >
-                      <ClipboardCopy className="h-3.5 w-3.5" /> Copiar ID
+                      <ClipboardCopy className="h-4 w-4" /> Copiar ID
                     </Button>
                     <Button 
-                      size="sm" 
+                      size="lg" 
                       className={cn(
-                        "h-9 text-[10px] font-bold uppercase gap-1.5 rounded-xl text-white shadow-lg",
-                        isExternoOrder ? "bg-red-600 hover:bg-red-700" : "bg-orange-600 hover:bg-orange-700"
+                        "h-12 text-[10px] font-black uppercase gap-2 rounded-2xl text-white shadow-xl",
+                        isExternoOrder ? "bg-red-600 hover:bg-red-700" : "bg-orange-600 hover:bg-orange-700 shadow-orange-500/20"
                       )}
                       onClick={() => handleForzarBr(String(order.order_id), managingRt!)}
                     >
-                      <Zap className="h-3.5 w-3.5" /> Cheguei
+                      <Zap className="h-4 w-4" /> Cheguei
                     </Button>
                   </div>
                 </div>
               );
             })}
           </div>
-          <div className="p-4 bg-muted/20 border-t flex justify-center">
-            <Button variant="ghost" onClick={() => setManagingRt(null)} className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">
-              Fechar Janela
+          <div className="p-6 bg-muted/20 border-t flex justify-center">
+            <Button variant="ghost" onClick={() => setManagingRt(null)} className="text-[10px] font-black uppercase text-muted-foreground tracking-widest hover:bg-transparent">
+              Fechar Painel
             </Button>
           </div>
         </DialogContent>
