@@ -37,7 +37,6 @@ export function MainDashboard({ user: initialUser, onLogout }: MainDashboardProp
   const { user: reactiveUser } = useUser();
   const user = reactiveUser || initialUser;
 
-  // Define Envio Rápido como padrão se o usuário tiver acesso
   const [currentView, setView] = useState<AppView>(user.hasQuickSendAccess ? 'quick-send' : 'send-order');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
@@ -51,7 +50,6 @@ export function MainDashboard({ user: initialUser, onLogout }: MainDashboardProp
     window.addEventListener('offline', handleOffline);
     setIsOffline(!navigator.onLine);
 
-    // Carregar tema de cor salvo
     const savedColorTheme = localStorage.getItem('rappi_commander_color_theme');
     if (savedColorTheme && savedColorTheme !== 'default') {
       document.documentElement.setAttribute('data-color-theme', savedColorTheme);
@@ -63,7 +61,6 @@ export function MainDashboard({ user: initialUser, onLogout }: MainDashboardProp
     };
   }, []);
 
-  // Garante que a visão mude se as permissões do usuário carregarem depois do mount
   useEffect(() => {
     if (reactiveUser && !prefilledOrderId) {
       if (reactiveUser.hasQuickSendAccess) {
@@ -130,13 +127,13 @@ export function MainDashboard({ user: initialUser, onLogout }: MainDashboardProp
       </div>
 
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-20 border-b flex items-center justify-between px-4 md:px-6 bg-card/50 backdrop-blur-sm z-10 pt-[env(safe-area-inset-top)]">
-          <div className="flex items-center gap-2 md:gap-4 overflow-x-auto no-scrollbar py-2">
+        <header className="h-16 border-b flex items-center justify-between px-3 md:px-6 bg-card/50 backdrop-blur-sm z-10 pt-[env(safe-area-inset-top)]">
+          <div className="flex items-center gap-2 md:gap-3 overflow-x-auto no-scrollbar py-2">
             <div className="md:hidden shrink-0">
               <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
                 <SheetTrigger asChild>
-                  <Button variant="ghost" size="icon" className="rounded-full text-primary h-12 w-12">
-                    <Menu className="h-6 w-6" />
+                  <Button variant="ghost" size="icon" className="rounded-full text-primary h-10 w-10">
+                    <Menu className="h-5 w-5" />
                   </Button>
                 </SheetTrigger>
                 <SheetContent side="left" className="p-0 w-72 border-none">
@@ -154,97 +151,97 @@ export function MainDashboard({ user: initialUser, onLogout }: MainDashboardProp
               </Sheet>
             </div>
 
-            <div className="font-bold text-primary text-2xl tracking-tighter shrink-0">RC</div>
+            <div className="font-bold text-primary text-xl tracking-tighter shrink-0">RC</div>
             
-            <div className="flex gap-4 items-center ml-2 md:ml-4">
+            <div className="flex gap-2 items-center ml-1 md:ml-2">
               {user.hasQuickSendAccess && (
                 <Button 
-                  size="lg" 
+                  size="sm" 
                   variant={currentView === 'quick-send' ? 'default' : 'outline'} 
                   className={cn(
-                    "rounded-2xl h-14 gap-2 text-[10px] font-black px-6 transition-all border-primary/30 shrink-0",
-                    currentView === 'quick-send' && "shadow-xl shadow-primary/20 scale-105"
+                    "rounded-xl h-10 gap-1.5 text-[9px] font-black px-4 transition-all border-primary/20 shrink-0",
+                    currentView === 'quick-send' && "shadow-md shadow-primary/20"
                   )}
                   onClick={() => handleSetView('quick-send')}
                 >
-                  <Zap className="h-5 w-5" /> <span className="hidden sm:inline">RÁPIDO</span>
+                  <Zap className="h-4 w-4" /> <span className="hidden sm:inline">RÁPIDO</span>
                 </Button>
               )}
 
               <Button 
-                size="lg" 
+                size="sm" 
                 variant={currentView === 'send-order' ? 'default' : 'outline'} 
                 className={cn(
-                  "rounded-2xl h-14 gap-2 text-[10px] font-black px-6 transition-all border-primary/30 shrink-0",
-                  currentView === 'send-order' && "shadow-xl shadow-primary/20 scale-105"
+                  "rounded-xl h-10 gap-1.5 text-[9px] font-black px-4 transition-all border-primary/20 shrink-0",
+                  currentView === 'send-order' && "shadow-md shadow-primary/20"
                 )}
                 onClick={() => handleSetView('send-order')}
               >
-                <Send className="h-5 w-5" /> <span className="hidden sm:inline">ENVIO</span>
+                <Send className="h-4 w-4" /> <span className="hidden sm:inline">ENVIO</span>
               </Button>
 
               {user.hasRtStatusAccess && (
                 <Button 
-                  size="lg" 
+                  size="sm" 
                   variant={currentView === 'rt-status' ? 'default' : 'outline'} 
                   className={cn(
-                    "rounded-2xl h-14 gap-2 text-[10px] font-black px-6 transition-all border-primary/30 shrink-0",
-                    currentView === 'rt-status' && "shadow-xl shadow-primary/20 scale-105"
+                    "rounded-xl h-10 gap-1.5 text-[9px] font-black px-4 transition-all border-primary/20 shrink-0",
+                    currentView === 'rt-status' && "shadow-md shadow-primary/20"
                   )}
                   onClick={() => handleSetView('rt-status')}
                 >
-                  <Radar className="h-5 w-5" /> <span className="hidden sm:inline">RT</span>
+                  <Radar className="h-4 w-4" /> <span className="hidden sm:inline">RT</span>
                 </Button>
               )}
 
               {user.hasRequestAccess && (
                 <Button 
-                  size="lg" 
+                  size="sm" 
                   variant={currentView === 'request-order' ? 'default' : 'outline'} 
                   className={cn(
-                    "rounded-2xl h-14 gap-2 text-[10px] font-black px-6 transition-all border-primary/30 shrink-0",
-                    currentView === 'request-order' && "shadow-xl shadow-primary/20 scale-105"
+                    "rounded-xl h-10 gap-1.5 text-[9px] font-black px-4 transition-all border-primary/20 shrink-0",
+                    currentView === 'request-order' && "shadow-md shadow-primary/20"
                   )}
                   onClick={() => handleSetView('request-order')}
                 >
-                  <PackageSearch className="h-5 w-5" /> <span className="hidden sm:inline">PEDIR</span>
+                  <PackageSearch className="h-4 w-4" /> <span className="hidden sm:inline">PEDIR</span>
                 </Button>
               )}
               
               <Button 
-                size="lg" 
+                size="sm" 
                 variant={currentView === 'active-orders' ? 'default' : 'outline'} 
                 className={cn(
-                  "rounded-2xl h-14 gap-2 text-[10px] font-black px-6 transition-all border-primary/30 shrink-0",
-                  currentView === 'active-orders' && "shadow-xl shadow-primary/20 scale-105"
+                  "rounded-xl h-10 gap-1.5 text-[9px] font-black px-4 transition-all border-primary/20 shrink-0",
+                  currentView === 'active-orders' && "shadow-md shadow-primary/20"
                 )}
                 onClick={() => handleSetView('active-orders')}
               >
-                <Activity className="h-5 w-5" /> <span className="hidden sm:inline">ATIVOS</span>
+                <Activity className="h-4 w-4" /> <span className="hidden sm:inline">ATIVOS</span>
               </Button>
 
               {isOffline && (
-                <div className="flex items-center gap-1.5 bg-red-100 dark:bg-red-950 text-red-600 dark:text-red-400 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase animate-pulse border border-red-200 shrink-0">
-                  <WifiOff className="h-3.5 w-3.5" /> Offline
+                <div className="flex items-center gap-1 bg-red-100 dark:bg-red-950 text-red-600 dark:text-red-400 px-2.5 py-1 rounded-full text-[8px] font-bold uppercase animate-pulse border border-red-200 shrink-0">
+                  <WifiOff className="h-3 w-3" /> Offline
                 </div>
               )}
             </div>
           </div>
           
-          <div className="flex items-center gap-2 md:gap-4 shrink-0 ml-2">
+          <div className="flex items-center gap-1 md:gap-3 shrink-0 ml-1">
             {user.notificationsEnabled && (
               <Button 
                 variant="ghost" 
                 size="icon" 
                 className={cn(
-                  "rounded-full relative h-11 w-11 transition-all",
+                  "rounded-full relative h-9 w-9 transition-all",
                   pendingCount > 0 ? "text-primary bg-primary/10" : "text-muted-foreground"
                 )}
                 onClick={() => handleSetView('active-orders')}
               >
-                <Bell className={cn("h-6 w-6", pendingCount > 0 && "animate-ring")} />
+                <Bell className={cn("h-5 w-5", pendingCount > 0 && "animate-ring")} />
                 {pendingCount > 0 && (
-                  <span className="absolute top-0 right-0 w-5 h-5 bg-primary text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-background">
+                  <span className="absolute top-0 right-0 w-4 h-4 bg-primary text-white text-[8px] font-bold rounded-full flex items-center justify-center border-2 border-background">
                     {pendingCount}
                   </span>
                 )}
@@ -254,7 +251,7 @@ export function MainDashboard({ user: initialUser, onLogout }: MainDashboardProp
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-8 scroll-smooth pb-[env(safe-area-inset-bottom)]">
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 scroll-smooth pb-[env(safe-area-inset-bottom)]">
           {renderContent()}
         </main>
       </div>

@@ -56,7 +56,6 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
   const [searchCourier, setSearchCourier] = useState("");
   const [manualOrderId, setManualOrderId] = useState<string>(initialOrderId ? String(initialOrderId) : "");
 
-  // Popover para cadastro rápido de loja
   const [isStoreRegisterOpen, setIsStoreRegisterOpen] = useState(false);
   const [tempStoreName, setTempStoreName] = useState("");
   const [tempStoreAddress, setTempStoreAddress] = useState("");
@@ -163,27 +162,27 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
   };
 
   return (
-    <div className="space-y-6 animate-slide-up pb-32 max-w-xl mx-auto">
+    <div className="space-y-4 animate-slide-up pb-32 max-w-xl mx-auto">
       {fetchError && (
-        <Alert variant="destructive" className="rounded-2xl border-none bg-destructive/10">
+        <Alert variant="destructive" className="rounded-xl border-none bg-destructive/10 p-3">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Erro Redash</AlertTitle>
+          <AlertTitle className="text-xs">Erro Redash</AlertTitle>
           <AlertDescription className="text-[10px]">{fetchError}</AlertDescription>
         </Alert>
       )}
 
-      <div className="bg-card p-5 rounded-3xl border border-border/40 shadow-sm space-y-4">
-        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-1">Comando de Despacho</p>
-        <div className="flex flex-wrap gap-3">
+      <div className="bg-card p-4 rounded-2xl border border-border/40 shadow-sm space-y-3">
+        <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest px-1">Comando de Despacho</p>
+        <div className="flex flex-wrap gap-2">
           {COMMANDS.map((cmd) => (
             <Button
               key={cmd}
               variant="default"
               onClick={() => setSelectedCommand(cmd)}
               className={cn(
-                "h-12 px-6 font-black text-xs rounded-2xl transition-all",
+                "h-9 px-4 font-black text-[10px] rounded-xl transition-all",
                 selectedCommand === cmd 
-                  ? "bg-primary text-primary-foreground shadow-xl scale-105" 
+                  ? "bg-primary text-primary-foreground shadow-md" 
                   : "bg-muted text-muted-foreground hover:bg-muted/80"
               )}
             >
@@ -194,28 +193,28 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
       </div>
 
       <div className="flex items-center justify-between px-1">
-        <h2 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Pedidos Pendentes ({redashOrders.length})</h2>
+        <h2 className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Pendentes ({redashOrders.length})</h2>
         <Button 
           variant="ghost" 
           size="sm" 
           onClick={() => loadData()} 
           disabled={loading} 
-          className="h-8 text-[11px] font-bold text-blue-600 uppercase rounded-full hover:bg-blue-50"
+          className="h-7 text-[10px] font-bold text-blue-600 uppercase rounded-full hover:bg-blue-50"
         >
-          <RefreshCw className={cn("h-4 w-4 mr-2", loading && "animate-spin")} /> ATUALIZAR
+          <RefreshCw className={cn("h-3.5 w-3.5 mr-1.5", loading && "animate-spin")} /> ATUALIZAR
         </Button>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-2">
         {loading && allOrders.length === 0 ? (
-          <div className="flex flex-col items-center py-12 gap-3">
-            <Loader2 className="h-8 w-8 animate-spin text-primary opacity-30" />
-            <p className="text-[10px] text-muted-foreground font-black tracking-widest uppercase">Buscando...</p>
+          <div className="flex flex-col items-center py-8 gap-2">
+            <Loader2 className="h-6 w-6 animate-spin text-primary opacity-30" />
+            <p className="text-[9px] text-muted-foreground font-black tracking-widest uppercase">Buscando...</p>
           </div>
         ) : redashOrders.length === 0 && !loading ? (
-          <div className="text-center py-12 bg-muted/20 rounded-3xl border border-dashed border-muted-foreground/20 flex flex-col items-center">
-            <Package className="h-10 w-10 text-muted-foreground/30 mb-2" />
-            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Nenhum pedido pendente</h3>
+          <div className="text-center py-10 bg-muted/20 rounded-2xl border border-dashed border-muted-foreground/20 flex flex-col items-center">
+            <Package className="h-8 w-8 text-muted-foreground/30 mb-2" />
+            <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Nenhum pedido pendente</h3>
           </div>
         ) : (
           redashOrders.map((order, idx) => {
@@ -223,21 +222,21 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
             return (
               <Card 
                 key={idx} 
-                className="border-none bg-card shadow-sm hover:shadow-lg transition-all cursor-pointer rounded-3xl group"
+                className="border-none bg-card shadow-sm hover:shadow-md transition-all cursor-pointer rounded-2xl group"
                 onClick={() => handleOpenCourierSelection(order)}
               >
-                <CardContent className="p-5 space-y-3">
+                <CardContent className="p-4 space-y-2">
                   <div className="flex justify-between items-start">
-                    <div className="flex-1 overflow-hidden pr-4">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="text-sm font-black text-foreground group-hover:text-primary leading-tight truncate">
+                    <div className="flex-1 overflow-hidden pr-2">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <h3 className="text-xs font-black text-foreground group-hover:text-primary leading-tight truncate">
                           {order.store_name}
                         </h3>
                         {!pickupAddr && (
                           <Button 
                             variant="ghost" 
                             size="icon" 
-                            className="h-6 w-6 rounded-full text-amber-500 bg-amber-50 hover:bg-amber-100"
+                            className="h-5 w-5 rounded-full text-amber-500 bg-amber-50"
                             onClick={(e) => {
                               e.stopPropagation();
                               setTempStoreName(order.store_name || "");
@@ -245,23 +244,23 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
                               setIsStoreRegisterOpen(true);
                             }}
                           >
-                            <AlertCircle className="h-3.5 w-3.5" />
+                            <AlertCircle className="h-3 w-3" />
                           </Button>
                         )}
                       </div>
                       
-                      <div className="space-y-1.5">
+                      <div className="space-y-1">
                         {pickupAddr && (
-                          <div className="flex items-start gap-2 text-muted-foreground">
-                            <MapPinIcon className="h-3.5 w-3.5 text-orange-500 shrink-0 mt-0.5" />
-                            <p className="text-[10px] font-bold leading-tight">
+                          <div className="flex items-start gap-1.5 text-muted-foreground">
+                            <MapPinIcon className="h-3 w-3 text-orange-500 shrink-0 mt-0.5" />
+                            <p className="text-[9px] font-bold leading-tight">
                               <span className="text-orange-600">COLETA:</span> {pickupAddr}
                             </p>
                           </div>
                         )}
-                        <div className="flex items-start gap-2 text-muted-foreground">
-                          <MapPin className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
-                          <p className="text-[10px] font-bold leading-tight">
+                        <div className="flex items-start gap-1.5 text-muted-foreground">
+                          <MapPin className="h-3 w-3 text-primary shrink-0 mt-0.5" />
+                          <p className="text-[9px] font-bold leading-tight">
                             <span className="text-primary">ENTREGA:</span> {order.direccion_entrega}
                           </p>
                         </div>
@@ -269,8 +268,8 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
                     </div>
                     
                     <div className="flex flex-col items-end gap-1 shrink-0">
-                      <span className="text-[10px] font-mono font-black text-muted-foreground/60 tracking-tighter">#{order.order_id}</span>
-                      <span className="text-[9px] text-primary font-black uppercase bg-primary/5 px-2 py-0.5 rounded-full border border-primary/10">
+                      <span className="text-[9px] font-mono font-black text-muted-foreground/60 tracking-tighter">#{order.order_id}</span>
+                      <span className="text-[8px] text-primary font-black uppercase bg-primary/5 px-2 py-0.5 rounded-full border border-primary/10">
                         {order.estado_detallado_actual || order.estado}
                       </span>
                     </div>
@@ -282,13 +281,13 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
         )}
       </div>
 
-      <form onSubmit={(e) => { e.preventDefault(); if(manualOrderId.trim()) handleOpenCourierSelection({ order_id: manualOrderId.trim(), store_name: "Manual", direccion_entrega: "Manual" } as RedashOrder); }} className="pt-8 space-y-4">
+      <form onSubmit={(e) => { e.preventDefault(); if(manualOrderId.trim()) handleOpenCourierSelection({ order_id: manualOrderId.trim(), store_name: "Manual", direccion_entrega: "Manual" } as RedashOrder); }} className="pt-4 space-y-3">
         <div className="relative">
           <Input 
             placeholder="ID DO PEDIDO" 
             value={manualOrderId}
             onChange={(e) => setManualOrderId(e.target.value)}
-            className="h-16 text-center text-2xl font-black tracking-widest rounded-3xl border-none bg-muted/50 shadow-inner pr-14"
+            className="h-12 text-center text-xl font-black tracking-widest rounded-2xl border-none bg-muted/50 shadow-inner pr-12"
           />
           {manualOrderId && (
             <Button
@@ -296,95 +295,93 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
               variant="ghost"
               size="icon"
               onClick={() => { setManualOrderId(""); if(onClearInitialId) onClearInitialId(); }}
-              className="absolute right-4 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full text-muted-foreground hover:text-destructive"
+              className="absolute right-3 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full text-muted-foreground hover:text-destructive"
             >
-              <X className="h-5 w-5" />
+              <X className="h-4 w-4" />
             </Button>
           )}
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-3">
           <Button type="button" variant="outline" onClick={async () => {
             if (typeof navigator !== 'undefined' && navigator.clipboard) {
               const text = await navigator.clipboard.readText();
               if (text) setManualOrderId(text.trim());
             }
-          }} className="h-14 font-black text-xs uppercase rounded-3xl border-muted-foreground/20 hover:bg-muted shadow-sm gap-3">
-            <ClipboardPaste className="h-5 w-5" /> Colar ID
+          }} className="h-10 font-black text-[10px] uppercase rounded-2xl border-muted-foreground/20 hover:bg-muted gap-2">
+            <ClipboardPaste className="h-4 w-4" /> Colar ID
           </Button>
-          <Button type="submit" disabled={!manualOrderId.trim()} className="h-14 font-black text-xs uppercase rounded-3xl shadow-xl shadow-primary/20 gap-3">
-            Prosseguir <ArrowRight className="h-5 w-5" />
+          <Button type="submit" disabled={!manualOrderId.trim()} className="h-10 font-black text-[10px] uppercase rounded-2xl shadow-md gap-2">
+            Próximo <ArrowRight className="h-4 w-4" />
           </Button>
         </div>
       </form>
 
-      {/* Popup Cadastro Loja */}
       <Dialog open={isStoreRegisterOpen} onOpenChange={setIsStoreRegisterOpen}>
-        <DialogContent className="max-w-[340px] rounded-[32px] p-8 border-none shadow-2xl">
-          <DialogHeader className="space-y-3">
-            <div className="h-14 w-14 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-2">
-              <Store className="h-8 w-8 text-primary" />
+        <DialogContent className="max-w-[320px] rounded-[28px] p-6 border-none shadow-2xl">
+          <DialogHeader className="space-y-2">
+            <div className="h-12 w-12 bg-primary/10 rounded-xl flex items-center justify-center mx-auto mb-1">
+              <Store className="h-6 w-6 text-primary" />
             </div>
-            <DialogTitle className="text-xl font-black text-center tracking-tight">Cadastrar Coleta</DialogTitle>
-            <DialogDescription className="text-xs text-center font-bold text-muted-foreground uppercase leading-relaxed">
+            <DialogTitle className="text-lg font-black text-center tracking-tight">Cadastrar Coleta</DialogTitle>
+            <DialogDescription className="text-[10px] text-center font-bold text-muted-foreground uppercase leading-relaxed">
               Loja: <span className="text-primary">{tempStoreName}</span>
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-6 pt-4">
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-widest ml-1 text-muted-foreground">Endereço (Máx 50 caracteres)</Label>
+          <div className="space-y-4 pt-2">
+            <div className="space-y-1.5">
+              <Label className="text-[9px] font-black uppercase tracking-widest ml-1 text-muted-foreground">Endereço (Máx 50 caracteres)</Label>
               <Input 
                 placeholder="Ex: Rua das Flores, 123 - Box 4"
                 value={tempStoreAddress}
                 onChange={(e) => setTempStoreAddress(e.target.value.substring(0, 50))}
-                className="h-12 bg-muted/50 border-none rounded-2xl font-bold shadow-inner"
+                className="h-10 bg-muted/50 border-none rounded-xl font-bold shadow-inner text-sm"
               />
             </div>
-            <Button onClick={handleQuickStoreRegister} className="w-full h-14 font-black rounded-2xl shadow-lg text-sm uppercase">
+            <Button onClick={handleQuickStoreRegister} className="w-full h-12 font-black rounded-xl shadow-md text-xs uppercase">
               Salvar Endereço
             </Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Popup Seleção Motoboy */}
       <Dialog open={isCourierDialogOpen} onOpenChange={setIsCourierDialogOpen}>
         <DialogContent 
-          className="max-md rounded-[40px] p-0 border-none shadow-2xl overflow-hidden"
+          className="max-md rounded-[32px] p-0 border-none shadow-2xl overflow-hidden"
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
-          <DialogHeader className="p-8 pb-4">
-            <DialogTitle className="text-2xl font-black tracking-tight">Selecionar Entregador</DialogTitle>
-            <DialogDescription className="text-[10px] text-muted-foreground font-black uppercase tracking-widest">
+          <DialogHeader className="p-6 pb-2">
+            <DialogTitle className="text-xl font-black tracking-tight">Selecionar Entregador</DialogTitle>
+            <DialogDescription className="text-[9px] text-muted-foreground font-black uppercase tracking-widest">
               Pedido #{selectedOrder?.order_id}
             </DialogDescription>
           </DialogHeader>
-          <div className="px-8 pb-2">
+          <div className="px-6 pb-2">
             <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input 
                 placeholder="Buscar motoboy..." 
-                className="pl-12 h-14 text-sm font-bold bg-muted/30 border-none rounded-3xl shadow-inner" 
+                className="pl-10 h-11 text-xs font-bold bg-muted/30 border-none rounded-2xl shadow-inner" 
                 value={searchCourier} 
                 onChange={(e) => setSearchCourier(e.target.value)} 
               />
             </div>
           </div>
-          <div className="px-8 py-6 max-h-[50vh] overflow-y-auto pr-2 no-scrollbar">
+          <div className="px-6 py-4 max-h-[50vh] overflow-y-auto pr-2 no-scrollbar">
             {loadingCouriers ? (
-              <Loader2 className="h-10 w-10 animate-spin mx-auto my-8 text-primary opacity-30" />
+              <Loader2 className="h-8 w-8 animate-spin mx-auto my-6 text-primary opacity-30" />
             ) : (
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-3 gap-3">
                 {filteredCouriers.map((c) => (
                   <Button 
                     key={c.id} 
                     variant="ghost" 
-                    className="flex flex-col items-center justify-center h-28 p-3 hover:bg-primary/10 rounded-3xl border-2 border-transparent hover:border-primary/20 transition-all group" 
+                    className="flex flex-col items-center justify-center h-24 p-2 hover:bg-primary/10 rounded-2xl border-2 border-transparent hover:border-primary/20 transition-all group" 
                     onClick={() => handleGenerateCommand(c.id_motoboy)}
                   >
-                    <p className="font-bold text-sm leading-tight text-center truncate w-full group-hover:text-primary">
+                    <p className="font-bold text-xs leading-tight text-center truncate w-full group-hover:text-primary">
                       {(c.nome || c.name || '').split(' ')[0]}
                     </p>
-                    <p className="text-[10px] text-muted-foreground font-bold mt-1.5 uppercase">RT {c.id_motoboy}</p>
+                    <p className="text-[9px] text-muted-foreground font-bold mt-1 uppercase">RT {c.id_motoboy}</p>
                   </Button>
                 ))}
               </div>
