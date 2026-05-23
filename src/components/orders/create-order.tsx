@@ -55,10 +55,6 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
   const [searchCourier, setSearchCourier] = useState("");
   const [manualOrderId, setManualOrderId] = useState<string>(initialOrderId ? String(initialOrderId) : "");
 
-  const [isStoreRegisterOpen, setIsStoreRegisterOpen] = useState(false);
-  const [tempStoreName, setTempStoreName] = useState("");
-  const [tempStoreAddress, setTempStoreAddress] = useState("");
-
   useEffect(() => {
     if (initialOrderId) setManualOrderId(String(initialOrderId));
   }, [initialOrderId]);
@@ -362,3 +358,4 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
     </div>
   );
 }
+
