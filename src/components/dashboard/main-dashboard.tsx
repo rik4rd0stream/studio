@@ -134,14 +134,14 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
 
             <div className="font-bold text-primary text-2xl tracking-tighter">RC</div>
             
-            <div className="flex gap-3 items-center ml-2">
+            <div className="flex gap-4 items-center ml-2 md:ml-4">
               {user.hasQuickSendAccess && (
                 <Button 
                   size="lg" 
                   variant={currentView === 'quick-send' ? 'default' : 'outline'} 
                   className={cn(
-                    "rounded-2xl h-11 gap-2 text-xs font-bold px-4 transition-all border-primary/30",
-                    currentView === 'quick-send' && "shadow-lg shadow-primary/20"
+                    "rounded-2xl h-12 gap-2 text-xs font-black px-6 transition-all border-primary/30",
+                    currentView === 'quick-send' && "shadow-xl shadow-primary/20 scale-105"
                   )}
                   onClick={() => handleSetView('quick-send')}
                 >
@@ -153,8 +153,8 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
                 size="lg" 
                 variant={currentView === 'send-order' ? 'default' : 'outline'} 
                 className={cn(
-                  "rounded-2xl h-11 gap-2 text-xs font-bold px-4 transition-all border-primary/30",
-                  currentView === 'send-order' && "shadow-lg shadow-primary/20"
+                  "rounded-2xl h-12 gap-2 text-xs font-black px-6 transition-all border-primary/30",
+                  currentView === 'send-order' && "shadow-xl shadow-primary/20 scale-105"
                 )}
                 onClick={() => handleSetView('send-order')}
               >
@@ -165,8 +165,8 @@ export function MainDashboard({ user, onLogout }: MainDashboardProps) {
                 size="lg" 
                 variant={currentView === 'active-orders' ? 'default' : 'outline'} 
                 className={cn(
-                  "rounded-2xl h-11 gap-2 text-xs font-bold px-4 transition-all border-primary/30",
-                  currentView === 'active-orders' && "shadow-lg shadow-primary/20"
+                  "rounded-2xl h-12 gap-2 text-xs font-black px-6 transition-all border-primary/30",
+                  currentView === 'active-orders' && "shadow-xl shadow-primary/20 scale-105"
                 )}
                 onClick={() => handleSetView('active-orders')}
               >

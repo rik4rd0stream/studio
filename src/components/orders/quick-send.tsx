@@ -30,6 +30,7 @@ import {
   DialogDescription
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useFirestore, useCollection, useMemoFirebase, useUser } from "@/firebase";
 import { collection, query, doc, setDoc } from "firebase/firestore";
 import { cn } from "@/lib/utils";
@@ -151,11 +152,15 @@ export function QuickSend({ onOrderCreated, initialOrderId, onClearInitialId }: 
       if (Capacitor.isNativePlatform()) {
         try {
           await Share.share({ title: 'Despacho Rappi', text: fullCommand });
-        } catch (e) {}
+        } catch (e) {
+          console.log("Compartilhamento cancelado.");
+        }
       } else if (typeof navigator !== 'undefined' && navigator.share) {
         try {
           await navigator.share({ title: 'Despacho Rappi', text: fullCommand });
-        } catch (err) {}
+        } catch (err) {
+          console.log("Compartilhamento web cancelado.");
+        }
       } else {
         window.open(`https://wa.me/?text=${encodeURIComponent(fullCommand)}`, '_blank');
       }
