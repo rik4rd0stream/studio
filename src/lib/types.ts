@@ -10,7 +10,7 @@ export interface User {
   notificationsEnabled?: boolean;
   hasRequestAccess?: boolean;
   hasRtStatusAccess?: boolean;
-  hasQuickSendAccess?: boolean; // Novo: Se o usuário pode ver a aba de Envio Rápido
+  hasQuickSendAccess?: boolean; 
   useDirectWhatsApp?: boolean;
   fcmTokens?: string[];
 }
@@ -19,13 +19,13 @@ export interface Courier {
   id: string;
   nome: string;
   id_motoboy: string;
-  isFavorite?: boolean; // Novo: Marcar motoboy como favorito
+  isFavorite?: boolean; 
   updatedAt: string;
 }
 
 export interface StoreProfile {
-  id: string; // Nome da loja (ex: "McDonald's")
-  address: string; // Endereço de coleta (máx 50 chars)
+  id: string; 
+  address: string; 
   updatedAt: string;
 }
 
@@ -64,4 +64,4 @@ export interface RTStatusData {
   [key: string]: any;
 }
 
-export type AppView = 'send-order' | 'quick-send' | 'request-order' | 'active-orders' | 'admin-users' | 'admin-couriers' | 'admin-stores' | 'operation-logs' | 'rt-status';
+export type AppView = 'send-order' | 'quick-send' | 'request-order' | 'active-orders' | 'admin-users' | 'admin-couriers' | 'admin-stores' | 'admin-themes' | 'operation-logs' | 'rt-status';

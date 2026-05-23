@@ -13,7 +13,8 @@ import {
   ClipboardList,
   Radar,
   Zap,
-  Store
+  Store,
+  Palette
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -45,15 +46,14 @@ export function SidebarNav({ currentView, setView, user: initialUser, onLogout }
     { id: 'admin-users', label: 'Gestão de Usuários', icon: Users, masterOnly: true },
     { id: 'admin-couriers', label: 'Gestão de Entregadores', icon: Bike, masterOnly: false },
     { id: 'admin-stores', label: 'Gestão de Coletas', icon: Store, masterOnly: false },
+    { id: 'admin-themes', label: 'Temas do Sistema', icon: Palette, masterOnly: false },
   ];
 
   const userName = user?.name || "Usuário";
 
   const renderItem = (item: any) => {
-    // Itens administrativos continuam liberados para Master
     if (item.masterOnly && !isMaster) return null;
     
-    // Itens operacionais agora respeitam estritamente a chave de permissão
     if (item.permission) {
       const hasPerm = (user as any)[item.permission];
       if (!hasPerm) return null;

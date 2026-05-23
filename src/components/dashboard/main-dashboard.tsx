@@ -13,6 +13,7 @@ import { ActiveOrders } from "@/components/orders/active-orders";
 import { RequestOrder } from "@/components/orders/request-order";
 import { Registration } from "@/components/admin/registration";
 import { StoreRegistration } from "@/components/admin/store-registration";
+import { ThemeManagement } from "@/components/admin/theme-management";
 import { OperationLogs } from "@/components/admin/operation-logs";
 import { RTStatus } from "@/components/admin/rt-status";
 import { PushListener } from "@/components/notifications/push-listener";
@@ -33,7 +34,6 @@ interface MainDashboardProps {
 }
 
 export function MainDashboard({ user: initialUser, onLogout }: MainDashboardProps) {
-  // Sincronização reativa com o Firestore para permissões em tempo real
   const { user: reactiveUser } = useUser();
   const user = reactiveUser || initialUser;
 
@@ -43,14 +43,19 @@ export function MainDashboard({ user: initialUser, onLogout }: MainDashboardProp
   const [isOffline, setIsOffline] = useState(false);
   const [prefilledOrderId, setPrefilledOrderId] = useState<string>("");
 
-  const isMaster = user.role === 'master' || user.email === 'rik4rd0stream@gmail.com';
-
   useEffect(() => {
     const handleOnline = () => setIsOffline(false);
     const handleOffline = () => setIsOffline(true);
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
     setIsOffline(!navigator.onLine);
+
+    // Carregar tema de cor salvo
+    const savedColorTheme = localStorage.getItem('rappi_commander_color_theme');
+    if (savedColorTheme && savedColorTheme !== 'default') {
+      document.documentElement.setAttribute('data-color-theme', savedColorTheme);
+    }
+
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
@@ -97,6 +102,8 @@ export function MainDashboard({ user: initialUser, onLogout }: MainDashboardProp
         return <Registration type="couriers" />;
       case 'admin-stores':
         return <StoreRegistration />;
+      case 'admin-themes':
+        return <ThemeManagement />;
       case 'operation-logs':
         return <OperationLogs />;
       default:

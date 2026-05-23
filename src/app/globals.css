@@ -48,6 +48,40 @@
     --input: 210 39% 25%;
     --ring: 19 81% 50%;
   }
+
+  /* Color Themes */
+  [data-color-theme="blue"] {
+    --primary: 221 83% 53%;
+    --ring: 221 83% 53%;
+    --border: 221 20% 85%;
+  }
+  [data-color-theme="green"] {
+    --primary: 142 76% 36%;
+    --ring: 142 76% 36%;
+    --border: 142 20% 85%;
+  }
+  [data-color-theme="purple"] {
+    --primary: 262 83% 58%;
+    --ring: 262 83% 58%;
+    --border: 262 20% 85%;
+  }
+  [data-color-theme="red"] {
+    --primary: 346 84% 49%;
+    --ring: 346 84% 49%;
+    --border: 346 20% 85%;
+  }
+  [data-color-theme="slate"] {
+    --primary: 215 25% 27%;
+    --ring: 215 25% 27%;
+    --border: 215 20% 85%;
+  }
+  
+  /* Color Themes Dark Fixes */
+  .dark[data-color-theme="blue"] { --border: 221 39% 25%; }
+  .dark[data-color-theme="green"] { --border: 142 39% 25%; }
+  .dark[data-color-theme="purple"] { --border: 262 39% 25%; }
+  .dark[data-color-theme="red"] { --border: 346 39% 25%; }
+  .dark[data-color-theme="slate"] { --border: 215 39% 25%; }
 }
 
 @layer base {
