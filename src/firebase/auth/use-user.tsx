@@ -35,6 +35,7 @@ export function useUser() {
               notificationsEnabled: data.notificationsEnabled !== false,
               hasRequestAccess: !!data.hasRequestAccess,
               hasRtStatusAccess: !!data.hasRtStatusAccess,
+              hasQuickSendAccess: !!data.hasQuickSendAccess,
               useDirectWhatsApp: data.useDirectWhatsApp !== false // Default true
             } as User);
           } else {
@@ -47,6 +48,7 @@ export function useUser() {
               role: isMasterEmail ? 'master' : 'normal',
               hasRequestAccess: isMasterEmail,
               hasRtStatusAccess: isMasterEmail,
+              hasQuickSendAccess: isMasterEmail,
               notificationsEnabled: true,
               useDirectWhatsApp: true
             });

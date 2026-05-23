@@ -109,7 +109,8 @@ export default function Home() {
       notificationsEnabled: data.notificationsEnabled !== false,
       hasRequestAccess: !!data.hasRequestAccess,
       hasRtStatusAccess: !!data.hasRtStatusAccess,
-      useDirectWhatsApp: data.useDirectWhatsApp !== false // CRITICAL FIX: Include the setting in local user
+      hasQuickSendAccess: !!data.hasQuickSendAccess,
+      useDirectWhatsApp: data.useDirectWhatsApp !== false
     };
     setLocalUser(userData);
     const expiry = new Date().getTime() + SEVEN_DAYS_MS;

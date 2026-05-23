@@ -37,6 +37,7 @@ export function MainDashboard({ user: initialUser, onLogout }: MainDashboardProp
   const { user: reactiveUser } = useUser();
   const user = reactiveUser || initialUser;
 
+  // Define Envio Rápido como padrão se o usuário tiver acesso
   const [currentView, setView] = useState<AppView>(user.hasQuickSendAccess ? 'quick-send' : 'send-order');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
@@ -61,6 +62,15 @@ export function MainDashboard({ user: initialUser, onLogout }: MainDashboardProp
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
+
+  // Garante que a visão mude se as permissões do usuário carregarem depois do mount
+  useEffect(() => {
+    if (reactiveUser && !prefilledOrderId) {
+      if (reactiveUser.hasQuickSendAccess) {
+        setView('quick-send');
+      }
+    }
+  }, [reactiveUser?.hasQuickSendAccess, prefilledOrderId]);
 
   const handleSetView = (view: AppView) => {
     setView(view);
