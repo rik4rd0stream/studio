@@ -70,7 +70,6 @@ export function QuickSend({ onOrderCreated, initialOrderId, onClearInitialId }: 
   const storesQuery = useMemoFirebase(() => collection(db, 'storeProfiles'), [db]);
   const { data: stores } = useCollection<any>(storesQuery);
 
-  // Hook para buscar os favoritos específicos do usuário atual
   const userFavoritesQuery = useMemoFirebase(() => {
     if (!currentUser?.email) return null;
     return collection(db, 'users', currentUser.email.toLowerCase().trim(), 'favorites');
@@ -312,9 +311,9 @@ export function QuickSend({ onOrderCreated, initialOrderId, onClearInitialId }: 
           </DialogHeader>
           <div className="space-y-3 pt-2">
             <div className="space-y-1">
-              <Label className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">Endereço</Label>
+              <Label className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">Endereço (Máx 50 caracteres)</Label>
               <Input 
-                placeholder="Máx 50 caracteres"
+                placeholder="Ex: Rua das Flores, 123 - Box 4"
                 value={tempStoreAddress}
                 onChange={(e) => setTempStoreAddress(e.target.value.substring(0, 50))}
                 className="h-9 bg-muted/50 border-none rounded-lg font-bold text-xs"
@@ -381,23 +380,24 @@ export function QuickSend({ onOrderCreated, initialOrderId, onClearInitialId }: 
                   </p>
                   <div className="grid grid-cols-3 gap-1.5">
                     {filteredCouriers.favorites.map((c) => (
-                      <Button 
-                        key={c.id} 
-                        variant="ghost" 
-                        className="flex flex-col items-center justify-center h-16 p-1 hover:bg-primary/10 rounded-xl border border-primary/10 bg-primary/5 transition-all relative group" 
-                        onClick={() => handleGenerateCommand(c.id_motoboy)}
-                      >
+                      <div key={c.id} className="relative group">
+                        <Button 
+                          variant="ghost" 
+                          className="flex flex-col items-center justify-center h-16 w-full p-1 hover:bg-primary/10 rounded-xl border border-primary/10 bg-primary/5 transition-all" 
+                          onClick={() => handleGenerateCommand(c.id_motoboy)}
+                        >
+                          <p className="font-black text-[10px] leading-tight text-center truncate w-full">
+                            {(c.nome || c.name || '').split(' ')[0]}
+                          </p>
+                          <p className="text-[7px] text-muted-foreground font-black mt-0.5 uppercase">RT {c.id_motoboy}</p>
+                        </Button>
                         <button 
                           onClick={(e) => toggleFavorite(e, c.id_motoboy)}
                           className="absolute top-1 right-1 p-1 z-10"
                         >
                           <Star className="h-3 w-3 fill-primary text-primary" />
                         </button>
-                        <p className="font-black text-[10px] leading-tight text-center truncate w-full">
-                          {(c.nome || c.name || '').split(' ')[0]}
-                        </p>
-                        <p className="text-[7px] text-muted-foreground font-black mt-0.5 uppercase">RT {c.id_motoboy}</p>
-                      </Button>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -407,23 +407,24 @@ export function QuickSend({ onOrderCreated, initialOrderId, onClearInitialId }: 
                 <p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Todos os Entregadores</p>
                 <div className="grid grid-cols-3 gap-1.5">
                   {filteredCouriers.others.map((c) => (
-                    <Button 
-                      key={c.id} 
-                      variant="ghost" 
-                      className="flex flex-col items-center justify-center h-16 p-1 hover:bg-primary/10 rounded-xl bg-muted/20 transition-all relative group" 
-                      onClick={() => handleGenerateCommand(c.id_motoboy)}
-                    >
+                    <div key={c.id} className="relative group">
+                      <Button 
+                        variant="ghost" 
+                        className="flex flex-col items-center justify-center h-16 w-full p-1 hover:bg-primary/10 rounded-xl bg-muted/20 transition-all" 
+                        onClick={() => handleGenerateCommand(c.id_motoboy)}
+                      >
+                        <p className="font-bold text-[10px] leading-tight text-center truncate w-full">
+                          {(c.nome || c.name || '').split(' ')[0]}
+                        </p>
+                        <p className="text-[7px] text-muted-foreground font-black mt-0.5 uppercase">RT {c.id_motoboy}</p>
+                      </Button>
                       <button 
                         onClick={(e) => toggleFavorite(e, c.id_motoboy)}
                         className="absolute top-1 right-1 p-1 z-10 opacity-30 group-hover:opacity-100 transition-opacity"
                       >
                         <Star className="h-3 w-3 text-muted-foreground" />
                       </button>
-                      <p className="font-bold text-[10px] leading-tight text-center truncate w-full">
-                        {(c.nome || c.name || '').split(' ')[0]}
-                      </p>
-                      <p className="text-[7px] text-muted-foreground font-black mt-0.5 uppercase">RT {c.id_motoboy}</p>
-                    </Button>
+                    </div>
                   ))}
                 </div>
               </div>

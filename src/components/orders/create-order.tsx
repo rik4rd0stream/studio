@@ -69,7 +69,6 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
   const storesQuery = useMemoFirebase(() => collection(db, 'storeProfiles'), [db]);
   const { data: stores } = useCollection<any>(storesQuery);
 
-  // Hook para buscar os favoritos específicos do usuário atual
   const userFavoritesQuery = useMemoFirebase(() => {
     if (!currentUser?.email) return null;
     return collection(db, 'users', currentUser.email.toLowerCase().trim(), 'favorites');
@@ -130,20 +129,6 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
   const getStoreAddress = (name: string) => {
     const store = stores?.find(s => s.id === name);
     return store?.address || null;
-  };
-
-  const handleQuickStoreRegister = async () => {
-    if (!tempStoreName || !tempStoreAddress.trim()) return;
-    try {
-      await setDoc(doc(db, 'storeProfiles', tempStoreName), {
-        address: tempStoreAddress.trim().substring(0, 50),
-        updatedAt: new Date().toISOString()
-      }, { merge: true });
-      toast({ title: "Coleta Salva", description: "Endereço registrado com sucesso." });
-      setIsStoreRegisterOpen(false);
-    } catch (e) {
-      toast({ variant: "destructive", title: "Erro ao salvar" });
-    }
   };
 
   const toggleFavorite = async (e: React.MouseEvent, courierId: string) => {
@@ -251,19 +236,9 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
                           {order.store_name}
                         </h3>
                         {!pickupAddr && (
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-5 w-5 rounded-full text-amber-500 bg-amber-50"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setTempStoreName(order.store_name || "");
-                              setTempStoreAddress("");
-                              setIsStoreRegisterOpen(true);
-                            }}
-                          >
+                          <div className="h-5 w-5 rounded-full text-amber-500 bg-amber-50 flex items-center justify-center">
                             <AlertCircle className="h-3 w-3" />
-                          </Button>
+                          </div>
                         )}
                       </div>
                       
@@ -331,23 +306,24 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
                     </p>
                     <div className="grid grid-cols-3 gap-2">
                       {filteredCouriers.favorites.map((c) => (
-                        <Button 
-                          key={c.id} 
-                          variant="ghost" 
-                          className="flex flex-col items-center justify-center h-20 p-2 hover:bg-primary/10 rounded-2xl border-2 border-primary/20 bg-primary/5 transition-all relative group" 
-                          onClick={() => handleGenerateCommand(c.id_motoboy)}
-                        >
+                        <div key={c.id} className="relative group">
+                          <Button 
+                            variant="ghost" 
+                            className="flex flex-col items-center justify-center h-20 w-full p-2 hover:bg-primary/10 rounded-2xl border-2 border-primary/20 bg-primary/5 transition-all" 
+                            onClick={() => handleGenerateCommand(c.id_motoboy)}
+                          >
+                            <p className="font-bold text-xs leading-tight text-center truncate w-full group-hover:text-primary">
+                              {(c.nome || c.name || '').split(' ')[0]}
+                            </p>
+                            <p className="text-[9px] text-muted-foreground font-bold mt-1 uppercase">RT {c.id_motoboy}</p>
+                          </Button>
                           <button 
                             onClick={(e) => toggleFavorite(e, c.id_motoboy)}
                             className="absolute top-1 right-1 p-1 z-10"
                           >
                             <Star className="h-3 w-3 fill-primary text-primary" />
                           </button>
-                          <p className="font-bold text-xs leading-tight text-center truncate w-full group-hover:text-primary">
-                            {(c.nome || c.name || '').split(' ')[0]}
-                          </p>
-                          <p className="text-[9px] text-muted-foreground font-bold mt-1 uppercase">RT {c.id_motoboy}</p>
-                        </Button>
+                        </div>
                       ))}
                     </div>
                   </div>
@@ -357,23 +333,24 @@ export function CreateOrder({ onOrderCreated, initialOrderId, onClearInitialId }
                   <p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Todos</p>
                   <div className="grid grid-cols-3 gap-2">
                     {filteredCouriers.others.map((c) => (
-                      <Button 
-                        key={c.id} 
-                        variant="ghost" 
-                        className="flex flex-col items-center justify-center h-20 p-2 hover:bg-primary/10 rounded-2xl bg-muted/20 transition-all relative group" 
-                        onClick={() => handleGenerateCommand(c.id_motoboy)}
-                      >
+                      <div key={c.id} className="relative group">
+                        <Button 
+                          variant="ghost" 
+                          className="flex flex-col items-center justify-center h-20 w-full p-2 hover:bg-primary/10 rounded-2xl bg-muted/20 transition-all" 
+                          onClick={() => handleGenerateCommand(c.id_motoboy)}
+                        >
+                          <p className="font-bold text-xs leading-tight text-center truncate w-full group-hover:text-primary">
+                            {(c.nome || c.name || '').split(' ')[0]}
+                          </p>
+                          <p className="text-[9px] text-muted-foreground font-bold mt-1 uppercase">RT {c.id_motoboy}</p>
+                        </Button>
                         <button 
                           onClick={(e) => toggleFavorite(e, c.id_motoboy)}
                           className="absolute top-1 right-1 p-1 z-10 opacity-30 group-hover:opacity-100 transition-opacity"
                         >
                           <Star className="h-3 w-3 text-muted-foreground" />
                         </button>
-                        <p className="font-bold text-xs leading-tight text-center truncate w-full group-hover:text-primary">
-                          {(c.nome || c.name || '').split(' ')[0]}
-                        </p>
-                        <p className="text-[9px] text-muted-foreground font-bold mt-1 uppercase">RT {c.id_motoboy}</p>
-                      </Button>
+                      </div>
                     ))}
                   </div>
                 </div>
