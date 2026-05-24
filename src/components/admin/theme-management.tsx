@@ -4,9 +4,10 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Palette, Check, RefreshCw } from "lucide-react";
+import { Palette, Check, RefreshCw, Moon, Sun } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const COLOR_THEMES = [
   { id: 'default', name: 'Rappi Original', color: '#E65C1A', description: 'O clássico laranja Rappi.' },
@@ -43,7 +44,7 @@ export function ThemeManagement() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 pb-20 animate-fade-in">
+    <div className="max-w-4xl mx-auto space-y-6 pb-32 animate-fade-in">
       <div className="flex items-center justify-between px-2">
         <div>
           <h2 className="text-xl font-bold text-primary flex items-center gap-2">
@@ -52,6 +53,19 @@ export function ThemeManagement() {
           <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest">Altere a identidade visual do sistema</p>
         </div>
       </div>
+
+      <Card className="border-none shadow-sm bg-card/50 backdrop-blur-md rounded-3xl overflow-hidden mb-6">
+        <CardContent className="p-6 flex items-center justify-between">
+          <div className="space-y-1">
+            <h3 className="font-black text-sm uppercase tracking-tight">Modo de Exibição</h3>
+            <p className="text-[10px] text-muted-foreground font-bold uppercase">Alternar entre modo claro e escuro</p>
+          </div>
+          <div className="flex items-center gap-3 bg-muted/30 p-2 rounded-2xl">
+            <ThemeToggle />
+            <span className="text-[10px] font-black uppercase tracking-widest mr-2">Trocar Brilho</span>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {COLOR_THEMES.map((theme) => {

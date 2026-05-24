@@ -1,9 +1,9 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
 import { AppView, User } from "@/lib/types";
 import { SidebarNav } from "./sidebar-nav";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Send, Bell, Activity, Menu, WifiOff, Radar, Zap, PackageSearch } from "lucide-react";
 import { CreateOrder } from "@/components/orders/create-order";
@@ -223,12 +223,12 @@ export function MainDashboard({ user: initialUser, onLogout }: MainDashboardProp
                 variant="ghost" 
                 size="icon" 
                 className={cn(
-                  "rounded-full relative h-9 w-9 transition-all",
+                  "rounded-full relative h-10 w-10 transition-all",
                   pendingCount > 0 ? "text-primary bg-primary/10" : "text-muted-foreground"
                 )}
                 onClick={() => handleSetView('active-orders')}
               >
-                <Bell className={cn("h-5 w-5", pendingCount > 0 && "animate-ring")} />
+                <Bell className={cn("h-6 w-6", pendingCount > 0 && "animate-ring")} />
                 {pendingCount > 0 && (
                   <span className="absolute top-0 right-0 w-4 h-4 bg-primary text-white text-[8px] font-bold rounded-full flex items-center justify-center border-2 border-background">
                     {pendingCount}
@@ -236,7 +236,6 @@ export function MainDashboard({ user: initialUser, onLogout }: MainDashboardProp
                 )}
               </Button>
             )}
-            <ThemeToggle />
           </div>
         </header>
 
