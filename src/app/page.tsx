@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -108,7 +109,8 @@ export default function Home() {
       notificationsEnabled: data.notificationsEnabled !== false,
       hasRequestAccess: !!data.hasRequestAccess,
       hasRtStatusAccess: !!data.hasRtStatusAccess,
-      useDirectWhatsApp: data.useDirectWhatsApp !== false
+      useDirectWhatsApp: data.useDirectWhatsApp !== false,
+      useShareChooser: !!data.useShareChooser
     };
     setLocalUser(userData);
     const expiry = new Date().getTime() + SEVEN_DAYS_MS;

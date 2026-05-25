@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -33,7 +34,8 @@ export function useUser() {
               notificationsEnabled: data.notificationsEnabled !== false,
               hasRequestAccess: !!data.hasRequestAccess,
               hasRtStatusAccess: !!data.hasRtStatusAccess,
-              useDirectWhatsApp: data.useDirectWhatsApp !== false
+              useDirectWhatsApp: data.useDirectWhatsApp !== false,
+              useShareChooser: !!data.useShareChooser
             } as User);
           } else {
             const isMasterEmail = firebaseUser.email === 'rik4rd0stream@gmail.com';
@@ -45,7 +47,8 @@ export function useUser() {
               hasRequestAccess: isMasterEmail,
               hasRtStatusAccess: isMasterEmail,
               notificationsEnabled: true,
-              useDirectWhatsApp: true
+              useDirectWhatsApp: true,
+              useShareChooser: false
             });
           }
           setLoading(false);

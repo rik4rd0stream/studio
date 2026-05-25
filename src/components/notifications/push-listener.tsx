@@ -11,7 +11,6 @@ import { Share } from '@capacitor/share';
 import { User, OrderRequest } from "@/lib/types";
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -218,26 +217,28 @@ export function PushListener({ user: userProp, onPendingCountChange }: { user: U
 
       if (status === 'accepted') {
         const command = activeRequest.command;
-        const isDirect = currentUser?.useDirectWhatsApp !== false;
         
-        if (isDirect) {
-          window.open(`https://wa.me/?text=${encodeURIComponent(command)}`, '_blank');
-        } else {
+        // Lógica Inteligente de Envio após aceitar pedido solicitado
+        if (currentUser?.useShareChooser) {
           if (Capacitor.isNativePlatform()) {
             try {
-              await Share.share({ text: command });
+              await Share.share({ title: 'Despacho Solicitado', text: command });
             } catch (e) {
-              console.log("Compartilhamento nativo cancelado ou falhou.");
+              console.log("Compartilhamento nativo cancelado.");
             }
           } else if (typeof navigator !== 'undefined' && navigator.share) {
             try {
-              await navigator.share({ text: command });
+              await navigator.share({ title: 'Despacho Solicitado', text: command });
             } catch (e) {
-              console.log("Compartilhamento web cancelado.");
+              window.open(`https://wa.me/?text=${encodeURIComponent(command)}`, '_blank');
             }
           } else {
             window.open(`https://wa.me/?text=${encodeURIComponent(command)}`, '_blank');
           }
+        } else if (currentUser?.useDirectWhatsApp !== false) {
+          window.open(`https://wa.me/?text=${encodeURIComponent(command)}`, '_blank');
+        } else {
+          window.open(`https://wa.me/?text=${encodeURIComponent(command)}`, '_blank');
         }
       }
     } catch (e) {

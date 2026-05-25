@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Loader2, Pencil, Trash2, RefreshCw, Database, UserPlus, Bike, ShieldCheck, Bell, Lock, Radar, Share2 } from "lucide-react";
+import { Loader2, Pencil, Trash2, RefreshCw, Database, UserPlus, Bike, ShieldCheck, Bell, Lock, Radar, Share2, Smartphone } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getCollectionBridge, setDocumentBridge, deleteDocumentBridge } from "@/app/actions/firestore-bridge";
 import { createAuthUserBridge } from "@/app/actions/auth-bridge";
@@ -33,6 +33,7 @@ export function Registration({ type }: RegistrationProps) {
   const [hasRequestAccess, setHasRequestAccess] = useState(false);
   const [hasRtStatusAccess, setHasRtStatusAccess] = useState(false);
   const [useDirectWhatsApp, setUseDirectWhatsApp] = useState(true);
+  const [useShareChooser, setUseShareChooser] = useState(false);
 
   const isUser = type === 'users';
   const collectionName = isUser ? 'userProfiles' : 'entregadores';
@@ -77,6 +78,7 @@ export function Registration({ type }: RegistrationProps) {
       setHasRequestAccess(!!item.hasRequestAccess);
       setHasRtStatusAccess(!!item.hasRtStatusAccess);
       setUseDirectWhatsApp(item.useDirectWhatsApp !== false);
+      setUseShareChooser(!!item.useShareChooser);
     }
   };
 
@@ -88,6 +90,7 @@ export function Registration({ type }: RegistrationProps) {
     setHasRequestAccess(false);
     setHasRtStatusAccess(false);
     setUseDirectWhatsApp(true);
+    setUseShareChooser(false);
     setEditingId(null);
   };
 
@@ -144,6 +147,7 @@ export function Registration({ type }: RegistrationProps) {
           hasRequestAccess,
           hasRtStatusAccess,
           useDirectWhatsApp,
+          useShareChooser,
           updatedAt: new Date().toISOString()
         }
       : { 
@@ -231,8 +235,26 @@ export function Registration({ type }: RegistrationProps) {
                       <Label htmlFor="rtAccess" className="text-[8px] font-bold flex items-center gap-1 uppercase"><Radar className="h-3 w-3 text-primary" /> MONITOR RT</Label>
                     </div>
                     <div className="flex items-center space-x-2 bg-muted/20 px-2.5 py-1.5 rounded-lg">
-                      <Switch id="directZap" checked={useDirectWhatsApp} onCheckedChange={setUseDirectWhatsApp} />
+                      <Switch 
+                        id="directZap" 
+                        checked={useDirectWhatsApp} 
+                        onCheckedChange={(val) => {
+                          setUseDirectWhatsApp(val);
+                          if (val) setUseShareChooser(false);
+                        }} 
+                      />
                       <Label htmlFor="directZap" className="text-[8px] font-bold flex items-center gap-1 uppercase"><Share2 className="h-3 w-3 text-primary" /> ZAP DIRETO</Label>
+                    </div>
+                    <div className="flex items-center space-x-2 bg-muted/20 px-2.5 py-1.5 rounded-lg border-2 border-primary/20">
+                      <Switch 
+                        id="shareChooser" 
+                        checked={useShareChooser} 
+                        onCheckedChange={(val) => {
+                          setUseShareChooser(val);
+                          if (val) setUseDirectWhatsApp(false);
+                        }} 
+                      />
+                      <Label htmlFor="shareChooser" className="text-[8px] font-bold flex items-center gap-1 uppercase text-primary"><Smartphone className="h-3 w-3" /> SHARE CHOOSER</Label>
                     </div>
                   </div>
                 </>

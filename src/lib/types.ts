@@ -1,3 +1,4 @@
+
 export type UserRole = 'normal' | 'master';
 
 export interface User {
@@ -10,6 +11,7 @@ export interface User {
   hasRequestAccess?: boolean;
   hasRtStatusAccess?: boolean;
   useDirectWhatsApp?: boolean;
+  useShareChooser?: boolean;
   fcmTokens?: string[];
 }
 

@@ -174,33 +174,31 @@ export function QuickSend({ onOrderCreated, initialOrderId, onClearInitialId }: 
   const handleGenerateCommand = async (courierId: string) => {
     if (!selectedOrder) return;
     const fullCommand = `${selectedCommand} ${selectedOrder.order_id} ${courierId}`;
-    const isDirect = currentUser?.useDirectWhatsApp !== false;
-
-    if (isDirect) {
-      window.open(`https://wa.me/?text=${encodeURIComponent(fullCommand)}`, '_blank');
-    } else {
-      // SOLUÇÃO POCO X7: SHARE CHOOSER NATIVO
+    
+    // Lógica Inteligente de Envio
+    if (currentUser?.useShareChooser) {
+      // Prioridade 1: Share Chooser Nativo (Xiaomi/Poco X7)
       if (Capacitor.isNativePlatform()) {
         try {
-          await Share.share({ 
-            title: 'Despacho Rappi Commander',
-            text: fullCommand 
-          });
+          await Share.share({ title: 'Despacho Rappi Commander', text: fullCommand });
         } catch (e) {
           console.log("Compartilhamento nativo cancelado.");
         }
       } else if (typeof navigator !== 'undefined' && navigator.share) {
         try {
-          await navigator.share({ 
-            title: 'Despacho Rappi Commander',
-            text: fullCommand 
-          });
+          await navigator.share({ title: 'Despacho Rappi Commander', text: fullCommand });
         } catch (err) {
-          console.log("Compartilhamento web cancelado.");
+          window.open(`https://wa.me/?text=${encodeURIComponent(fullCommand)}`, '_blank');
         }
       } else {
         window.open(`https://wa.me/?text=${encodeURIComponent(fullCommand)}`, '_blank');
       }
+    } else if (currentUser?.useDirectWhatsApp !== false) {
+      // Prioridade 2: Zap Direto
+      window.open(`https://wa.me/?text=${encodeURIComponent(fullCommand)}`, '_blank');
+    } else {
+      // Fallback
+      window.open(`https://wa.me/?text=${encodeURIComponent(fullCommand)}`, '_blank');
     }
 
     setIsCourierDialogOpen(false);

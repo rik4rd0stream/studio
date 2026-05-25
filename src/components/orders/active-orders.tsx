@@ -87,33 +87,28 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
 
   const handleForzarBr = async (orderId: string, rtId: string) => {
     const command = `!!forzarbr ${orderId} ${rtId}`;
-    const isDirect = user?.useDirectWhatsApp !== false;
-
-    if (isDirect) {
-      window.open(`https://wa.me/?text=${encodeURIComponent(command)}`, '_blank');
-    } else {
-      // SOLUÇÃO CHOOSER NATIVO (PARA POCO X7 DUAL APP)
+    
+    // Lógica Inteligente de Envio
+    if (user?.useShareChooser) {
       if (Capacitor.isNativePlatform()) {
         try {
-          await Share.share({ 
-            title: 'Cheguei Rappi Commander', 
-            text: command 
-          });
+          await Share.share({ title: 'Cheguei Rappi Commander', text: command });
         } catch (e) {
           console.log("Compartilhamento nativo cancelado.");
         }
       } else if (typeof navigator !== 'undefined' && navigator.share) {
         try {
-          await navigator.share({ 
-            title: 'Cheguei Rappi Commander', 
-            text: command 
-          });
+          await navigator.share({ title: 'Cheguei Rappi Commander', text: command });
         } catch (err) {
-          console.log("Compartilhamento web cancelado.");
+          window.open(`https://wa.me/?text=${encodeURIComponent(command)}`, '_blank');
         }
       } else {
         window.open(`https://wa.me/?text=${encodeURIComponent(command)}`, '_blank');
       }
+    } else if (user?.useDirectWhatsApp !== false) {
+      window.open(`https://wa.me/?text=${encodeURIComponent(command)}`, '_blank');
+    } else {
+      window.open(`https://wa.me/?text=${encodeURIComponent(command)}`, '_blank');
     }
     
     recordLog(orderId, rtId, 'cheguei');
