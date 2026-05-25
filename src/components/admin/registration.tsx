@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -168,41 +169,41 @@ export function Registration({ type }: RegistrationProps) {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 pb-32 animate-fade-in">
-      <Card className="border-none shadow-sm bg-card/50 backdrop-blur-md rounded-3xl overflow-hidden">
-        <CardHeader className="bg-primary/5 border-b border-primary/10">
-          <CardTitle className="text-primary text-xl font-bold flex items-center gap-2">
+    <div className="max-w-4xl mx-auto space-y-4 pb-32 animate-fade-in">
+      <Card className="border-none shadow-sm bg-card/50 backdrop-blur-md rounded-2xl overflow-hidden">
+        <CardHeader className="bg-primary/5 py-3 border-b border-primary/10">
+          <CardTitle className="text-primary text-lg font-bold flex items-center gap-2">
             {isUser ? <UserPlus className="h-5 w-5" /> : <Bike className="h-5 w-5" />}
             {editingId ? 'Editar Registro' : title}
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-6">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div className="space-y-2">
+        <CardContent className="p-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
                 <label className="text-[10px] font-bold uppercase text-muted-foreground ml-1 tracking-widest">Nome Completo</label>
                 <Input 
                   placeholder="Ex: Ricardo Silva" 
                   value={name} 
                   onChange={(e) => setName(e.target.value)} 
                   required 
-                  className="h-12 bg-muted/30 border-none rounded-2xl focus-visible:ring-primary shadow-inner"
+                  className="h-10 bg-muted/30 border-none rounded-xl focus-visible:ring-primary shadow-inner text-sm"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <label className="text-[10px] font-bold uppercase text-muted-foreground ml-1 tracking-widest">{idLabel}</label>
                 <Input 
                   placeholder={idPlaceholder} 
                   value={customId} 
                   onChange={(e) => setCustomId(e.target.value)} 
                   required 
-                  className="h-12 bg-muted/30 border-none rounded-2xl font-mono text-sm focus-visible:ring-primary shadow-inner"
+                  className="h-10 bg-muted/30 border-none rounded-xl font-mono text-sm focus-visible:ring-primary shadow-inner"
                 />
               </div>
               
               {isUser && (
                 <>
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     <label className="text-[10px] font-bold uppercase text-muted-foreground ml-1 tracking-widest">Senha de Acesso</label>
                     <div className="relative">
                       <Input 
@@ -211,39 +212,39 @@ export function Registration({ type }: RegistrationProps) {
                         value={password} 
                         onChange={(e) => setPassword(e.target.value)} 
                         required={!editingId}
-                        className="h-12 bg-muted/30 border-none rounded-2xl focus-visible:ring-primary shadow-inner pr-10"
+                        className="h-10 bg-muted/30 border-none rounded-xl focus-visible:ring-primary shadow-inner pr-10 text-sm"
                       />
-                      <Lock className="absolute right-3 top-3.5 h-5 w-5 text-muted-foreground/50" />
+                      <Lock className="absolute right-3 top-2.5 h-4 w-4 text-muted-foreground/50" />
                     </div>
                   </div>
-                  <div className="flex flex-wrap items-center gap-3 pt-2">
-                    <div className="flex items-center space-x-2 bg-muted/20 px-3 py-2 rounded-xl">
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    <div className="flex items-center space-x-2 bg-muted/20 px-2.5 py-1.5 rounded-lg">
                       <Switch id="notif" checked={notificationsEnabled} onCheckedChange={setNotificationsEnabled} />
-                      <Label htmlFor="notif" className="text-[9px] font-bold flex items-center gap-1.5 uppercase"><Bell className="h-3 w-3 text-primary" /> PUSH</Label>
+                      <Label htmlFor="notif" className="text-[8px] font-bold flex items-center gap-1 uppercase"><Bell className="h-3 w-3 text-primary" /> PUSH</Label>
                     </div>
-                    <div className="flex items-center space-x-2 bg-muted/20 px-3 py-2 rounded-xl">
+                    <div className="flex items-center space-x-2 bg-muted/20 px-2.5 py-1.5 rounded-lg">
                       <Switch id="access" checked={hasRequestAccess} onCheckedChange={setHasRequestAccess} />
-                      <Label htmlFor="access" className="text-[9px] font-bold flex items-center gap-1.5 uppercase"><ShieldCheck className="h-3 w-3 text-primary" /> SOLICITAR</Label>
+                      <Label htmlFor="access" className="text-[8px] font-bold flex items-center gap-1 uppercase"><ShieldCheck className="h-3 w-3 text-primary" /> SOLICITAR</Label>
                     </div>
-                    <div className="flex items-center space-x-2 bg-muted/20 px-3 py-2 rounded-xl">
+                    <div className="flex items-center space-x-2 bg-muted/20 px-2.5 py-1.5 rounded-lg">
                       <Switch id="rtAccess" checked={hasRtStatusAccess} onCheckedChange={setHasRtStatusAccess} />
-                      <Label htmlFor="rtAccess" className="text-[9px] font-bold flex items-center gap-1.5 uppercase"><Radar className="h-3 w-3 text-primary" /> MONITOR RT</Label>
+                      <Label htmlFor="rtAccess" className="text-[8px] font-bold flex items-center gap-1 uppercase"><Radar className="h-3 w-3 text-primary" /> MONITOR RT</Label>
                     </div>
-                    <div className="flex items-center space-x-2 bg-muted/20 px-3 py-2 rounded-xl">
+                    <div className="flex items-center space-x-2 bg-muted/20 px-2.5 py-1.5 rounded-lg">
                       <Switch id="directZap" checked={useDirectWhatsApp} onCheckedChange={setUseDirectWhatsApp} />
-                      <Label htmlFor="directZap" className="text-[9px] font-bold flex items-center gap-1.5 uppercase"><Share2 className="h-3 w-3 text-primary" /> ZAP DIRETO</Label>
+                      <Label htmlFor="directZap" className="text-[8px] font-bold flex items-center gap-1 uppercase"><Share2 className="h-3 w-3 text-primary" /> ZAP DIRETO</Label>
                     </div>
                   </div>
                 </>
               )}
             </div>
             
-            <div className="flex gap-4 pt-4">
-              <Button type="submit" disabled={loading} className="h-14 px-10 font-black uppercase rounded-2xl shadow-xl flex-1 md:flex-none text-base">
-                {loading ? <Loader2 className="animate-spin h-6 w-6" /> : (editingId ? 'Salvar Alterações' : 'Cadastrar na Nuvem')}
+            <div className="flex gap-3 pt-2">
+              <Button type="submit" disabled={loading} className="h-11 px-8 font-black uppercase rounded-xl shadow-md flex-1 md:flex-none text-xs">
+                {loading ? <Loader2 className="animate-spin h-5 w-5" /> : (editingId ? 'Salvar' : 'Cadastrar')}
               </Button>
               {editingId && (
-                <Button type="button" variant="ghost" onClick={resetForm} className="h-14 rounded-2xl text-muted-foreground hover:bg-muted font-bold px-8">
+                <Button type="button" variant="ghost" onClick={resetForm} className="h-11 rounded-xl text-muted-foreground hover:bg-muted font-bold px-6 text-xs">
                   Cancelar
                 </Button>
               )}
@@ -252,59 +253,55 @@ export function Registration({ type }: RegistrationProps) {
         </CardContent>
       </Card>
 
-      <Card className="border-none shadow-sm bg-card/30 backdrop-blur-sm rounded-3xl">
-        <CardHeader className="flex flex-row items-center justify-between py-5 px-8 border-b border-muted/20">
-          <CardTitle className="text-sm flex items-center gap-2 text-muted-foreground font-black uppercase tracking-widest">
-            <Database className="h-4 w-4" /> Registros no Servidor
+      <Card className="border-none shadow-sm bg-card/30 backdrop-blur-sm rounded-2xl">
+        <CardHeader className="flex flex-row items-center justify-between py-4 px-6 border-b border-muted/20">
+          <CardTitle className="text-[10px] flex items-center gap-2 text-muted-foreground font-black uppercase tracking-widest">
+            <Database className="h-3 w-3" /> Registros
           </CardTitle>
-          <Button variant="ghost" size="sm" onClick={loadData} disabled={loadingList} className="h-9 text-[10px] font-bold uppercase tracking-widest text-blue-600 hover:bg-blue-50 rounded-full px-4">
-            <RefreshCw className={loadingList ? "animate-spin h-4 w-4 mr-2" : "h-4 w-4 mr-2"} /> Atualizar
+          <Button variant="ghost" size="sm" onClick={loadData} disabled={loadingList} className="h-8 text-[9px] font-bold uppercase tracking-widest text-blue-600 hover:bg-blue-50 rounded-full px-3">
+            <RefreshCw className={loadingList ? "animate-spin h-3 w-3 mr-1" : "h-3 w-3 mr-1"} /> Atualizar
           </Button>
         </CardHeader>
-        <CardContent className="px-4">
+        <CardContent className="p-0">
           {loadingList ? (
-            <div className="py-20 text-center flex flex-col items-center gap-3">
-              <Loader2 className="animate-spin h-8 w-8 text-primary opacity-20" />
-              <p className="text-[10px] font-bold text-muted-foreground animate-pulse uppercase">Sincronizando...</p>
+            <div className="py-10 text-center flex flex-col items-center gap-2">
+              <Loader2 className="animate-spin h-6 w-6 text-primary opacity-20" />
+              <p className="text-[8px] font-bold text-muted-foreground uppercase">Sincronizando...</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent border-muted/30">
-                    <TableHead className="text-[10px] font-black uppercase px-6 py-4">Nome Completo</TableHead>
-                    <TableHead className="text-[10px] font-black uppercase">{isUser ? 'E-mail' : 'Código RT'}</TableHead>
-                    <TableHead className="text-[10px] font-black uppercase text-right px-6">Ações</TableHead>
+                    <TableHead className="text-[9px] font-black uppercase px-6">Nome</TableHead>
+                    <TableHead className="text-[9px] font-black uppercase">{isUser ? 'E-mail' : 'RT'}</TableHead>
+                    <TableHead className="text-[9px] font-black uppercase text-right px-6">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {items.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={3} className="text-center py-20 text-muted-foreground italic text-xs">
-                        Nenhum registro encontrado.
+                      <TableCell colSpan={3} className="text-center py-10 text-muted-foreground italic text-[10px]">
+                        Nenhum registro.
                       </TableCell>
                     </TableRow>
                   ) : items.map((item) => (
-                    <TableRow key={item.id} className="border-muted/20 hover:bg-primary/5 transition-colors group">
-                      <TableCell className="font-bold text-sm px-6 py-5">
-                        <div className="flex items-center gap-2">
-                          {item.name || item.nome}
-                        </div>
+                    <TableRow key={item.id} className="border-muted/20 hover:bg-primary/5 transition-colors">
+                      <TableCell className="font-bold text-xs px-6 py-3">
+                        {item.name || item.nome}
                       </TableCell>
                       <TableCell>
-                        <div className="flex flex-col">
-                          <span className="font-mono text-[11px] font-bold text-primary">
-                            {isUser ? item.email : (item.id_motoboy || item.id)}
-                          </span>
-                        </div>
+                        <span className="font-mono text-[10px] font-bold text-primary">
+                          {isUser ? item.email : (item.id_motoboy || item.id)}
+                        </span>
                       </TableCell>
                       <TableCell className="px-6 text-right">
-                        <div className="flex gap-2 justify-end">
-                          <Button variant="ghost" size="icon" onClick={() => handleEdit(item)} className="h-11 w-11 text-blue-600 hover:bg-blue-100 rounded-2xl shadow-sm border border-blue-100">
-                            <Pencil size={18} />
+                        <div className="flex gap-1.5 justify-end">
+                          <Button variant="ghost" size="icon" onClick={() => handleEdit(item)} className="h-8 w-8 text-blue-600 hover:bg-blue-100 rounded-lg border border-blue-100">
+                            <Pencil size={14} />
                           </Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleDelete(item.id)} className="h-11 w-11 text-destructive hover:bg-red-100 rounded-2xl shadow-sm border border-red-100">
-                            <Trash2 size={18} />
+                          <Button variant="ghost" size="icon" onClick={() => handleDelete(item.id)} className="h-8 w-8 text-destructive hover:bg-red-100 rounded-lg border border-red-100">
+                            <Trash2 size={14} />
                           </Button>
                         </div>
                       </TableCell>

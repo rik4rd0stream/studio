@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -12,7 +13,6 @@ import {
   ClipboardPaste,
   ArrowRight,
   AlertCircle,
-  X,
   Zap,
   Star,
   Store,
@@ -138,7 +138,6 @@ export function QuickSend({ onOrderCreated, initialOrderId, onClearInitialId }: 
     if (!tempStoreName || !tempStoreAddress.trim()) return;
     setIsSavingStore(true);
     try {
-      // Usar a ponte para salvar o endereço de coleta de forma estável
       const result = await setDocumentBridge('storeProfiles', tempStoreName, {
         address: tempStoreAddress.trim().substring(0, 50)
       });
@@ -180,14 +179,25 @@ export function QuickSend({ onOrderCreated, initialOrderId, onClearInitialId }: 
     if (isDirect) {
       window.open(`https://wa.me/?text=${encodeURIComponent(fullCommand)}`, '_blank');
     } else {
+      // SOLUÇÃO POCO X7: SHARE CHOOSER NATIVO
       if (Capacitor.isNativePlatform()) {
         try {
-          await Share.share({ title: 'Despacho Rappi', text: fullCommand });
-        } catch (e) {}
+          await Share.share({ 
+            title: 'Despacho Rappi Commander',
+            text: fullCommand 
+          });
+        } catch (e) {
+          console.log("Compartilhamento nativo cancelado.");
+        }
       } else if (typeof navigator !== 'undefined' && navigator.share) {
         try {
-          await navigator.share({ text: fullCommand });
-        } catch (err) {}
+          await navigator.share({ 
+            title: 'Despacho Rappi Commander',
+            text: fullCommand 
+          });
+        } catch (err) {
+          console.log("Compartilhamento web cancelado.");
+        }
       } else {
         window.open(`https://wa.me/?text=${encodeURIComponent(fullCommand)}`, '_blank');
       }

@@ -92,14 +92,25 @@ export function ActiveOrders({ onSelectOrder }: ActiveOrdersProps) {
     if (isDirect) {
       window.open(`https://wa.me/?text=${encodeURIComponent(command)}`, '_blank');
     } else {
+      // SOLUÇÃO CHOOSER NATIVO (PARA POCO X7 DUAL APP)
       if (Capacitor.isNativePlatform()) {
         try {
-          await Share.share({ title: 'Cheguei Rappi', text: command });
-        } catch (e) {}
+          await Share.share({ 
+            title: 'Cheguei Rappi Commander', 
+            text: command 
+          });
+        } catch (e) {
+          console.log("Compartilhamento nativo cancelado.");
+        }
       } else if (typeof navigator !== 'undefined' && navigator.share) {
         try {
-          await navigator.share({ title: 'Cheguei Rappi', text: command });
-        } catch (err) {}
+          await navigator.share({ 
+            title: 'Cheguei Rappi Commander', 
+            text: command 
+          });
+        } catch (err) {
+          console.log("Compartilhamento web cancelado.");
+        }
       } else {
         window.open(`https://wa.me/?text=${encodeURIComponent(command)}`, '_blank');
       }
