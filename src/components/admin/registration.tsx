@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -238,10 +237,7 @@ export function Registration({ type }: RegistrationProps) {
                       <Switch 
                         id="directZap" 
                         checked={useDirectWhatsApp} 
-                        onCheckedChange={(val) => {
-                          setUseDirectWhatsApp(val);
-                          if (val) setUseShareChooser(false);
-                        }} 
+                        onCheckedChange={setUseDirectWhatsApp} 
                       />
                       <Label htmlFor="directZap" className="text-[8px] font-bold flex items-center gap-1 uppercase"><Share2 className="h-3 w-3 text-primary" /> ZAP DIRETO</Label>
                     </div>
@@ -249,10 +245,7 @@ export function Registration({ type }: RegistrationProps) {
                       <Switch 
                         id="shareChooser" 
                         checked={useShareChooser} 
-                        onCheckedChange={(val) => {
-                          setUseShareChooser(val);
-                          if (val) setUseDirectWhatsApp(false);
-                        }} 
+                        onCheckedChange={setUseShareChooser} 
                       />
                       <Label htmlFor="shareChooser" className="text-[8px] font-bold flex items-center gap-1 uppercase text-primary"><Smartphone className="h-3 w-3" /> SHARE CHOOSER</Label>
                     </div>
